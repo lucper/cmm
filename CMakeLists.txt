@@ -1,6 +1,14 @@
 cmake_minimum_required(VERSION 3.15)
 project(bpm)
 
+if(DEFINED _USE_64)
+    add_compile_definitions(_USE_64)
+elseif(DEFINED _USE_32)
+    add_compile_definitions(_USE_32)
+else()
+    message(FATAL_ERROR "Set either -D_USE_32 or -D_USE_64.")
+endif()
+
 include(FetchContent)
 
 FetchContent_Declare(
