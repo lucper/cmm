@@ -36,39 +36,44 @@ unsigned int LCParray(unsigned char *text, INT n, INT *SA, INT *ISA, INT *LCP) {
 
 int main() {
     // IO
-    std::string text = "banana";
-    INT n = text.length();
+    // TODO: Remember to allocate the text on the heap.
+    char *U = "banana$";
+    INT N_U = strlen(U);
+    char *V = "rabana$";
+    INT N_V = strlen(V);
+
+    std::cout << N_U << std::endl;
 
     // *********************************
 
-    INT *SA = (INT *) calloc(n, sizeof(INT));
-    INT *ISA = (INT *) calloc(n, sizeof(INT));
-    sdsl::int_vector<> LCP(n);
+    INT *SA = (INT *) calloc(N_U, sizeof(INT));
+    INT *ISA = (INT *) calloc(N_U, sizeof(INT));
+    sdsl::int_vector<> LCP(N_U);
     
     // libsais test
 #ifdef _USE_64
-    libsais64((const uint8_t*) text.c_str(), SA, n, 0, NULL);
+    libsais64(U, SA, N_U, 0, NULL);
     std::cout << "libsais64" << std::endl;
 #endif
 
 #ifdef _USE_32
-    libsais((const uint8_t*) text.c_str(), SA, n, 0, NULL);
+    libsais((const uint8_t *) U, SA, N_U, 0, NULL);
     std::cout << "libsais" << std::endl;
 #endif
 
     // ISA
-    for (int i = 0; i < n; ++i)
+    for (int i = 0; i < N_U; ++i)
         ISA[SA[i]] = i;
 
     // LCP
-    LCParray((unsigned char*) text.c_str(), n, (INT *) SA, ISA, (INT *) LCP.data());
+    LCParray((unsigned char *) U, N_U, (INT *) SA, ISA, (INT *) LCP.data());
 
     // LCE
     sdsl::rmq_support_sparse_table<> rmq(&LCP);
 
-    print_vector(SA, n);
-    print_vector(ISA, n);
-    print_vector((INT *) LCP.data(), n);
+    print_vector(SA, N_U);
+    print_vector(ISA, N_U);
+    print_vector((INT *) LCP.data(), N_U);
 
     free(SA);
     free(ISA);
