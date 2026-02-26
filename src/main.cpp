@@ -1,9 +1,24 @@
 #include <iostream>
-#include <vector>
-#include <sdsl/bit_vectors.hpp>
-#include "libsais.h"
+#include <cstdlib>
+#include <sdsl/rmq_support.hpp>
 
-unsigned int LCParray(unsigned char *text, int n, int *SA, int *ISA, int *LCP) {
+#ifdef _USE_32
+#define INT int32_t
+#include "libsais.h"
+#endif
+
+#ifdef _USE_64
+#define INT int64_t
+#include "libsais64.h"
+#endif
+
+void print_vector(INT *v, int n) {
+    for (int i = 0; i < n; ++i)
+        std::cout << v[i] << " ";
+    std::cout << std::endl;
+}
+
+unsigned int LCParray(unsigned char *text, INT n, INT *SA, INT *ISA, INT *LCP) {
     int i = 0, j = 0;
 
     LCP[0] = 0;
@@ -22,41 +37,41 @@ unsigned int LCParray(unsigned char *text, int n, int *SA, int *ISA, int *LCP) {
 int main() {
     // IO
     std::string text = "banana";
-    int n = text.length();
+    INT n = text.length();
 
     // *********************************
+
+    INT *SA = (INT *) calloc(n, sizeof(INT));
+    INT *ISA = (INT *) calloc(n, sizeof(INT));
+    sdsl::int_vector<> LCP(n);
     
     // libsais test
-    std::vector<int32_t> SA(n);
-    int result = libsais((const uint8_t*) text.c_str(), SA.data(), n, 0, NULL);
-    if (result == 0) {
-        for (int i : SA)
-            std::cout << i << " ";
-        std::cout << std::endl;
-    } else {
-        std::cerr << "Error building suffix array." << std::endl;
-        return 1;
-    }
+#ifdef _USE_64
+    libsais64((const uint8_t*) text.c_str(), SA, n, 0, NULL);
+    std::cout << "libsais64" << std::endl;
+#endif
+
+#ifdef _USE_32
+    libsais((const uint8_t*) text.c_str(), SA, n, 0, NULL);
+    std::cout << "libsais" << std::endl;
+#endif
 
     // ISA
-    std::vector<int32_t> ISA(n);
     for (int i = 0; i < n; ++i)
         ISA[SA[i]] = i;
-    for (int i : ISA)
-        std::cout << i << " ";
-    std::cout << std::endl;
 
     // LCP
-    std::vector<int32_t> LCP(n);
-    LCParray ((unsigned char*) text.c_str(), n, SA.data(), ISA.data(), LCP.data());
-    for (int i : LCP)
-        std::cout << i << " ";
-    std::cout << std::endl;
+    LCParray((unsigned char*) text.c_str(), n, (INT *) SA, ISA, (INT *) LCP.data());
 
-    // sdsl test
-    sdsl::bit_vector b = {1, 1, 0, 1, 0, 1};
-    std::cout << "SDSL Bit Vector size: " << b.size() << std::endl;
-    std::cout << "Bit at index 3: " << b[3] << std::endl;
+    // LCE
+    sdsl::rmq_support_sparse_table<> rmq(&LCP);
+
+    print_vector(SA, n);
+    print_vector(ISA, n);
+    print_vector((INT *) LCP.data(), n);
+
+    free(SA);
+    free(ISA);
 
     return 0;
 }
