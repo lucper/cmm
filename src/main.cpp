@@ -34,18 +34,7 @@ unsigned int LCParray(unsigned char *text, INT n, INT *SA, INT *ISA, INT *LCP) {
     return 1;
 }
 
-int main() {
-    // IO
-    // TODO: Remember to allocate the text on the heap.
-    char *U = "banana$";
-    INT N_U = strlen(U);
-    char *V = "rabana$";
-    INT N_V = strlen(V);
-
-    std::cout << N_U << std::endl;
-
-    // *********************************
-
+void param_algo(unsigned char *U, unsigned char *V, INT N_U, INT N_V, INT ell, INT d) {
     INT *SA = (INT *) calloc(N_U, sizeof(INT));
     INT *ISA = (INT *) calloc(N_U, sizeof(INT));
     sdsl::int_vector<> LCP(N_U);
@@ -77,6 +66,20 @@ int main() {
 
     free(SA);
     free(ISA);
+}
+
+int main() {
+    // TODO: Remember to allocate the text on the heap.
+    char *U = "banana$";
+    INT N_U = strlen(U);
+
+    char *V = "rabana$";
+    INT N_V = strlen(V);
+
+    INT ell = 4;
+    INT d = 0;
+
+    param_algo((unsigned char *) U, (unsigned char *) V, N_U, N_V, ell, d);
 
     return 0;
 }
