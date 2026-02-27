@@ -71,7 +71,7 @@ int main() {
     INT U_size = 2;
     char *U[U_size] = {"abaaba", "babaa"};
 
-    // Auxiliary array for S with $ positions.
+    // Construct auxiliary array for S with $ positions.
     INT *end_pos = (INT *) calloc(U_size, sizeof(INT));
     end_pos[0] = strlen(U[0]);
     for (int i = 1; i < U_size; ++i)
@@ -80,17 +80,12 @@ int main() {
     // Construct S.
     INT N_U = end_pos[U_size-1] + 1; // position of last $ plus 1
     unsigned char *S_U = (unsigned char *) malloc(N_U * sizeof(char));
-    INT i = 0, str_i = 0;
-    while (i < N_U) {
-        INT n = strlen(U[str_i]);
-        for (int j = 0; j < n; ++j)
-            S_U[i++] = U[str_i][j];
-        S_U[i++] = '$';
-        ++str_i;
+    for (int i = 0, offset = 0; i < U_size; ++i) {
+        INT n = strlen(U[i]);
+        memcpy(S_U + offset, U[i], n);
+        offset += n;
+        S_U[offset++] = '$';
     }
-
-    std::cout << S_U << std::endl;
-    print_vector(end_pos, 2);
 
     //char *V = "rabana$";
     //INT N_V = strlen(V);
