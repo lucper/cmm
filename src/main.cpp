@@ -1,6 +1,9 @@
 #include <iostream>
 #include <cstdlib>
+#include <vector>
+#include <algorithm>
 #include <sdsl/rmq_support.hpp>
+#include <sdsl/int_vector.hpp>
 
 #ifdef _USE_32
 #define INT int32_t
@@ -11,6 +14,23 @@
 #define INT int64_t
 #include "libsais64.h"
 #endif
+
+// Helper for Stable Counting Sort
+void counting_sort_pass(std::vector<size_t>& indices, const std::vector<int>& keys, int max_val) {
+    if (indices.empty()) return;
+
+    // keys[i] can be -1 (for invalid/short), so we offset by 1
+    std::vector<size_t> count(max_val + 2, 0);
+    for (size_t i : indices) count[keys[i] + 1]++;
+    for (size_t i = 1; i < count.size(); ++i) count[i] += count[i - 1];
+
+    std::vector<size_t> temp(indices.size());
+    // Iterate backwards to ensure stability
+    for (int i = indices.size() - 1; i >= 0; --i) {
+        temp[--count[keys[indices[i]] + 1]] = indices[i];
+    }
+    indices = temp;
+}
 
 void print_vector(INT *v, int n) {
     for (int i = 0; i < n; i++)
@@ -73,19 +93,56 @@ void param_algo(unsigned char *U, unsigned char *V, INT N_U, INT N_V, INT ell, I
     for (int i : LCP) std::cout << i << " ";
     std::cout << "\n";
 
-    INT rank[N_U];
-    for (int i = 0; i < N_U; i++) rank[i] = -1;
-    for (int i = 0, j = -1, r = 0; i < N_U; i++) {
+    //////////////////////////////////
+    std::vector<int> rank1(N_U, -1);
+    std::vector<size_t> gapped_sa; // pass to the heap
+
+    int r = 0;
+    for (int i = 0, j = -1; i < N_U; i++) {
         if (SA[i] <= N_U - ell) {
-            if (j < 0) rank[SA[i]] = r;
-            else {
-                if (LCP[rmq(j+1,i)] < ell) r++;
-                rank[SA[i]] = r;
-            }
+            if (j >= 0 && LCP[rmq(j+1,i)] < ell) r++;
+            rank1[SA[i]] = r;
+            gapped_sa.push_back(SA[i]);
             j = i;
         }
     }
-    print_vector(rank, N_U);
+    int max_rank1 = r;
+
+    std::vector<int> rank2(N_U, -1);
+
+    print_vector((INT *) gapped_sa.data(), gapped_sa.size());
+
+    // Iterative refinement.
+    std::vector<int> wildcard_offsets = {2}; // all combinations {ell choose d}
+    for (int h : wildcard_offsets) {
+        for (size_t pos : gapped_sa) {
+            rank2[pos] = rank1[pos + h + 1];
+        }
+
+        // Radix sort.
+        counting_sort_pass(gapped_sa, rank2, max_rank1);
+        counting_sort_pass(gapped_sa, rank1, max_rank1);
+
+        // Re-rank for the next iteration
+        // Logic of initialization comes here.
+        std::vector<int> next_ranks(N_U, -1);
+        int new_r = 0;
+        next_ranks[gapped_sa[0]] = 0;
+
+        for (size_t x = 1; x < gapped_sa.size(); x++) {
+            size_t curr = gapped_sa[x];
+            size_t prev = gapped_sa[x - 1];
+            if (rank1[curr] != rank1[prev] || rank2[curr] != rank2[prev]) {
+                new_r++;
+            }
+            next_ranks[curr] = new_r;
+        }
+        rank1 = next_ranks;
+        max_rank = new_r;
+    }
+    //////////////////////////////////
+
+    print_vector((INT *) gapped_sa.data(), gapped_sa.size());
 
     free(SA);
     free(ISA);
@@ -116,7 +173,7 @@ int main() {
     //char *V = "rabana$";
     //INT N_V = strlen(V);
 
-    INT ell = 2;
+    INT ell = 5;
     INT d = 1;
 
     param_algo(S_U, NULL, N_U, 0, ell, d);
