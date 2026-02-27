@@ -18,7 +18,7 @@ void print_vector(INT *v, int n) {
     std::cout << std::endl;
 }
 
-unsigned int LCParray(unsigned char *text, INT n, INT *SA, INT *ISA, INT *LCP) {
+INT LCParray(unsigned char *text, INT n, INT *SA, INT *ISA, INT *LCP) {
     int i = 0, j = 0;
 
     LCP[0] = 0;
@@ -39,15 +39,13 @@ void param_algo(unsigned char *U, unsigned char *V, INT N_U, INT N_V, INT ell, I
     INT *ISA = (INT *) calloc(N_U, sizeof(INT));
     sdsl::int_vector<> LCP(N_U);
     
-    // libsais test
+    // SA
 #ifdef _USE_64
     libsais64(U, SA, N_U, 0, NULL);
-    std::cout << "libsais64" << std::endl;
 #endif
 
 #ifdef _USE_32
     libsais((const uint8_t *) U, SA, N_U, 0, NULL);
-    std::cout << "libsais" << std::endl;
 #endif
 
     // ISA
@@ -69,17 +67,38 @@ void param_algo(unsigned char *U, unsigned char *V, INT N_U, INT N_V, INT ell, I
 }
 
 int main() {
-    // TODO: Remember to allocate the text on the heap.
-    char *U = "banana$";
-    INT N_U = strlen(U);
+    // TODO: Read input. Wait for AJ here.
+    INT U_size = 2;
+    char *U[U_size] = {"abaaba", "babaa"};
 
-    char *V = "rabana$";
-    INT N_V = strlen(V);
+    // Auxiliary array for S with $ positions.
+    INT *end_pos = (INT *) calloc(U_size, sizeof(INT));
+    end_pos[0] = strlen(U[0]);
+    for (int i = 1; i < U_size; ++i)
+        end_pos[i] = end_pos[i-1] + strlen(U[i]) + 1;
+
+    // Construct S.
+    INT N_U = end_pos[U_size-1] + 1; // position of last $ plus 1
+    unsigned char *S_U = (unsigned char *) malloc(N_U * sizeof(char));
+    INT i = 0, str_i = 0;
+    while (i < N_U) {
+        INT n = strlen(U[str_i]);
+        for (int j = 0; j < n; ++j)
+            S_U[i++] = U[str_i][j];
+        S_U[i++] = '$';
+        ++str_i;
+    }
+
+    std::cout << S_U << std::endl;
+    print_vector(end_pos, 2);
+
+    //char *V = "rabana$";
+    //INT N_V = strlen(V);
 
     INT ell = 4;
-    INT d = 0;
+    INT d = 1;
 
-    param_algo((unsigned char *) U, (unsigned char *) V, N_U, N_V, ell, d);
+    param_algo(S_U, NULL, N_U, 0, ell, d);
 
     return 0;
 }
