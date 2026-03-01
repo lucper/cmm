@@ -28,13 +28,13 @@ void print_vector(INT *v, INT n)
  * meximum rank.
  * Note that identical k-length prefixes are grouped and receive
  * the same rank.*/
-inline INT assign_ranks(std::vector<INT>& rank, INT k,
+inline INT assign_ranks(std::vector<INT>& rank, INT frag_len,
                          const INT *SA, const sdsl::int_vector<>& LCP, INT n)
 {
     int r = 0;
     rank[SA[0]] = 0;
     for (int i = 1; i < n; i++)
-        rank[SA[i]] = LCP[i] < k ? ++r : r;
+        rank[SA[i]] = LCP[i] < frag_len ? ++r : r;
     return r;
 }
 
