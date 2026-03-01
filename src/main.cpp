@@ -3,18 +3,7 @@
 #include <vector>
 #include <sdsl/rmq_support.hpp>
 #include <sdsl/int_vector.hpp>
-
-#ifdef _USE_32
-#define INT int32_t
-#include "libsais.h"
-#endif
-
-#ifdef _USE_64
-#define INT int64_t
-#include "libsais64.h"
-#endif
-
-#define SEP '$'
+#include "defs.hpp"
 
 void print_vector(INT *v, INT n)
 {
@@ -29,7 +18,7 @@ void print_vector(INT *v, INT n)
  * Note that identical k-length prefixes are grouped and receive
  * the same rank.*/
 inline INT assign_ranks(std::vector<INT>& rank, INT frag_len,
-                         const INT *SA, const sdsl::int_vector<>& LCP, INT n)
+                        const INT *SA, const sdsl::int_vector<>& LCP, INT n)
 {
     int r = 0;
     rank[SA[0]] = 0;
