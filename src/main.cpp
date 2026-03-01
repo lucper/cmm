@@ -27,23 +27,22 @@ inline INT assign_ranks(std::vector<INT>& rank, INT frag_len,
     return r;
 }
 
-/* Sort array 'v' using the values in array 'keys' as key, i.e.,
- * Value v[i] has key keys[v[i]]. */
-void counting_sort(std::vector<INT>& gappedSA, const std::vector<INT>& keys, INT offset, INT max_val)
+/* Sort array 'gappedSA' using the values in array 'rank' as key, i.e.,
+ * Value suffix gapped[i] has rank rank[gappedSA[i]].
+ * TODO: Improve this doc. */
+void counting_sort(std::vector<INT>& gappedSA, const std::vector<INT>& rank, INT offset, INT max_val)
 {
     if (gappedSA.empty()) return;
 
     std::vector<INT> count(max_val + 1, 0);
-    for (int i = 0; i < gappedSA.size(); i++) count[keys[gappedSA[i] + offset]]++;
+    for (int i = 0; i < gappedSA.size(); i++) count[rank[gappedSA[i] + offset]]++;
     for (int i = 1; i < max_val + 1; i++) count[i] += count[i - 1];
 
     std::vector<INT> temp(gappedSA.size());
     for (int i = gappedSA.size() - 1; i >= 0; i--)
-        temp[--count[keys[gappedSA[i] + offset]]] = gappedSA[i];
+        temp[--count[rank[gappedSA[i] + offset]]] = gappedSA[i];
 
     gappedSA = std::move(temp);
-
-    print_vector(gappedSA.data(), gappedSA.size());
 }
 
 // TODO: Replace int_vector with INT*; need to check conversion and compatibility.
@@ -105,6 +104,10 @@ std::vector<INT> gapped_SA(const unsigned char *U, INT N_U,
 
         counting_sort(gappedSA, rank2, next_frag_start, max_r2);
         counting_sort(gappedSA, rank1, 0, max_r1);
+
+        // TODO: Implement re-rank for next iteration.
+        // At this point, we have (rank1 - h - rank 2) and need to assign
+        // a rank to this whole "fragment" in rank1.
     }
 
     return gappedSA;
@@ -173,7 +176,7 @@ int main() {
 
     // Construct gappedSA, which is sorted ignoring wildcards positions.
     INT ell = 4;
-    std::vector<INT> H = {2};
+    std::vector<INT> H = {1};
     auto gappedSA = gapped_SA(S_U, N_U, SA, LCP, ell, H);
     print_vector(gappedSA.data(), gappedSA.size());
 
