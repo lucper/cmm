@@ -1,6 +1,7 @@
 #include <iostream>
 #include <cstdlib>
 #include <vector>
+#include <tuple>
 #include <sdsl/rmq_support.hpp>
 #include <sdsl/int_vector.hpp>
 #include "defs.hpp"
@@ -14,13 +15,13 @@ void print_vector(INT *v, INT n)
 
 /* Assign ranks to each k-length prefix of each suffix of SA
  * according to their lexicographical order and returns the
- * meximum rank.
+ * maximum rank.
  * Note that identical k-length prefixes are grouped and receive
  * the same rank.*/
 inline INT assign_ranks(std::vector<INT>& rank, INT frag_len,
                         const INT *SA, const sdsl::int_vector<>& LCP, INT n)
 {
-    int r = 0;
+    INT r = 0;
     rank[SA[0]] = 0;
     for (int i = 1; i < n; i++)
         rank[SA[i]] = LCP[i] < frag_len ? ++r : r;
@@ -68,13 +69,13 @@ INT LCParray(unsigned char *text, INT n, INT *SA, INT *ISA, sdsl::int_vector<>& 
 /* Constructs the gapped suffix array containing each suffix position i
  * such that U[SA[i]:] has length at least ell without the SEP symboland
  * and sorted ignoring positions in H. */
-std::vector<INT> gapped_SA(const unsigned char *U, INT N_U,
-                           const INT *SA, const INT *ISA,
-                           const sdsl::int_vector<>& LCP,
-                           const sdsl::rmq_support_sparse_table<>& rmq,
-                           INT ell, const std::vector<INT>& H)
+std::tuple<INT, std::vector<INT>>
+map_ell_mers_to_ranks(const unsigned char *U, INT N_U, const INT *SA, const INT *ISA,
+                      const sdsl::int_vector<>& LCP, const sdsl::rmq_support_sparse_table<>& rmq,
+                      INT ell, const std::vector<INT>& H)
 {
     // Construct vector that records the distance to next SEP.
+    // TODO: Replace by bit_vector.
     std::vector<INT> next_sep(N_U);
     int last_sep_pos = N_U;
     for (int i = N_U-1; i >= 0; i--) {
@@ -127,16 +128,13 @@ std::vector<INT> gapped_SA(const unsigned char *U, INT N_U,
         }
     }
 
-    // TODO: rank1 gives the IDs for the ell-mers in the gappedSA.
-    // Need to store it somewhere.
-
-    return gappedSA;
+    return {max_r1, rank1};
 }
 
 int main() {
     // TODO: Read input. Wait for AJ here.
     INT U_size = 2;
-    char *U[U_size] = {"abaaba", "babaa"};
+    char *U[U_size] = {"abaabaa", "babaa"};
 
     // Construct S.
     // TODO: Replace string_offset with bitvector, rank and select support.
@@ -189,7 +187,7 @@ int main() {
 
     // LCP
     sdsl::int_vector<> LCP(N_U);
-    LCParray((unsigned char *) S_U, N_U, (INT *) SA, ISA, LCP);
+    LCParray((unsigned char *) S_U, N_U, SA, ISA, LCP);
     std::cout << "LCP: ";
     for (int i : LCP) std::cout << i << " ";
     std::cout << "\n";
@@ -197,11 +195,11 @@ int main() {
     // LCE
     sdsl::rmq_support_sparse_table<> rmq(&LCP);
 
-    // Construct gappedSA, which is sorted ignoring wildcards positions.
+    // Map ell-mers (w/ or w/o wildcards) to ranks in [N_U].
     INT ell = 4;
     std::vector<INT> H = {1};
-    auto gappedSA = gapped_SA(S_U, N_U, SA, ISA, LCP, rmq, ell, H);
-    print_vector(gappedSA.data(), gappedSA.size());
+    auto [max_r, rank] = map_ell_mers_to_ranks(S_U, N_U, SA, ISA, LCP, rmq, ell, H);
+    print_vector(rank.data(), rank.size());
 
     free(SA);
     free(ISA);
