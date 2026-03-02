@@ -66,8 +66,8 @@ INT LCParray(unsigned char *text, INT n, INT *SA, INT *ISA, sdsl::int_vector<>& 
 }
 
 /* Constructs the gapped suffix array containing each suffix position i
- * such that U[SA[i]:] has length at least ell and ignoring the positions
- * in H. */
+ * such that U[SA[i]:] has length at least ell without the SEP symboland
+ * and sorted ignoring positions in H. */
 std::vector<INT> gapped_SA(const unsigned char *U, INT N_U,
                            const INT *SA, const INT *ISA,
                            const sdsl::int_vector<>& LCP,
@@ -94,7 +94,6 @@ std::vector<INT> gapped_SA(const unsigned char *U, INT N_U,
     // TODO: If H is empty, dont create this array.
     std::vector<INT> rank2(N_U);
 
-    // Note: If H is empty, this loop is skipped.
     for (int d = 0; d < H.size(); d++) {
         int next_frag_start = H[d] + 1;
         int next_frag_end = d + 1 < H.size() ? H[d + 1] : ell;
@@ -116,7 +115,7 @@ std::vector<INT> gapped_SA(const unsigned char *U, INT N_U,
             // Positions of these consecutive "gapped" suffixes in original SA.
             INT pos1 = ISA[gappedSA[i] + next_frag_start];
             INT pos2 = ISA[gappedSA[i-1] + next_frag_start];
-            // Ensure r1 < r2 for the range query
+            // Ensure pos1 < pos2 for the LCE query.
             INT left = std::min(pos1, pos2);
             INT right = std::max(pos1, pos2);
 
@@ -127,6 +126,9 @@ std::vector<INT> gapped_SA(const unsigned char *U, INT N_U,
             rank1[gappedSA[i]] = max_r1;
         }
     }
+
+    // TODO: rank1 gives the IDs for the ell-mers in the gappedSA.
+    // Need to store it somewhere.
 
     return gappedSA;
 }
@@ -193,8 +195,8 @@ int main() {
     sdsl::rmq_support_sparse_table<> rmq(&LCP);
 
     // Construct gappedSA, which is sorted ignoring wildcards positions.
-    INT ell = 1;
-    std::vector<INT> H = {0};
+    INT ell = 4;
+    std::vector<INT> H = {1};
     auto gappedSA = gapped_SA(S_U, N_U, SA, ISA, LCP, rmq, ell, H);
     print_vector(gappedSA.data(), gappedSA.size());
 
