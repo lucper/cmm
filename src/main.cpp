@@ -69,7 +69,9 @@ INT LCParray(unsigned char *text, INT n, INT *SA, INT *ISA, sdsl::int_vector<>& 
  * such that U[SA[i]:] has length at least ell and ignoring the positions
  * in H. */
 std::vector<INT> gapped_SA(const unsigned char *U, INT N_U,
-                           const INT *SA, const sdsl::int_vector<>& LCP,
+                           const INT *SA, const INT *ISA,
+                           const sdsl::int_vector<>& LCP,
+                           const sdsl::rmq_support_sparse_table<>& rmq,
                            INT ell, const std::vector<INT>& H)
 {
     // Construct vector that records the distance to next SEP.
@@ -89,10 +91,10 @@ std::vector<INT> gapped_SA(const unsigned char *U, INT N_U,
     std::vector<INT> rank1(N_U);
     INT max_r1 = assign_ranks(rank1, (H.empty() ? ell : H[0]), SA, LCP, N_U);
 
-    // Note: If H is empty, dont create this array.
+    // TODO: If H is empty, dont create this array.
     std::vector<INT> rank2(N_U);
 
-    // Note: If H is empty, skip this loop
+    // Note: If H is empty, this loop is skipped.
     for (int d = 0; d < H.size(); d++) {
         int next_frag_start = H[d] + 1;
         int next_frag_end = d + 1 < H.size() ? H[d + 1] : ell;
@@ -105,9 +107,25 @@ std::vector<INT> gapped_SA(const unsigned char *U, INT N_U,
         counting_sort(gappedSA, rank2, next_frag_start, max_r2);
         counting_sort(gappedSA, rank1, 0, max_r1);
 
-        // TODO: Implement re-rank for next iteration.
-        // At this point, we have (rank1 - h - rank 2) and need to assign
-        // a rank to this whole "fragment" in rank1.
+        max_r1 = 0;
+        int prev_r1 = rank1[gappedSA[0]];
+        rank1[gappedSA[0]] = 0;
+        for (int i = 1; i < gappedSA.size(); i++) {
+            bool first_coord_match = (rank1[gappedSA[i]] == prev_r1);
+
+            // Positions of these consecutive "gapped" suffixes in original SA.
+            INT pos1 = ISA[gappedSA[i] + next_frag_start];
+            INT pos2 = ISA[gappedSA[i-1] + next_frag_start];
+            // Ensure r1 < r2 for the range query
+            INT left = std::min(pos1, pos2);
+            INT right = std::max(pos1, pos2);
+
+            bool second_coord_match = (LCP[rmq(left + 1, right)] >= next_frag_len);
+
+            if (!first_coord_match || !second_coord_match) max_r1++;
+            prev_r1 = rank1[gappedSA[i]];
+            rank1[gappedSA[i]] = max_r1;
+        }
     }
 
     return gappedSA;
@@ -175,9 +193,9 @@ int main() {
     sdsl::rmq_support_sparse_table<> rmq(&LCP);
 
     // Construct gappedSA, which is sorted ignoring wildcards positions.
-    INT ell = 4;
-    std::vector<INT> H = {1};
-    auto gappedSA = gapped_SA(S_U, N_U, SA, LCP, ell, H);
+    INT ell = 1;
+    std::vector<INT> H = {0};
+    auto gappedSA = gapped_SA(S_U, N_U, SA, ISA, LCP, rmq, ell, H);
     print_vector(gappedSA.data(), gappedSA.size());
 
     free(SA);
