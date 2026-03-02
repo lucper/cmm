@@ -72,21 +72,12 @@ INT LCParray(unsigned char *text, INT n, INT *SA, INT *ISA, sdsl::int_vector<>& 
 std::tuple<INT, std::vector<INT>>
 map_ell_mers_to_ranks(const unsigned char *U, INT N_U, const INT *SA, const INT *ISA,
                       const sdsl::int_vector<>& LCP, const sdsl::rmq_support_sparse_table<>& rmq,
-                      INT ell, const std::vector<INT>& H)
+                      const sdsl::rank_support_v5<>& string_offset_rank, INT ell, const std::vector<INT>& H)
 {
-    // Construct vector that records the distance to next SEP.
-    // TODO: Replace by bit_vector.
-    std::vector<INT> next_sep(N_U);
-    int last_sep_pos = N_U;
-    for (int i = N_U-1; i >= 0; i--) {
-        if (U[i] == SEP) last_sep_pos = i;
-        next_sep[i] = last_sep_pos - i;
-    }
-
     // Get suffixes whose prefixes have >= ell characters without SEP.
     std::vector<INT> gappedSA;
     for (int i = 0; i < N_U; i++)
-        if (SA[i] <= N_U - ell && next_sep[SA[i]] >= ell)
+        if (SA[i] <= N_U - ell && string_offset_rank(SA[i]) == string_offset_rank(SA[i] + ell))
             gappedSA.push_back(SA[i]);
 
     std::vector<INT> rank1(N_U);
@@ -137,20 +128,23 @@ int main() {
     char *U[U_size] = {"abaabaa", "babaa"};
 
     // Construct S.
-    // TODO: Replace string_offset with bitvector, rank and select support.
     INT N_U = 0;
     for (int i = 0; i < U_size; i++)
         N_U += strlen(U[i]) + 1;
     unsigned char *S_U = (unsigned char *) malloc(N_U * sizeof(char));
-    std::vector<INT> string_offset(U_size);
+    sdsl::bit_vector string_offset(N_U);
     for (int i = 0, offset = 0; i < U_size; i++) {
-        string_offset[i] = offset;
         INT n = strlen(U[i]);
         memcpy(S_U + offset, U[i], n);
         offset += n;
-        S_U[offset++] = SEP;
+        string_offset[offset] = 1;
+        S_U[offset] = SEP;
+        offset++;
     }
+    sdsl::rank_support_v5 string_offset_rank(&string_offset);
+    sdsl::select_support_mcl string_offset_select(&string_offset);
     std::cout << S_U << std::endl;
+    std::cout << string_offset << std::endl;
 
     // Preprocess S.
     // SA
@@ -198,8 +192,15 @@ int main() {
     // Map ell-mers (w/ or w/o wildcards) to ranks in [N_U].
     INT ell = 4;
     std::vector<INT> H = {1};
-    auto [max_r, rank] = map_ell_mers_to_ranks(S_U, N_U, SA, ISA, LCP, rmq, ell, H);
+    auto [max_r, rank] = map_ell_mers_to_ranks(S_U, N_U, SA, ISA, LCP, rmq, string_offset_rank, ell, H);
     print_vector(rank.data(), rank.size());
+
+    // Using select to get h(i, v)
+    for (int k = 0; k < U_size; k++) {
+        for (int i = 0; i < strlen(U[k])-ell+1; i++)
+            std::cout << i << "(" << rank[(k == 0 ? 0 : string_offset_select(k)+1)+i] << ") ";
+        std::cout << "\n";
+    }
 
     free(SA);
     free(ISA);
