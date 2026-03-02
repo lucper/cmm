@@ -139,15 +139,18 @@ int main() {
     char *U[U_size] = {"abaaba", "babaa"};
 
     // Construct S.
+    // TODO: Replace string_offset with bitvector, rank and select support.
     INT N_U = 0;
     for (int i = 0; i < U_size; i++)
         N_U += strlen(U[i]) + 1;
     unsigned char *S_U = (unsigned char *) malloc(N_U * sizeof(char));
+    std::vector<INT> string_offset(U_size);
     for (int i = 0, offset = 0; i < U_size; i++) {
+        string_offset[i] = offset;
         INT n = strlen(U[i]);
         memcpy(S_U + offset, U[i], n);
         offset += n;
-        S_U[offset++] = '$';
+        S_U[offset++] = SEP;
     }
     std::cout << S_U << std::endl;
 
