@@ -49,7 +49,6 @@ rank_index::~rank_index()
     free(concat_seq);
     free(SA);
     free(ISA);
-    std::cout << "Freed" << "\n";
 }
 
 std::tuple<INT, std::vector<INT>> rank_index::map_ell_mers_to_ranks(INT ell, const std::vector<INT>& H)
