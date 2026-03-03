@@ -134,6 +134,11 @@ void rank_index::build_concat_seq(unsigned char **seqs, int seqs_n)
     }
 }
 
+INT rank_index::get_offset_in_concat(INT seq_id, INT pos)
+{
+    return (seq_id == 0 ? 0 : select(seq_id) + 1) + pos;
+}
+
 INT rank_index::assign_ranks(std::vector<INT>& rank, INT frag_len)
 {
     INT r = 0;
