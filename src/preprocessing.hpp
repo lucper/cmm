@@ -13,9 +13,19 @@ class rank_index {
     rank_index(unsigned char **seqs, int seqs_n);
     ~rank_index();
 
-    /* Constructs the gapped suffix array containing each suffix position i
-     * such that U[SA[i]:] has length at least ell without the SEP symboland
-     * and sorted ignoring positions in H. */
+    /* Assigns ranks to suffixes whose prefixes have length >= ell and wildcards in positions
+     * H within the ell-length prefix. The ranks are assigned according to the lexicographical
+     * order of these ell-length substrings ignoring the wildcard positions. Note that identical
+     * ell-length subtrings (including wildcards) get the same rank.
+     *
+     * Input:
+     * ell      length of substrings
+     * H        positions of wildcards within ell-length substrings
+     *
+     * Output:
+     * A tuple (max_r, rank), where 'max_r' is an INT storing the maximum rank and 'rank 'is a 
+     * vectorvin which position i stores the rank of suffix i. Note that suffixes with the SEP
+     * symbol are included, but should be ignored. */
     std::tuple<INT, std::vector<INT>> map_ell_mers_to_ranks(INT ell, const std::vector<INT>& H);
 
     void show()
@@ -41,19 +51,19 @@ class rank_index {
 
     INT *SA;
     INT *ISA;
+    // TODO: Replace int_vector with INT*; need to check conversion and compatibility.
     sdsl::int_vector<> LCP;
+    // TODO: Replace rmq with lce that uses string synchronizing sets.
     sdsl::rmq_support_sparse_table<> rmq;
 
-    // TODO: Replace int_vector with INT*; need to check conversion and compatibility.
     void build_LCP();
 
     void build_concat_seq(unsigned char **seqs, int seqs_n);
 
     INT assign_ranks(std::vector<INT>& rank, INT frag_len);
 
-    /* Sort array 'gappedSA' using the values in array 'rank' as key, i.e.,
-     * value gappedSA[i] has rank rank[gappedSA[i]].
-     * TODO: Improve this doc. */
+    /* Sort vector 'gappedSA' using the values in vector 'rank' as key, i.e., value gappedSA[i] has rank
+     * rank[gappedSA[i]]. */
     void counting_sort(std::vector<INT>& gappedSA, const std::vector<INT>& rank, INT offset, INT max_val);
 };
 
