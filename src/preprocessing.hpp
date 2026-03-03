@@ -59,8 +59,11 @@ class rank_index {
             fprintf(stderr, "Could not construct suffix array.");
             exit(EXIT_FAILURE);
         }
+        for (int i = 0; i < concat_seq_len; i++)
+            ISA[SA[i]] = i;
 
         LCP = sdsl::int_vector<>(concat_seq_len); // Check if init is good.
+        build_LCP();
     }
 
     ~rank_index()
@@ -81,6 +84,22 @@ class rank_index {
     INT *SA;
     INT *ISA;
     sdsl::int_vector<> LCP;
+
+    // TODO: Replace int_vector with INT*; need to check conversion and compatibility.
+    void build_LCP()
+    {
+        int i = 0, j = 0;
+
+        LCP[0] = 0;
+        for (i = 0; i < concat_seq_len; i++)
+            if (ISA[i] != 0) {
+                if (i == 0) j = 0;
+                else j = (LCP[ISA[i-1]] >= 2) ? LCP[ISA[i-1]]-1 : 0;
+                while (concat_seq[i+j] == concat_seq[SA[ISA[i]-1]+j])
+                    j++;
+                LCP[ISA[i]] = j;
+            }
+    }
 
     void build_concat_seq(unsigned char **seqs, int seqs_n)
     {
