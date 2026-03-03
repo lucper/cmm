@@ -64,6 +64,8 @@ class rank_index {
 
         LCP = sdsl::int_vector<>(concat_seq_len); // Check if init is good.
         build_LCP();
+
+        sdsl::util::init_support(rmq, &LCP);
     }
 
     ~rank_index()
@@ -72,6 +74,59 @@ class rank_index {
         free(SA);
         free(ISA);
         std::cout << "Freed" << "\n";
+    }
+
+    /* Constructs the gapped suffix array containing each suffix position i
+     * such that U[SA[i]:] has length at least ell without the SEP symboland
+     * and sorted ignoring positions in H. */
+    std::tuple<INT, std::vector<INT>> map_ell_mers_to_ranks(INT ell, const std::vector<INT>& H)
+    {
+        // Get suffixes whose prefixes have >= ell characters without SEP.
+        std::vector<INT> gappedSA;
+        for (int i = 0; i < concat_seq_len; i++)
+            if (SA[i] <= concat_seq_len - ell && rank(SA[i]) == rank(SA[i] + ell))
+                gappedSA.push_back(SA[i]);
+
+        std::vector<INT> rank1(concat_seq_len);
+        INT max_r1 = assign_ranks(rank1, (H.empty() ? ell : H[0]));
+
+        // TODO: If H is empty, dont create this array.
+        std::vector<INT> rank2(concat_seq_len);
+
+        for (int d = 0; d < H.size(); d++) {
+            int next_frag_start = H[d] + 1;
+            int next_frag_end = d + 1 < H.size() ? H[d + 1] : ell;
+            int next_frag_len = next_frag_end - next_frag_start;
+
+            if (next_frag_len <= 0) continue; // Ignore wildcard at last pos.
+
+            int max_r2 = assign_ranks(rank2, next_frag_len);
+
+            counting_sort(gappedSA, rank2, next_frag_start, max_r2);
+            counting_sort(gappedSA, rank1, 0, max_r1);
+
+            max_r1 = 0;
+            int prev_r1 = rank1[gappedSA[0]];
+            rank1[gappedSA[0]] = 0;
+            for (int i = 1; i < gappedSA.size(); i++) {
+                bool first_coord_match = (rank1[gappedSA[i]] == prev_r1);
+
+                // Positions of these consecutive "gapped" suffixes in original SA.
+                INT pos1 = ISA[gappedSA[i] + next_frag_start];
+                INT pos2 = ISA[gappedSA[i-1] + next_frag_start];
+                // Ensure pos1 < pos2 for the LCE query.
+                INT left = std::min(pos1, pos2);
+                INT right = std::max(pos1, pos2);
+
+                bool second_coord_match = (LCP[rmq(left + 1, right)] >= next_frag_len);
+
+                if (!first_coord_match || !second_coord_match) max_r1++;
+                prev_r1 = rank1[gappedSA[i]];
+                rank1[gappedSA[i]] = max_r1;
+            }
+        }
+
+        return {max_r1, rank1};
     }
 
     private:
@@ -84,6 +139,7 @@ class rank_index {
     INT *SA;
     INT *ISA;
     sdsl::int_vector<> LCP;
+    sdsl::rmq_support_sparse_table<> rmq;
 
     // TODO: Replace int_vector with INT*; need to check conversion and compatibility.
     void build_LCP()
@@ -117,6 +173,34 @@ class rank_index {
             concat_seq[offset++] = SEP;
         }
     }
+
+    inline INT assign_ranks(std::vector<INT>& rank, INT frag_len)
+    {
+        INT r = 0;
+        rank[SA[0]] = 0;
+        for (int i = 1; i < concat_seq_len; i++)
+            rank[SA[i]] = LCP[i] < frag_len ? ++r : r;
+        return r;
+    }
+
+    /* Sort array 'gappedSA' using the values in array 'rank' as key, i.e.,
+     * value gappedSA[i] has rank rank[gappedSA[i]].
+     * TODO: Improve this doc. */
+    void counting_sort(std::vector<INT>& gappedSA, const std::vector<INT>& rank, INT offset, INT max_val)
+    {
+        if (gappedSA.empty()) return;
+
+        std::vector<INT> count(max_val + 1, 0);
+        for (int i = 0; i < gappedSA.size(); i++) count[rank[gappedSA[i] + offset]]++;
+        for (int i = 1; i < max_val + 1; i++) count[i] += count[i - 1];
+
+        std::vector<INT> temp(gappedSA.size());
+        for (int i = gappedSA.size() - 1; i >= 0; i--)
+            temp[--count[rank[gappedSA[i] + offset]]] = gappedSA[i];
+
+        gappedSA = std::move(temp);
+    }
+
 };
 
 #endif
