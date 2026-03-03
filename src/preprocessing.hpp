@@ -94,8 +94,8 @@ class rank_index {
         for (i = 0; i < concat_seq_len; i++)
             if (ISA[i] != 0) {
                 if (i == 0) j = 0;
-                else j = (LCP[ISA[i-1]] >= 2) ? LCP[ISA[i-1]]-1 : 0;
-                while (concat_seq[i+j] == concat_seq[SA[ISA[i]-1]+j])
+                else j = (LCP[ISA[i - 1]] >= 2) ? LCP[ISA[i - 1]] - 1 : 0;
+                while (concat_seq[i + j] == concat_seq[SA[ISA[i] - 1] + j])
                     j++;
                 LCP[ISA[i]] = j;
             }
