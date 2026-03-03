@@ -6,35 +6,43 @@
 
 int main() {
     // TODO: Read input. Wait for AJ here.
-    INT U_size = 2;
-    char *U[U_size] = {"abaabaa", "babaa"};
+    INT U_size = 1;
+    char *U[U_size] = {"abaaba"};
+
+    INT V_size = 1;
+    char *V[V_size] = {"ababb"};
 
     // Preprocess string collection of each set of vertices.
     rank_index index_u((unsigned char **) U, U_size);
+    rank_index index_v((unsigned char **) V, V_size);
 
     // Map ell-mers (w/ or w/o wildcards) to ranks in [N].
-    std::vector<INT> H = {1};
-    int ell = 4;
+    std::vector<INT> H = {};
+    int ell = 3;
     auto [max_ru, rank_u] = index_u.map_ell_mers_to_ranks(ell, H);
+    auto [max_rv, rank_v] = index_v.map_ell_mers_to_ranks(ell, H);
 
-    for (int u : rank_u) std::cout << u << " ";
-    std::cout << "\n";
+    // TODO: Read from input.
+    // Graph topology.
+    std::vector<std::tuple<INT, INT>> edges = {{0,0}};
 
     index_u.show();
+    index_v.show();
 
-    // TODO: Scheme for deduplicating.
-    for (int u = 0; u < U_size; u++) {
-        std::cout << "u = " << u << "\n";
-        sdsl::bit_vector seen(max_ru + 1, 0);
-        std::cout << seen << "\n";
-        for (int i = 0; i < strlen(U[u]) - ell + 1; i++) {
-            INT r = rank_u[index_u.get_offset_in_concat(u, i)];
-            if (!seen[r]) {
-                std::cout << "ID of u[" << i << " : " << i+ell-1 << "]" << " = " << r << "\n";
-                seen[r] = 1;
-            }
-        }
-        std::cout << seen << "\n";
+    // Algorithm.
+    for (auto [u,v] : edges) {
+        sdsl::bit_vector seen_u(max_ru + 1, 0);
+        for (int i = 0; i < strlen(U[u]) - ell + 1; i++)
+            seen_u[rank_u[index_u.get_offset_in_concat(u, i)]] = 1;
+
+        sdsl::bit_vector seen_v(max_rv + 1, 0);
+        for (int j = 0; j < strlen(V[v]) - ell + 1; j++)
+            seen_v[rank_v[index_v.get_offset_in_concat(v, j)]] = 1;
+
+        for (int i = 0; i < max_ru + 1; i++)
+            for (int j = 0; j < max_rv + 1; j++)
+                if (seen_u[i] && seen_v[j])
+                    std::cout << "(" << i << ", " << j << ", " << u << ", " << v << ")" << "\n";
     }
 
     return 0;
