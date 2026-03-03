@@ -1,10 +1,6 @@
 #include <iostream>
 #include <cstdlib>
 #include <vector>
-#include <tuple>
-#include <sdsl/rmq_support.hpp>
-#include <sdsl/int_vector.hpp>
-#include "defs.hpp"
 #include "preprocessing.hpp"
 
 int main() {
@@ -13,7 +9,7 @@ int main() {
     char *U[U_size] = {"abaabaa", "babaa"};
 
     // Construct S.
-    rank_index concat_S = rank_index((unsigned char **) U, U_size);
+    rank_index concat_S((unsigned char **) U, U_size);
     concat_S.show();
 
     // Map ell-mers (w/ or w/o wildcards) to ranks in [N_U].
@@ -22,6 +18,7 @@ int main() {
     for (int v : rank) std::cout << v << " ";
     std::cout << "\n";
 
+    // TODO: Scheme for deduplicating.
     // Using select to get h(i, v)
     //for (int k = 0; k < U_size; k++) {
     //    for (int i = 0; i < strlen(U[k])-ell+1; i++)
