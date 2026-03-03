@@ -28,18 +28,16 @@ class rank_index {
      * symbol are included, but should be ignored. */
     std::tuple<INT, std::vector<INT>> map_ell_mers_to_ranks(INT ell, const std::vector<INT>& H);
 
+    /* Given string identifier and position, return the offset in the concatenated string.
+     *
+     * Input:
+     * seq_id       INT in the range [0,n-1], where n is the number of strings in collection S.
+     * pos          INT position in string S[seq_id]. */
+    INT get_offset_in_concat(INT seq_id, INT pos);
+
     void show()
     {
         std::cout << concat_seq << "\n";
-        std::cout << concat_seq_separators << "\n";
-        std::cout << "SA:" << "\n";
-        for (int i = 0; i < concat_seq_len; i++)
-            std::cout << SA[i] << " ";
-        std::cout << "\n";
-        std::cout << "LCP:" << "\n";
-        for (int i = 0; i < concat_seq_len; i++)
-            std::cout << LCP[i] << " ";
-        std::cout << "\n";
     }
 
     private:
