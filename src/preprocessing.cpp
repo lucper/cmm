@@ -57,7 +57,16 @@ rank_index::~rank_index()
     free(ISA);
 }
 
-std::string rank_index::get_substr_with_rank(INT r, INT len) const {
+INT rank_index::get_rank_of_substr(INT i, INT k) const {
+    INT rank = src_rank_buffer[get_offset_in_concat(k, i)];
+    if (rank == -1) {
+        fprintf(stderr, "Tried to access an invalid rank.\n");
+        exit(EXIT_FAILURE);
+    }
+    return rank;
+}
+
+std::string rank_index::get_substr_with_rank(INT r, INT ell) const {
     INT low = 0;
     INT high = activeSA.size() - 1;
 
@@ -65,12 +74,8 @@ std::string rank_index::get_substr_with_rank(INT r, INT len) const {
         INT mid = low + (high - low) / 2;
         INT mid_rank = src_rank_buffer[activeSA[mid]];
 
-        if (mid_rank == r) {
-            // Found it!
-            // Since multiple suffixes can share a rank, any one will do
-            // if you just want the string content.
-            return substr(activeSA[mid], len);
-        }
+        if (mid_rank == r)
+            return substr(activeSA[mid], ell);
 
         if (mid_rank < r)
             low = mid + 1;
@@ -92,8 +97,11 @@ std::string rank_index::substr(INT i, INT len) const
     return std::string((char *) concat_seq + i, len);
 }
 
-std::tuple<INT, const INT*> rank_index::map_ell_mers_to_ranks(INT ell, const std::vector<INT>& H)
+INT rank_index::map_ell_mers_to_ranks(INT ell, const std::vector<INT>& H)
 {
+    // Reset the rank buffer.
+    memset(src_rank_buffer, -1, concat_seq_len * sizeof(INT));
+
     // Get suffixes whose prefixes have >= ell characters without SEP.
     activeSA.clear();
     for (int i = 0; i < concat_seq_len; i++)
@@ -107,8 +115,6 @@ std::tuple<INT, const INT*> rank_index::map_ell_mers_to_ranks(INT ell, const std
     // There were inside counting_sort previously; I put them one level above.
     std::vector<INT> count_buffer(max_r1, 0);
     std::vector<INT> temp_SA(activeSA.size(), 0);
-    // Next ranks after wildcards.
-    std::vector<INT> rank2(concat_seq_len);
 
     for (int d = 0; d < H.size(); d++) {
         int next_frag_start = H[d] + 1;
@@ -120,9 +126,9 @@ std::tuple<INT, const INT*> rank_index::map_ell_mers_to_ranks(INT ell, const std
         int max_r2 = assign_ranks(dst_rank_buffer, activeSA, next_frag_len);
 
         counting_sort(activeSA, max_r2, temp_SA, count_buffer,
-                      [&](INT suff_i) { return rank2[suff_i + next_frag_start]; });
+                      [&](INT suff_i) { return dst_rank_buffer[suff_i + next_frag_start]; });
         counting_sort(activeSA, max_r1, temp_SA, count_buffer,
-                      [&](INT suff_i) { return rank2[suff_i]; });
+                      [&](INT suff_i) { return src_rank_buffer[suff_i]; });
 
         INT new_max_r1 = 0;
         dst_rank_buffer[activeSA[0]] = 0;
@@ -144,7 +150,7 @@ std::tuple<INT, const INT*> rank_index::map_ell_mers_to_ranks(INT ell, const std
         max_r1 = new_max_r1;
     }
 
-    return {max_r1, src_rank_buffer};
+    return max_r1;
 }
 
 void rank_index::build_LCP()
