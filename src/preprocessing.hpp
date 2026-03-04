@@ -11,7 +11,7 @@
 
 class rank_index {
     public:
-    rank_index(unsigned char **seqs, int seqs_n);
+    rank_index(unsigned char **seqs, INT seqs_n, INT ell);
     ~rank_index();
 
     /* Assigns ranks to suffixes whose prefixes have length >= ell and wildcards in positions
@@ -20,14 +20,12 @@ class rank_index {
      * ell-length subtrings (including wildcards) get the same rank.
      *
      * Input:
-     * ell      length of substrings
      * H        positions of wildcards within ell-length substrings
      *
      * Output:
      * A tuple (max_r, rank), where 'max_r' is an INT storing the maximum rank and 'rank 'is a 
-     * vector in which position i stores the rank of suffix i. Note that suffixes with the SEP
-     * symbol are included, but should be ignored. */
-    INT map_ell_mers_to_ranks(INT ell, const std::vector<INT>& H);
+     * vector in which position i stores the rank of suffix i. */
+    INT map_ell_mers_to_ranks(const std::vector<INT>& H);
 
     /* Returns a copy of the substring with rank r. Note that the ranks can change if one runs
      * map_ell_mers_to_ranks multiple times.
@@ -36,9 +34,8 @@ class rank_index {
      * r        rank
      *
      * Output:
-     * ell-length substring of rank r. The length ell depends on the previous run of
-     * map_ell_mers_to_ranks. */
-    std::string get_substr_with_rank(INT r, INT ell) const;
+     * ell-length substring of rank r. */
+    std::string get_substr_with_rank(INT r) const;
 
     INT get_rank_of_substr(INT i, INT k) const;
 
@@ -59,6 +56,8 @@ class rank_index {
     sdsl::bit_vector concat_seq_separators;
     sdsl::rank_support_v5<> rank;
     sdsl::select_support_mcl<> select;
+
+    INT ell;
 
     INT *SA;
     INT *ISA;

@@ -1,8 +1,11 @@
 #include "preprocessing.hpp"
 #include "utils.hpp"
 
-rank_index::rank_index(unsigned char **seqs, int seqs_n)
+rank_index::rank_index(unsigned char **seqs, INT seqs_n, INT ell)
 {
+    // Length ell of ell-mers.
+    this->ell = ell;
+
     // Concatenate the strings with SEP symbols.
     build_concat_seq(seqs, seqs_n);
 
@@ -57,7 +60,7 @@ rank_index::~rank_index()
     free(ISA);
 }
 
-void rank_index::build_concat_seq(unsigned char **seqs, int seqs_n)
+void rank_index::build_concat_seq(unsigned char **seqs, INT seqs_n)
 {
     concat_seq_len = 0;
     for (int i = 0; i < seqs_n; i++) concat_seq_len += strlen((const char *) seqs[i]) + 1;
@@ -84,7 +87,7 @@ INT rank_index::get_rank_of_substr(INT i, INT k) const
     return rank;
 }
 
-std::string rank_index::get_substr_with_rank(INT r, INT ell) const
+std::string rank_index::get_substr_with_rank(INT r) const
 {
     INT low = 0;
     INT high = activeSA.size() - 1;
@@ -106,7 +109,7 @@ std::string rank_index::get_substr_with_rank(INT r, INT ell) const
     exit(EXIT_FAILURE);
 }
 
-INT rank_index::map_ell_mers_to_ranks(INT ell, const std::vector<INT>& H)
+INT rank_index::map_ell_mers_to_ranks(const std::vector<INT>& H)
 {
     // Check if positions in H are within ell-length substring.
     if (std::max(H) >= ell || std::min(H) < 0) {
