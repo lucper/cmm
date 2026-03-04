@@ -126,10 +126,11 @@ INT rank_index::map_ell_mers_to_ranks(const std::vector<INT>& H)
 
     if (H.empty()) return max_r1;
 
-    // TODO: Allocate elsewhere, not every time we call the function?
-    // This is only for working space for the counting sort passes.
-    std::vector<INT> count_buffer(max_r1, 0);
-    std::vector<INT> temp_SA(activeSA.size(), 0);
+    if (tempSA.size() < activeSA.size())
+        tempSA.resize(activeSA.size());
+
+    if (count_buffer.size() < max_r1 + 1)
+        count_buffer.resize(max_r1 + 1);
 
     for (int d = 0; d < H.size(); d++) {
         int next_frag_start = H[d] + 1;
@@ -140,9 +141,9 @@ INT rank_index::map_ell_mers_to_ranks(const std::vector<INT>& H)
 
         int max_r2 = assign_ranks(dst_rank_buffer, next_frag_len);
 
-        counting_sort(activeSA, max_r2, temp_SA, count_buffer,
+        counting_sort(activeSA, max_r2, tempSA, count_buffer,
                       [&](INT suff_i) { return dst_rank_buffer[suff_i + next_frag_start]; });
-        counting_sort(activeSA, max_r1, temp_SA, count_buffer,
+        counting_sort(activeSA, max_r1, tempSA, count_buffer,
                       [&](INT suff_i) { return src_rank_buffer[suff_i]; });
 
         INT new_max_r1 = 0;

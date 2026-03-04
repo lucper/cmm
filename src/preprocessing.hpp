@@ -70,6 +70,8 @@ class rank_index {
     INT *src_rank_buffer;
     INT *dst_rank_buffer;
     std::vector<INT> activeSA;
+    std::vector<INT> tempSA;
+    std::vector<INT> count_buffer;
 
     // Helper methods.
     void build_LCP();
