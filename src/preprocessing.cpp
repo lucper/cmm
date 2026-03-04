@@ -108,7 +108,7 @@ INT rank_index::map_ell_mers_to_ranks(INT ell, const std::vector<INT>& H)
         if (is_valid_suffix(SA[i], ell))
             activeSA.push_back(SA[i]);
 
-    INT max_r1 = assign_ranks(src_rank_buffer, activeSA, (H.empty() ? ell : H[0]));
+    INT max_r1 = assign_ranks(src_rank_buffer, (H.empty() ? ell : H[0]));
 
     // TODO: If H is empty, dont allocate these arrays.
     // TODO: Allocate elsewhere, not every time we call the function?
@@ -123,7 +123,7 @@ INT rank_index::map_ell_mers_to_ranks(INT ell, const std::vector<INT>& H)
 
         if (next_frag_len <= 0) continue; // Ignore wildcard at last pos.
 
-        int max_r2 = assign_ranks(dst_rank_buffer, activeSA, next_frag_len);
+        int max_r2 = assign_ranks(dst_rank_buffer, next_frag_len);
 
         counting_sort(activeSA, max_r2, temp_SA, count_buffer,
                       [&](INT suff_i) { return dst_rank_buffer[suff_i + next_frag_start]; });
@@ -195,7 +195,7 @@ bool rank_index::is_valid_suffix(INT i, INT k)
     return i <= concat_seq_len - k && rank(i) == rank(i + k);
 }
 
-INT rank_index::assign_ranks(INT *rank_buffer, std::vector<INT>& activeSA, INT frag_len)
+INT rank_index::assign_ranks(INT *rank_buffer, INT frag_len)
 {
     if (activeSA.empty()) return 0;
 
@@ -207,5 +207,6 @@ INT rank_index::assign_ranks(INT *rank_buffer, std::vector<INT>& activeSA, INT f
         INT lce = LCP[rmq(std::min(pos1, pos2) + 1, std::max(pos1, pos2))];
         rank_buffer[activeSA[i]] = lce < frag_len ? ++r : r;
     }
+
     return r;
 }

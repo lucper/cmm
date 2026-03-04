@@ -79,12 +79,10 @@ class rank_index {
     INT *dst_rank_buffer;
     std::vector<INT> activeSA;
 
+    // Helper methods.
     void build_LCP();
-
     void build_concat_seq(unsigned char **seqs, int seqs_n);
-
-    INT assign_ranks(INT *rank_buffer, std::vector<INT>& activeSA, INT frag_len);
-
+    INT assign_ranks(INT *rank_buffer, INT frag_len);
     /* A suffix is 'valid' is it has a prefix of length at least k
      * and this prefix has no SEP symbol. */
     bool is_valid_suffix(INT i, INT k);
