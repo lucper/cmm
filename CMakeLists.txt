@@ -1,4 +1,7 @@
 cmake_minimum_required(VERSION 3.15)
+set(CMAKE_POLICY_VERSION_MINIMUM 3.15)
+cmake_policy(SET CMP0148 NEW)
+
 project(bpm)
 
 if(DEFINED _USE_64)
@@ -19,8 +22,8 @@ FetchContent_Declare(
 
 FetchContent_Declare(
   sdsl
-  GIT_REPOSITORY https://github.com/simongog/sdsl-lite.git
-  GIT_TAG master
+  GIT_REPOSITORY https://github.com/vgteam/sdsl-lite.git
+  GIT_TAG       master
 )
 
 FetchContent_MakeAvailable(libsais sdsl)
