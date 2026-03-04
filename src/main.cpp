@@ -6,11 +6,12 @@
 
 int main() {
     // TODO: Read input. Wait for AJ here.
-    INT U_size = 1;
-    char *U[U_size] = {"abaaba"};
+    constexpr int U_size = 1;
+    const char* U[U_size] = {"abaaba"};
 
-    INT V_size = 1;
-    char *V[V_size] = {"ababb"};
+    constexpr int V_size = 1;
+    const char* V[V_size] = {"ababb"};
+
 
     // Preprocess string collection of each set of vertices.
     rank_index index_u((unsigned char **) U, U_size);
