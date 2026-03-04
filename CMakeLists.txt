@@ -25,5 +25,5 @@ FetchContent_Declare(
 
 FetchContent_MakeAvailable(libsais sdsl)
 
-add_executable(bpm src/main.cpp src/preprocessing.hpp src/preprocessing.cpp)
+add_executable(bpm src/main.cpp src/preprocessing.hpp src/preprocessing.cpp src/utils.hpp)
 target_link_libraries(bpm PRIVATE libsais sdsl)
