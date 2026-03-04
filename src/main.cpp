@@ -20,8 +20,8 @@ int main() {
     // Map ell-mers (w/ or w/o wildcards) to ranks in [N].
     std::vector<INT> H = {};
     int ell = 3;
-    auto [max_ru, rank_u] = index_u.map_ell_mers_to_ranks(ell, H);
-    auto [max_rv, rank_v] = index_v.map_ell_mers_to_ranks(ell, H);
+    INT max_ru = index_u.map_ell_mers_to_ranks(ell, H);
+    INT max_rv = index_v.map_ell_mers_to_ranks(ell, H);
 
     // TODO: Read from input.
     // Graph topology.
@@ -38,17 +38,17 @@ int main() {
     for (auto [u,v] : edges) {
         sdsl::bit_vector seen_u(max_ru + 1, 0);
         for (int i = 0; i < strlen(U[u]) - ell + 1; i++)
-            seen_u[rank_u[index_u.get_offset_in_concat(u, i)]] = 1;
+            seen_u[index_u.get_rank_of_substr(i, u)] = 1;
 
         sdsl::bit_vector seen_v(max_rv + 1, 0);
         for (int j = 0; j < strlen(V[v]) - ell + 1; j++)
-            seen_v[rank_v[index_v.get_offset_in_concat(v, j)]] = 1;
+            seen_v[index_v.get_rank_of_substr(j, v)] = 1;
 
         // We have the ranks, the values in vector 'rank'. We have the indices, the suffixes positions.
         for (int i = 0; i < strlen(U[u]) - ell + 1; i++) {
-            INT r1 = rank_u[index_u.get_offset_in_concat(u, i)];
+            INT r1 = index_u.get_rank_of_substr(i, u);
             for (int j = 0; j < strlen(V[v]) - ell + 1; j++) {
-                INT r2 = rank_v[index_v.get_offset_in_concat(v, j)];
+                INT r2 = index_v.get_rank_of_substr(j, v);
                 if (seen_u[r1] && seen_v[r2])
                     L.push_back({r1, r2, u, v});
             }
