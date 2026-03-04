@@ -14,21 +14,18 @@ int main() {
 
 
     // Preprocess string collection of each set of vertices.
-    rank_index index_u((unsigned char **) U, U_size);
-    rank_index index_v((unsigned char **) V, V_size);
+    INT ell = 3;
+    rank_index index_u((unsigned char **) U, U_size, ell);
+    rank_index index_v((unsigned char **) V, V_size, ell);
 
     // Map ell-mers (w/ or w/o wildcards) to ranks in [N].
     std::vector<INT> H = {};
-    int ell = 3;
-    INT max_ru = index_u.map_ell_mers_to_ranks(ell, H);
-    INT max_rv = index_v.map_ell_mers_to_ranks(ell, H);
+    INT max_ru = index_u.map_ell_mers_to_ranks(H);
+    INT max_rv = index_v.map_ell_mers_to_ranks(H);
 
     // TODO: Read from input.
     // Graph topology.
     std::vector<std::tuple<INT, INT>> edges = {{0,0}};
-
-    index_u.show();
-    index_v.show();
 
     // Algorithm.
     struct motif_match {
@@ -62,7 +59,7 @@ int main() {
     // Moreover, just a subset of k's are valid suffixes.
     // We just need to make sure that the k we retrieve is a "valid" one.
     std::cout << L[0].r1 << " " << L[0].r2 << "\n";
-    std::cout << "motifs are " << index_u.get_substr_with_rank(L[0].r1, ell) << " and " << index_v.get_substr_with_rank(L[0].r2, ell) << "\n";
+    std::cout << "motifs are " << index_u.get_substr_with_rank(L[0].r1) << " and " << index_v.get_substr_with_rank(L[0].r2) << "\n";
 
     return 0;
 }
