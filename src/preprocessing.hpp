@@ -53,13 +53,6 @@ class rank_index {
      * strings in S. */
     INT get_offset_in_concat(INT seq_id, INT pos) const;
 
-    std::string substr(INT i, INT len) const;
-
-    void show()
-    {
-        std::cout << concat_seq << "\n";
-    }
-
     private:
     unsigned char *concat_seq;
     INT concat_seq_len;
@@ -85,7 +78,7 @@ class rank_index {
     INT assign_ranks(INT *rank_buffer, INT frag_len);
     /* A suffix is 'valid' is it has a prefix of length at least k
      * and this prefix has no SEP symbol. */
-    bool is_valid_suffix(INT i, INT k);
+    bool is_valid_suffix(INT i, INT k) const;
 };
 
 #endif

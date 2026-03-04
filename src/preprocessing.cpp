@@ -57,7 +57,25 @@ rank_index::~rank_index()
     free(ISA);
 }
 
-INT rank_index::get_rank_of_substr(INT i, INT k) const {
+void rank_index::build_concat_seq(unsigned char **seqs, int seqs_n)
+{
+    concat_seq_len = 0;
+    for (int i = 0; i < seqs_n; i++) concat_seq_len += strlen((const char *) seqs[i]) + 1;
+    concat_seq = (unsigned char *) malloc(concat_seq_len * sizeof(char));
+    if (!concat_seq) {
+        fprintf(stderr, "Could not allocate memory for concatenated string.\n");
+        exit(EXIT_FAILURE);
+    }
+    for (int i = 0, offset = 0; i < seqs_n; i++) {
+        INT seq_len = strlen((const char *) seqs[i]);
+        memcpy(concat_seq + offset, seqs[i], seq_len);
+        offset += seq_len;
+        concat_seq[offset++] = SEP;
+    }
+}
+
+INT rank_index::get_rank_of_substr(INT i, INT k) const
+{
     INT rank = src_rank_buffer[get_offset_in_concat(k, i)];
     if (rank == -1) {
         fprintf(stderr, "Tried to access an invalid rank.\n");
@@ -66,7 +84,8 @@ INT rank_index::get_rank_of_substr(INT i, INT k) const {
     return rank;
 }
 
-std::string rank_index::get_substr_with_rank(INT r, INT ell) const {
+std::string rank_index::get_substr_with_rank(INT r, INT ell) const
+{
     INT low = 0;
     INT high = activeSA.size() - 1;
 
@@ -75,7 +94,7 @@ std::string rank_index::get_substr_with_rank(INT r, INT ell) const {
         INT mid_rank = src_rank_buffer[activeSA[mid]];
 
         if (mid_rank == r)
-            return substr(activeSA[mid], ell);
+            return std::string((char *) concat_seq + activeSA[mid], ell);
 
         if (mid_rank < r)
             low = mid + 1;
@@ -85,16 +104,6 @@ std::string rank_index::get_substr_with_rank(INT r, INT ell) const {
 
     fprintf(stderr, "Tried to access substring with invalid rank.\n");
     exit(EXIT_FAILURE);
-}
-
-std::string rank_index::substr(INT i, INT len) const
-{
-    if (i >= concat_seq_len) return "";
-    if (i + len - 1 >= concat_seq_len) {
-        fprintf(stderr, "Tried to access out of bounds range in concatenated string.\n");
-        exit(EXIT_FAILURE);
-    }
-    return std::string((char *) concat_seq + i, len);
 }
 
 INT rank_index::map_ell_mers_to_ranks(INT ell, const std::vector<INT>& H)
@@ -175,29 +184,12 @@ void rank_index::build_LCP()
         }
 }
 
-void rank_index::build_concat_seq(unsigned char **seqs, int seqs_n)
-{
-    concat_seq_len = 0;
-    for (int i = 0; i < seqs_n; i++) concat_seq_len += strlen((const char *) seqs[i]) + 1;
-    concat_seq = (unsigned char *) malloc(concat_seq_len * sizeof(char));
-    if (!concat_seq) {
-        fprintf(stderr, "Could not allocate memory for concatenated string.\n");
-        exit(EXIT_FAILURE);
-    }
-    for (int i = 0, offset = 0; i < seqs_n; i++) {
-        INT seq_len = strlen((const char *) seqs[i]);
-        memcpy(concat_seq + offset, seqs[i], seq_len);
-        offset += seq_len;
-        concat_seq[offset++] = SEP;
-    }
-}
-
 INT rank_index::get_offset_in_concat(INT seq_id, INT pos) const
 {
     return (seq_id == 0 ? 0 : select(seq_id) + 1) + pos;
 }
 
-bool rank_index::is_valid_suffix(INT i, INT k)
+bool rank_index::is_valid_suffix(INT i, INT k) const
 {
     return i <= concat_seq_len - k && rank(i) == rank(i + k);
 }
