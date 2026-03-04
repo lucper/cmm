@@ -27,7 +27,7 @@ class rank_index {
      * A tuple (max_r, rank), where 'max_r' is an INT storing the maximum rank and 'rank 'is a 
      * vector in which position i stores the rank of suffix i. Note that suffixes with the SEP
      * symbol are included, but should be ignored. */
-    std::tuple<INT, const INT*> map_ell_mers_to_ranks(INT ell, const std::vector<INT>& H);
+    INT map_ell_mers_to_ranks(INT ell, const std::vector<INT>& H);
 
     /* Returns a copy of the substring with rank r. Note that the ranks can change if one runs
      * map_ell_mers_to_ranks multiple times.
@@ -38,7 +38,9 @@ class rank_index {
      * Output:
      * ell-length substring of rank r. The length ell depends on the previous run of
      * map_ell_mers_to_ranks. */
-    std::string get_substr_with_rank(INT r, INT len) const;
+    std::string get_substr_with_rank(INT r, INT ell) const;
+
+    INT get_rank_of_substr(INT i, INT k) const;
 
     /* Given string identifier and position, return the offset in the concatenated string.
      *
