@@ -111,11 +111,7 @@ std::string rank_index::get_substr_with_rank(INT r) const
 
 INT rank_index::map_ell_mers_to_ranks(const std::vector<INT>& H)
 {
-    // Check if positions in H are within ell-length substring.
-    if (std::max(H) >= ell || std::min(H) < 0) {
-        fprintf(stderr, "Set of wildcard positions is not valid: at least one wildcard is not within the range of positions of ell-length substring.");
-        exit(EXIT_FAILURE);
-    }
+    // TODO: Check H positions.
 
     // Reset the rank buffer.
     memset(src_rank_buffer, -1, concat_seq_len * sizeof(INT));

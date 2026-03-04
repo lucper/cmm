@@ -3,7 +3,7 @@
 
 #include <cstdlib>
 #include <vector>
-#include <tuple>
+#include <algorithm>
 #include <sdsl/rmq_support.hpp>
 #include <sdsl/int_vector.hpp>
 #include "defs.hpp"
@@ -73,7 +73,7 @@ class rank_index {
 
     // Helper methods.
     void build_LCP();
-    void build_concat_seq(unsigned char **seqs, int seqs_n);
+    void build_concat_seq(unsigned char **seqs, INT seqs_n);
     INT assign_ranks(INT *rank_buffer, INT frag_len);
     /* A suffix is 'valid' is it has a prefix of length at least k
      * and this prefix has no SEP symbol. */
