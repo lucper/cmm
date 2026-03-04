@@ -23,7 +23,7 @@ FetchContent_Declare(
 FetchContent_Declare(
   sdsl
   GIT_REPOSITORY https://github.com/vgteam/sdsl-lite.git
-  GIT_TAG       master
+  GIT_TAG master
 )
 
 FetchContent_MakeAvailable(libsais sdsl)
