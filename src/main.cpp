@@ -62,7 +62,7 @@ int main() {
     // Moreover, just a subset of k's are valid suffixes.
     // We just need to make sure that the k we retrieve is a "valid" one.
     std::cout << L[0].r1 << " " << L[0].r2 << "\n";
-    std::cout << "motifs are " << index_u.get_substr_with_rank(L[0].r1, ell, rank_u) << " and " << index_v.get_substr_with_rank(L[0].r2, ell, rank_v) << "\n";
+    std::cout << "motifs are " << index_u.get_substr_with_rank(L[0].r1, ell) << " and " << index_v.get_substr_with_rank(L[0].r2, ell) << "\n";
 
     return 0;
 }

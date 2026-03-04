@@ -27,7 +27,7 @@ class rank_index {
      * A tuple (max_r, rank), where 'max_r' is an INT storing the maximum rank and 'rank 'is a 
      * vector in which position i stores the rank of suffix i. Note that suffixes with the SEP
      * symbol are included, but should be ignored. */
-    std::tuple<INT, std::vector<INT>> map_ell_mers_to_ranks(INT ell, const std::vector<INT>& H);
+    std::tuple<INT, const INT*> map_ell_mers_to_ranks(INT ell, const std::vector<INT>& H);
 
     /* Returns a copy of the substring with rank r. Note that the ranks can change if one runs
      * map_ell_mers_to_ranks multiple times.
@@ -38,7 +38,7 @@ class rank_index {
      * Output:
      * ell-length substring of rank r. The length ell depends on the previous run of
      * map_ell_mers_to_ranks. */
-    std::string get_substr_with_rank(INT r, INT len, const std::vector<INT>& rank) const;
+    std::string get_substr_with_rank(INT r, INT len) const;
 
     /* Given string identifier and position, return the offset in the concatenated string.
      *
@@ -72,11 +72,16 @@ class rank_index {
     // TODO: Replace rmq with lce that uses string synchronizing sets.
     sdsl::rmq_support_sparse_table<> rmq;
 
+    // Buffers.
+    INT *src_rank_buffer;
+    INT *dst_rank_buffer;
+    std::vector<INT> activeSA;
+
     void build_LCP();
 
     void build_concat_seq(unsigned char **seqs, int seqs_n);
 
-    INT assign_ranks(std::vector<INT>& rank, INT frag_len);
+    INT assign_ranks(INT *rank_buffer, std::vector<INT>& activeSA, INT frag_len);
 
     /* A suffix is 'valid' is it has a prefix of length at least k
      * and this prefix has no SEP symbol. */
