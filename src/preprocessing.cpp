@@ -99,6 +99,12 @@ std::string rank_index::substr(INT i, INT len) const
 
 INT rank_index::map_ell_mers_to_ranks(INT ell, const std::vector<INT>& H)
 {
+    // Check if positions in H are within ell-length substring.
+    if (std::max(H) >= ell || std::min(H) < 0) {
+        fprintf(stderr, "Set of wildcard positions is not valid: at least one wildcard is not within the range of positions of ell-length substring.");
+        exit(EXIT_FAILURE);
+    }
+
     // Reset the rank buffer.
     memset(src_rank_buffer, -1, concat_seq_len * sizeof(INT));
 
@@ -110,9 +116,10 @@ INT rank_index::map_ell_mers_to_ranks(INT ell, const std::vector<INT>& H)
 
     INT max_r1 = assign_ranks(src_rank_buffer, (H.empty() ? ell : H[0]));
 
-    // TODO: If H is empty, dont allocate these arrays.
+    if (H.empty()) return max_r1;
+
     // TODO: Allocate elsewhere, not every time we call the function?
-    // There were inside counting_sort previously; I put them one level above.
+    // This is only for working space for the counting sort passes.
     std::vector<INT> count_buffer(max_r1, 0);
     std::vector<INT> temp_SA(activeSA.size(), 0);
 
