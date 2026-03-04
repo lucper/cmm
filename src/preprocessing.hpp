@@ -7,6 +7,7 @@
 #include <sdsl/rmq_support.hpp>
 #include <sdsl/int_vector.hpp>
 #include "defs.hpp"
+#include "utils.hpp"
 
 class rank_index {
     public:
@@ -80,10 +81,6 @@ class rank_index {
     /* A suffix is 'valid' is it has a prefix of length at least k
      * and this prefix has no SEP symbol. */
     bool is_valid_suffix(INT i, INT k);
-
-    /* Sort vector 'gappedSA' using the values in vector 'rank' as key, i.e., value gappedSA[i] has rank
-     * rank[gappedSA[i]]. */
-    void counting_sort(std::vector<INT>& gappedSA, const std::vector<INT>& rank, INT offset, INT max_val);
 };
 
 #endif

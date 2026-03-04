@@ -1,4 +1,5 @@
 #include "preprocessing.hpp"
+#include "utils.hpp"
 
 rank_index::rank_index(unsigned char **seqs, int seqs_n)
 {
@@ -94,7 +95,12 @@ std::tuple<INT, std::vector<INT>> rank_index::map_ell_mers_to_ranks(INT ell, con
     std::vector<INT> rank1(concat_seq_len);
     INT max_r1 = assign_ranks(rank1, (H.empty() ? ell : H[0]));
 
-    // TODO: If H is empty, dont create this array.
+    // TODO: If H is empty, dont allocate these arrays.
+    // TODO: Allocate elsewhere, not every time we call the function?
+    // There were inside counting_sort previously; I put them one level above.
+    std::vector<INT> count_buffer(max_r1, 0);
+    std::vector<INT> temp_SA(gappedSA.size(), 0);
+    // Next ranks after wildcards.
     std::vector<INT> rank2(concat_seq_len);
 
     for (int d = 0; d < H.size(); d++) {
@@ -106,8 +112,10 @@ std::tuple<INT, std::vector<INT>> rank_index::map_ell_mers_to_ranks(INT ell, con
 
         int max_r2 = assign_ranks(rank2, next_frag_len);
 
-        counting_sort(gappedSA, rank2, next_frag_start, max_r2);
-        counting_sort(gappedSA, rank1, 0, max_r1);
+        counting_sort(gappedSA, max_r2, temp_SA, count_buffer,
+                      [&](INT suff_i) { return rank2[suff_i + next_frag_start]; });
+        counting_sort(gappedSA, max_r1, temp_SA, count_buffer,
+                      [&](INT suff_i) { return rank2[suff_i]; });
 
         max_r1 = 0;
         int prev_r1 = rank1[gappedSA[0]];
@@ -185,19 +193,4 @@ INT rank_index::assign_ranks(std::vector<INT>& rank, INT frag_len)
         else
             rank[SA[i]] = -1;
     return r;
-}
-
-void rank_index::counting_sort(std::vector<INT>& gappedSA, const std::vector<INT>& rank, INT offset, INT max_val)
-{
-    if (gappedSA.empty()) return;
-
-    std::vector<INT> count(max_val + 1, 0);
-    for (int i = 0; i < gappedSA.size(); i++) count[rank[gappedSA[i] + offset]]++;
-    for (int i = 1; i < max_val + 1; i++) count[i] += count[i - 1];
-
-    std::vector<INT> temp(gappedSA.size());
-    for (int i = gappedSA.size() - 1; i >= 0; i--)
-        temp[--count[rank[gappedSA[i] + offset]]] = gappedSA[i];
-
-    gappedSA = std::move(temp);
 }
