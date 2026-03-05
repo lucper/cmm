@@ -39,6 +39,9 @@ class rank_index {
 
     INT get_rank_of_substr(INT i, INT k) const;
 
+    // Debugging.
+    void show() const;
+
     private:
     unsigned char *concat_seq;
     INT concat_seq_len;
@@ -48,30 +51,25 @@ class rank_index {
 
     INT ell;
 
-    INT *ranks;
-
     INT *SA;
     INT *ISA;
     // TODO: Replace int_vector with INT*; need to check conversion and compatibility.
     sdsl::int_vector<> LCP;
     // TODO: Replace rmq with lce that uses string synchronizing sets.
     sdsl::rmq_support_sparse_table<> rmq;
+    std::vector<INT> activeSA;
 
     // Buffers.
-    INT *rank_buffer_a;
-    INT *rank_buffer_b;
-    std::vector<INT> activeSA;
-    std::vector<INT> tempSA;
+    INT *main_rank_buffer;
+    INT *secondary_rank_buffer;
+    std::vector<INT> activeSA_buffer;
     std::vector<INT> count_buffer;
 
     // Helper methods.
     void build_LCP();
     void build_concat_seq(unsigned char **seqs, INT seqs_n);
-    INT assign_ranks(INT *rank_buffer, INT frag_len);
-    /* A suffix is 'valid' is it has a prefix of length at least k
-     * and this prefix has no SEP symbol. */
-    bool is_valid_suffix(INT i, INT k) const;
-    INT get_offset_in_concat(INT seq_id, INT pos) const;
+    bool is_valid_suffix(INT i) const;
+    INT assign_ranks(INT *rank_buffer, INT frag_len, INT offset);
 };
 
 #endif
