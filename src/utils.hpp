@@ -18,4 +18,6 @@ void counting_sort(std::vector<T>& data, INT max_val,
     data = temp;
 }
 
+#define DBG(msg) do { std::cerr << "DEBUG: " << msg << "\n"; } while(0)
+
 #endif
