@@ -195,7 +195,7 @@ void rank_index::build_LCP()
         }
 }
 
-bool is_valid_suffix(INT i) const
+bool rank_index::is_valid_suffix(INT i) const
 {
     return i <= concat_seq_len - ell && rank(i) == rank(i + ell);
 }
