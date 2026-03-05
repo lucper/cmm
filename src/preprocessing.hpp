@@ -59,6 +59,8 @@ class rank_index {
 
     INT ell;
 
+    INT *ranks;
+
     INT *SA;
     INT *ISA;
     // TODO: Replace int_vector with INT*; need to check conversion and compatibility.
@@ -67,8 +69,8 @@ class rank_index {
     sdsl::rmq_support_sparse_table<> rmq;
 
     // Buffers.
-    INT *src_rank_buffer;
-    INT *dst_rank_buffer;
+    INT *rank_buffer_a;
+    INT *rank_buffer_b;
     std::vector<INT> activeSA;
     std::vector<INT> tempSA;
     std::vector<INT> count_buffer;

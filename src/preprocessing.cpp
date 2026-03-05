@@ -47,14 +47,14 @@ rank_index::rank_index(unsigned char **seqs, INT seqs_n, INT ell)
 
     sdsl::util::init_support(rmq, &LCP);
 
-    src_rank_buffer = (INT *) malloc(concat_seq_len * sizeof(INT));
-    dst_rank_buffer = (INT *) malloc(concat_seq_len * sizeof(INT));
+    rank_buffer_a = (INT *) malloc(concat_seq_len * sizeof(INT));
+    rank_buffer_b = (INT *) malloc(concat_seq_len * sizeof(INT));
 }
 
 rank_index::~rank_index()
 {
-    free(src_rank_buffer);
-    free(dst_rank_buffer);
+    free(rank_buffer_a);
+    free(rank_buffer_b);
     free(concat_seq);
     free(SA);
     free(ISA);
@@ -79,7 +79,7 @@ void rank_index::build_concat_seq(unsigned char **seqs, INT seqs_n)
 
 INT rank_index::get_rank_of_substr(INT i, INT k) const
 {
-    INT rank = src_rank_buffer[get_offset_in_concat(k, i)];
+    INT rank = ranks[get_offset_in_concat(k, i)];
     if (rank == -1) {
         fprintf(stderr, "Tried to access an invalid rank.\n");
         exit(EXIT_FAILURE);
@@ -94,15 +94,13 @@ std::string rank_index::get_substr_with_rank(INT r) const
 
     while (low <= high) {
         INT mid = low + (high - low) / 2;
-        INT mid_rank = src_rank_buffer[activeSA[mid]];
+        INT mid_rank = ranks[activeSA[mid]];
 
         if (mid_rank == r)
             return std::string((char *) concat_seq + activeSA[mid], ell);
 
-        if (mid_rank < r)
-            low = mid + 1;
-        else
-            high = mid - 1;
+        if (mid_rank < r) low = mid + 1;
+        else high = mid - 1;
     }
 
     fprintf(stderr, "Tried to access substring with invalid rank.\n");
@@ -113,16 +111,15 @@ INT rank_index::map_ell_mers_to_ranks(const std::vector<INT>& H)
 {
     // TODO: Check H positions.
 
-    // Reset the rank buffer.
-    memset(src_rank_buffer, -1, concat_seq_len * sizeof(INT));
-
     // Get suffixes whose prefixes have >= ell characters without SEP.
     activeSA.clear();
     for (int i = 0; i < concat_seq_len; i++)
         if (is_valid_suffix(SA[i], ell))
             activeSA.push_back(SA[i]);
 
-    INT max_r1 = assign_ranks(src_rank_buffer, (H.empty() ? ell : H[0]));
+    memset(rank_buffer_a, -1, concat_seq_len * sizeof(INT));
+    INT max_r1 = assign_ranks(rank_buffer_a, (H.empty() ? ell : H[0]));
+    ranks = rank_buffer_a;
 
     if (H.empty()) return max_r1;
 
@@ -139,30 +136,37 @@ INT rank_index::map_ell_mers_to_ranks(const std::vector<INT>& H)
 
         if (next_frag_len <= 0) continue; // Ignore wildcard at last pos.
 
-        int max_r2 = assign_ranks(dst_rank_buffer, next_frag_len);
+        memset(rank_buffer_b, -1, concat_seq_len * sizeof(INT));
+        int max_r2 = assign_ranks(rank_buffer_b, next_frag_len);
 
         counting_sort(activeSA, max_r2, tempSA, count_buffer,
-                      [&](INT suff_i) { return dst_rank_buffer[suff_i + next_frag_start]; });
+                      [&](INT suff_i) { return rank_buffer_b[suff_i + next_frag_start]; });
         counting_sort(activeSA, max_r1, tempSA, count_buffer,
-                      [&](INT suff_i) { return src_rank_buffer[suff_i]; });
+                      [&](INT suff_i) { return rank_buffer_a[suff_i]; });
 
         INT new_max_r1 = 0;
-        dst_rank_buffer[activeSA[0]] = 0;
+        rank_buffer_b[activeSA[0]] = 0;
         for (int i = 1; i < activeSA.size(); i++) {
-            bool first_coord_match = (src_rank_buffer[activeSA[i]] == src_rank_buffer[activeSA[i-1]]);
+            bool first_coord_match = (rank_buffer_a[activeSA[i]] == rank_buffer_a[activeSA[i-1]]);
 
             // Positions of these consecutive "gapped" suffixes in original SA.
             INT pos1 = ISA[activeSA[i] + next_frag_start];
             INT pos2 = ISA[activeSA[i-1] + next_frag_start];
-            // Ensure pos1 < pos2 for the LCE query.
-            INT left = std::min(pos1, pos2);
-            INT right = std::max(pos1, pos2);
-            bool second_coord_match = (LCP[rmq(left + 1, right)] >= next_frag_len);
+            bool second_coord_match;
+            if (pos1 == pos2)
+                second_coord_match = true;
+            else {
+                // Ensure pos1 < pos2 for the LCE query.
+                INT left = std::min(pos1, pos2);
+                INT right = std::max(pos1, pos2);
+                second_coord_match = (LCP[rmq(left + 1, right)] >= next_frag_len);
+            }
 
-            dst_rank_buffer[activeSA[i]] = (!first_coord_match || !second_coord_match) ? ++new_max_r1 : new_max_r1;
+            rank_buffer_b[activeSA[i]] = (!first_coord_match || !second_coord_match) ? ++new_max_r1 : new_max_r1;
         }
 
-        std::swap(src_rank_buffer, dst_rank_buffer); // TODO: Ensure this is right.
+        std::swap(rank_buffer_a, rank_buffer_b); // TODO: Ensure this is right.
+        ranks = rank_buffer_a;
         max_r1 = new_max_r1;
     }
 
