@@ -166,7 +166,7 @@ INT rank_index::map_ell_mers_to_ranks(const std::vector<INT>& H)
         }
 
         std::swap(rank_buffer_a, rank_buffer_b); // TODO: Ensure this is right.
-        ranks = rank_buffer_a;
+        ranks = rank_buffer_a; // TODO: Ensure ranks points to the buffer with correct ranks.
         max_r1 = new_max_r1;
     }
 
