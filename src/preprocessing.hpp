@@ -39,17 +39,6 @@ class rank_index {
 
     INT get_rank_of_substr(INT i, INT k) const;
 
-    /* Given string identifier and position, return the offset in the concatenated string.
-     *
-     * Input:
-     * seq_id       INT in the range [0,n-1], where n is the number of strings in collection S.
-     * pos          INT position in string S[seq_id].
-     *
-     * Output:
-     * Integer i such that S[seq_id][pos] corresponds to S'[i], where S' is the concatenation of
-     * strings in S. */
-    INT get_offset_in_concat(INT seq_id, INT pos) const;
-
     private:
     unsigned char *concat_seq;
     INT concat_seq_len;
@@ -82,6 +71,7 @@ class rank_index {
     /* A suffix is 'valid' is it has a prefix of length at least k
      * and this prefix has no SEP symbol. */
     bool is_valid_suffix(INT i, INT k) const;
+    INT get_offset_in_concat(INT seq_id, INT pos) const;
 };
 
 #endif
