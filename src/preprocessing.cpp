@@ -136,7 +136,6 @@ INT rank_index::map_ell_mers_to_ranks(const std::vector<INT>& H)
 
         if (next_frag_len <= 0) continue; // Ignore wildcard at last pos.
 
-        memset(rank_buffer_b, -1, concat_seq_len * sizeof(INT));
         int max_r2 = assign_ranks(rank_buffer_b, next_frag_len);
 
         counting_sort(activeSA, max_r2, tempSA, count_buffer,
