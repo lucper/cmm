@@ -3,7 +3,7 @@
 
 #include <cstdlib>
 #include <vector>
-#include <tuple>
+#include <algorithm>
 #include <sdsl/rmq_support.hpp>
 #include <sdsl/int_vector.hpp>
 #include "defs.hpp"
@@ -11,7 +11,7 @@
 
 class rank_index {
     public:
-    rank_index(unsigned char **seqs, int seqs_n);
+    rank_index(unsigned char **seqs, INT seqs_n, INT ell);
     ~rank_index();
 
     /* Assigns ranks to suffixes whose prefixes have length >= ell and wildcards in positions
@@ -20,14 +20,12 @@ class rank_index {
      * ell-length subtrings (including wildcards) get the same rank.
      *
      * Input:
-     * ell      length of substrings
      * H        positions of wildcards within ell-length substrings
      *
      * Output:
      * A tuple (max_r, rank), where 'max_r' is an INT storing the maximum rank and 'rank 'is a 
-     * vector in which position i stores the rank of suffix i. Note that suffixes with the SEP
-     * symbol are included, but should be ignored. */
-    std::tuple<INT, std::vector<INT>> map_ell_mers_to_ranks(INT ell, const std::vector<INT>& H);
+     * vector in which position i stores the rank of suffix i. */
+    INT map_ell_mers_to_ranks(const std::vector<INT>& H);
 
     /* Returns a copy of the substring with rank r. Note that the ranks can change if one runs
      * map_ell_mers_to_ranks multiple times.
@@ -36,27 +34,10 @@ class rank_index {
      * r        rank
      *
      * Output:
-     * ell-length substring of rank r. The length ell depends on the previous run of
-     * map_ell_mers_to_ranks. */
-    std::string get_substr_with_rank(INT r, INT len, const std::vector<INT>& rank) const;
+     * ell-length substring of rank r. */
+    std::string get_substr_with_rank(INT r) const;
 
-    /* Given string identifier and position, return the offset in the concatenated string.
-     *
-     * Input:
-     * seq_id       INT in the range [0,n-1], where n is the number of strings in collection S.
-     * pos          INT position in string S[seq_id].
-     *
-     * Output:
-     * Integer i such that S[seq_id][pos] corresponds to S'[i], where S' is the concatenation of
-     * strings in S. */
-    INT get_offset_in_concat(INT seq_id, INT pos) const;
-
-    std::string substr(INT i, INT len) const;
-
-    void show()
-    {
-        std::cout << concat_seq << "\n";
-    }
+    INT get_rank_of_substr(INT i, INT k) const;
 
     private:
     unsigned char *concat_seq;
@@ -65,6 +46,10 @@ class rank_index {
     sdsl::rank_support_v5<> rank;
     sdsl::select_support_mcl<> select;
 
+    INT ell;
+
+    INT *ranks;
+
     INT *SA;
     INT *ISA;
     // TODO: Replace int_vector with INT*; need to check conversion and compatibility.
@@ -72,15 +57,21 @@ class rank_index {
     // TODO: Replace rmq with lce that uses string synchronizing sets.
     sdsl::rmq_support_sparse_table<> rmq;
 
+    // Buffers.
+    INT *rank_buffer_a;
+    INT *rank_buffer_b;
+    std::vector<INT> activeSA;
+    std::vector<INT> tempSA;
+    std::vector<INT> count_buffer;
+
+    // Helper methods.
     void build_LCP();
-
-    void build_concat_seq(unsigned char **seqs, int seqs_n);
-
-    INT assign_ranks(std::vector<INT>& rank, INT frag_len);
-
+    void build_concat_seq(unsigned char **seqs, INT seqs_n);
+    INT assign_ranks(INT *rank_buffer, INT frag_len);
     /* A suffix is 'valid' is it has a prefix of length at least k
      * and this prefix has no SEP symbol. */
-    bool is_valid_suffix(INT i, INT k);
+    bool is_valid_suffix(INT i, INT k) const;
+    INT get_offset_in_concat(INT seq_id, INT pos) const;
 };
 
 #endif

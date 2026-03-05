@@ -46,6 +46,7 @@ int main() {
 
     std::vector<std::tuple<INT, INT>> edges = gi.edges;
 
+
     // 3) Use same nodes for U and V
     unsigned char** U = nodes.data();
     INT U_size = (INT)nodes.size();
@@ -55,14 +56,14 @@ int main() {
 
     DBG("Building rank index...");
 
-    rank_index index_u(U, U_size);
-    rank_index index_v(V, V_size);
+    int ell = 3;
+    rank_index index_u((unsigned char **) U, U_size, ell);
+    rank_index index_v((unsigned char **) V, V_size, ell);
 
     // Map ell-mers (w/ or w/o wildcards) to ranks in [N].
-    std::vector<INT> H = {};
-    int ell = 3;
-    auto [max_ru, rank_u] = index_u.map_ell_mers_to_ranks(ell, H);
-    auto [max_rv, rank_v] = index_v.map_ell_mers_to_ranks(ell, H);
+    std::vector<INT> H = {0};
+    INT max_ru = index_u.map_ell_mers_to_ranks(H);
+    INT max_rv = index_v.map_ell_mers_to_ranks(H);
 
     // index_u.show();
     // index_v.show();
@@ -83,19 +84,19 @@ int main() {
         if (e % update_every == 0 || e + 1 == total)
             print_progress(e + 1, total);
 
+        INT u_len = strlen(reinterpret_cast<const char*>(U[u])), v_len = strlen(reinterpret_cast<const char*>(V[v]));
         sdsl::bit_vector seen_u(max_ru + 1, 0);
-        for (int i = 0; i <  - ell + 1; i++)
-            seen_u[rank_u[index_u.get_offset_in_concat(u, i)]] = 1;
+        for (int i = 0; i < u_len - ell + 1; i++)
+            seen_u[index_u.get_rank_of_substr(i, u)] = 1;
 
         sdsl::bit_vector seen_v(max_rv + 1, 0);
-        for (int j = 0; j < std::strlen(reinterpret_cast<const char*>(V[v])) - ell + 1; j++)
-            seen_v[rank_v[index_v.get_offset_in_concat(v, j)]] = 1;
+        for (int j = 0; j < v_len - ell + 1; j++)
+            seen_v[index_v.get_rank_of_substr(j, v)] = 1;
 
-        // We have the ranks, the values in vector 'rank'. We have the indices, the suffixes positions.
-        for (int i = 0; i < std::strlen(reinterpret_cast<const char*>(U[u])) - ell + 1; i++) {
-            INT r1 = rank_u[index_u.get_offset_in_concat(u, i)];
-            for (int j = 0; j < std::strlen(reinterpret_cast<const char*>(V[v])) - ell + 1; j++) {
-                INT r2 = rank_v[index_v.get_offset_in_concat(v, j)];
+        for (int i = 0; i < u_len - ell + 1; i++) {
+            INT r1 = index_u.get_rank_of_substr(i, u);
+            for (int j = 0; j < v_len - ell + 1; j++) {
+                INT r2 = index_v.get_rank_of_substr(j, v);
                 if (seen_u[r1] && seen_v[r2])
                     L.push_back({r1, r2, u, v});
             }
@@ -112,7 +113,7 @@ int main() {
     // Moreover, just a subset of k's are valid suffixes.
     // We just need to make sure that the k we retrieve is a "valid" one.
     std::cout << L[0].r1 << " " << L[0].r2 << "\n";
-    std::cout << "motifs are " << index_u.get_substr_with_rank(L[0].r1, ell, rank_u) << " and " << index_v.get_substr_with_rank(L[0].r2, ell, rank_v) << "\n";
+    std::cout << "motifs are " << index_u.get_substr_with_rank(L[0].r1) << " and " << index_v.get_substr_with_rank(L[0].r2) << "\n";
 
     return 0;
 }
