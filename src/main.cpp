@@ -154,7 +154,7 @@ int main() {
     std::sort(motif_pairs.begin(), motif_pairs.end());
 
     DBG("Top k=" << k << " motive pairs");
-    for (int i = k; i >= 1; i--) {
+    for (int i = 1; i <= k; i++) {
         auto idx = motif_pairs.size() - i;
         auto r1 = motif_pairs[idx].m.r1;
         auto r2 = motif_pairs[idx].m.r2;
