@@ -50,6 +50,7 @@ class rank_index {
     sdsl::select_support_mcl<> select;
 
     INT ell;
+    INT max_rank;
 
     INT *SA;
     INT *ISA;
@@ -58,6 +59,7 @@ class rank_index {
     // TODO: Replace rmq with lce that uses string synchronizing sets.
     sdsl::rmq_support_sparse_table<> rmq;
     std::vector<INT> activeSA;
+    std::vector<INT> rank_to_sa;
 
     // Buffers.
     INT *main_rank_buffer;

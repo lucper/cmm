@@ -28,6 +28,7 @@ rank_index::rank_index(unsigned char **seqs, INT seqs_n, INT ell)
 {
     // Length ell of ell-mers.
     this->ell = ell;
+    max_rank = 0;
 
     // Concatenate the strings with SEP symbols.
     build_concat_seq(seqs, seqs_n);
@@ -75,6 +76,8 @@ rank_index::rank_index(unsigned char **seqs, INT seqs_n, INT ell)
         if (is_valid_suffix(SA[i]))
             activeSA.push_back(SA[i]);
 
+    rank_to_sa.resize(activeSA.size());
+
     // Allocate buffers for counting sort and refinement.
     activeSA_buffer.resize(activeSA.size());
     count_buffer.resize(activeSA.size());
@@ -119,33 +122,21 @@ INT rank_index::get_rank_of_substr(INT i, INT k) const
     return main_rank_buffer[suff_of_concat_seq];
 }
 
-std::string rank_index::get_substr_with_rank(INT r) const
+std::string_view rank_index::get_substr_with_rank(INT r) const
 {
-    INT low = 0;
-    INT high = activeSA.size() - 1;
-
-    while (low <= high) {
-        INT mid = low + (high - low) / 2;
-        INT mid_rank = main_rank_buffer[activeSA[mid]];
-
-        if (mid_rank == r)
-            return std::string((char *) concat_seq + activeSA[mid], ell);
-
-        if (mid_rank < r) low = mid + 1;
-        else high = mid - 1;
-    }
-
-    fprintf(stderr, "Tried to access substring with invalid rank.\n");
-    exit(EXIT_FAILURE);
+    if (r < 0 || r > max_rank)
+        throw std::out_of_range("Invalid rank access: Rank " + std::to_string(r) +
+                                " is outside current valid range [0, " + std::to_string(max_rank) + "].");
+    return std::string_view((const char *) concat_seq + rank_to_sa[r], ell);
 }
 
 INT rank_index::map_ell_mers_to_ranks(const std::vector<INT>& H)
 {
     // TODO: Check H positions are in [ell].
 
-    INT max_r1 = assign_ranks(main_rank_buffer, (H.empty() ? ell : H[0]), 0);
+    max_rank = assign_ranks(main_rank_buffer, (H.empty() ? ell : H[0]), 0);
 
-    if (H.empty()) return max_r1;
+    if (H.empty()) return max_rank;
 
     for (int d = 0; d < H.size(); d++) {
         int next_frag_start = H[d] + 1;
@@ -154,30 +145,33 @@ INT rank_index::map_ell_mers_to_ranks(const std::vector<INT>& H)
 
         if (next_frag_len <= 0) continue; // Ignore wildcard at last pos.
 
-        int max_r2 = assign_ranks(secondary_rank_buffer, next_frag_len, next_frag_start);
+        INT max_tmp_rank = assign_ranks(secondary_rank_buffer, next_frag_len, next_frag_start);
 
-        counting_sort(activeSA, max_r2, activeSA_buffer, count_buffer,
+        counting_sort(activeSA, max_tmp_rank, activeSA_buffer, count_buffer,
                       [&](INT suff_i) { return secondary_rank_buffer[suff_i]; });
-        counting_sort(activeSA, max_r1, activeSA_buffer, count_buffer,
+        counting_sort(activeSA, max_rank, activeSA_buffer, count_buffer,
                       [&](INT suff_i) { return main_rank_buffer[suff_i]; });
 
         // Use first positions of activeSA_buffer as temporary storage.
-        INT new_max_r1 = 0;
+        INT new_max_rank = 0;
         activeSA_buffer[0] = 0;
         for (int i = 1; i < activeSA.size(); i++) {
             bool first_coord_match = (main_rank_buffer[activeSA[i]] == main_rank_buffer[activeSA[i-1]]);
             bool second_coord_match = (secondary_rank_buffer[activeSA[i]] == secondary_rank_buffer[activeSA[i-1]]);
             // Store rank of i-th suffix of activeSA.
-            activeSA_buffer[i] = (first_coord_match && second_coord_match) ? new_max_r1 : ++new_max_r1;
+            activeSA_buffer[i] = (first_coord_match && second_coord_match) ? new_max_rank : ++new_max_rank;
         }
 
         for (int i = 0; i < activeSA.size(); i++)
             main_rank_buffer[activeSA[i]] = activeSA_buffer[i];
 
-        max_r1 = new_max_r1;
+        max_rank = new_max_rank;
     }
 
-    return max_r1;
+    for (int i = 0; i < activeSA.size(); i++)
+        rank_to_sa[main_rank_buffer[activeSA[i]]] = activeSA[i];
+
+    return max_rank;
 }
 
 void rank_index::build_LCP()
