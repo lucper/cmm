@@ -35,7 +35,7 @@ class rank_index {
      *
      * Output:
      * ell-length substring of rank r. */
-    std::string get_substr_with_rank(INT r) const;
+    std::string_view get_substr_with_rank(INT r) const;
 
     INT get_rank_of_substr(INT i, INT k) const;
 
