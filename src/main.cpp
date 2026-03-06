@@ -5,7 +5,7 @@
 #include <cstring>
 #include <sdsl/int_vector.hpp>
 #include "preprocessing.hpp"
-#include "dataImport.hpp"
+#include "data_import.hpp"
 
 std::string test_data = "data/generated/string_195_v12/";
 INT k = 10;
@@ -160,8 +160,7 @@ int main() {
         auto r2 = motif_pairs[idx].m.r2;
         auto m1 = index_u.get_substr_with_rank(r1);
         auto m2 = index_v.get_substr_with_rank(r2);
-        DBG("\t(" + std::to_string(r1) + "=" + m1 + "," + std::to_string(r2) + "=" + m2 + ") \t\t" + std::to_string(
-            motif_pairs[idx].count));
+        DBG("\t(" + std::to_string(r1) + "=" + std::string(m1) + "," + std::to_string(r2) + "=" + std::string(m2) + ") \t\t" + std::to_string(motif_pairs[idx].count));
     }
 
     DBG("Bottom k=" << k << " motive pairs");
@@ -171,8 +170,7 @@ int main() {
         auto r2 = motif_pairs[idx].m.r2;
         auto m1 = index_u.get_substr_with_rank(r1);
         auto m2 = index_v.get_substr_with_rank(r2);
-        DBG("\t(" + std::to_string(r1) + "=" + m1 + "," + std::to_string(r2) + "=" + m2 + ") \t\t" + std::to_string(
-            motif_pairs[idx].count));
+        DBG("\t(" + std::to_string(r1) + "=" + std::string(m1) + "," + std::to_string(r2) + "=" + std::string(m2) + ") \t\t" + std::to_string(motif_pairs[idx].count));
     }
 
     return 0;
