@@ -62,8 +62,8 @@ class rank_index {
     std::vector<INT> rank_to_sa;
 
     // Buffers.
-    INT *main_rank_buffer;
-    INT *secondary_rank_buffer;
+    std::vector<INT> main_rank_buffer;
+    std::vector<INT> secondary_rank_buffer;
     std::vector<INT> activeSA_buffer;
     std::vector<INT> count_buffer;
 
@@ -71,7 +71,7 @@ class rank_index {
     void build_LCP();
     void build_concat_seq(unsigned char **seqs, INT seqs_n);
     bool is_valid_suffix(INT i) const;
-    INT assign_ranks(INT *rank_buffer, INT frag_len, INT offset);
+    INT assign_ranks(std::vector<INT>& rank_buffer, INT frag_len, INT offset);
 };
 
 #endif

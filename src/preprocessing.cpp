@@ -71,6 +71,10 @@ rank_index::rank_index(unsigned char **seqs, INT seqs_n, INT ell)
 
     sdsl::util::init_support(rmq, &LCP);
 
+    // Allocate buffers for rank assignments.
+    main_rank_buffer.resize(concat_seq_len);
+    secondary_rank_buffer.resize(concat_seq_len);
+
     // Get suffixes whose prefixes have >= ell characters without SEP.
     for (int i = 0; i < concat_seq_len; i++)
         if (is_valid_suffix(SA[i]))
@@ -81,15 +85,10 @@ rank_index::rank_index(unsigned char **seqs, INT seqs_n, INT ell)
     // Allocate buffers for counting sort and refinement.
     activeSA_buffer.resize(activeSA.size());
     count_buffer.resize(activeSA.size());
-
-    main_rank_buffer = (INT *) malloc(concat_seq_len * sizeof(INT));
-    secondary_rank_buffer = (INT *) malloc(concat_seq_len * sizeof(INT));
 }
 
 rank_index::~rank_index()
 {
-    free(main_rank_buffer);
-    free(secondary_rank_buffer);
     free(concat_seq);
     free(SA);
     free(ISA);
@@ -194,7 +193,7 @@ bool rank_index::is_valid_suffix(INT i) const
     return i <= concat_seq_len - ell && rank(i) == rank(i + ell);
 }
 
-INT rank_index::assign_ranks(INT *rank_buffer, INT frag_len, INT offset)
+INT rank_index::assign_ranks(std::vector<INT>& rank_buffer, INT frag_len, INT offset)
 {
     if (activeSA.empty()) return 0;
 
