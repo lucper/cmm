@@ -97,5 +97,6 @@ void main_algo(std::vector<std::string>& U, std::vector<std::string>& V,
     }
 
    // TODO: At this point, save the most frequent motif pair somewhere and go to next combination H.
+   // Keep updating the most frequent motifs pairs.
 
 }
