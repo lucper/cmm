@@ -29,7 +29,8 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(libsais sdsl)
 
 add_executable(bpm
-    src/main.cpp src/motifs_search.hpp src/utils.hpp
+    src/main.cpp src/utils.hpp
+    src/motifs_search.hpp src/motifs_search.cpp
     src/preprocessing.hpp src/preprocessing.cpp
     src/data_import.hpp src/data_import.cpp
 )
