@@ -1,6 +1,6 @@
 #include "motifs_search.hpp"
 
-std::map<motif_pair, INT> main_algo(std::vector<std::string>& U, std::vector<std::string>& V,
+void main_algo(std::vector<std::string>& U, std::vector<std::string>& V,
                const std::vector<std::tuple<INT, INT>>& edges, INT ell, INT d)
 {
     DBG("Building rank index...");
@@ -36,6 +36,7 @@ std::map<motif_pair, INT> main_algo(std::vector<std::string>& U, std::vector<std
 
     std::map<motif_pair, INT> edge_counts_for_rank_pair;
 
+    // TODO: Parallelize here.
     for (int i = 0; i < total; i++) {
         auto [u, v] = edges[i];
 
@@ -65,5 +66,36 @@ std::map<motif_pair, INT> main_algo(std::vector<std::string>& U, std::vector<std
 
     DBG("Done with main loop");
 
-    return edge_counts_for_rank_pair;
+    DBG("\tCandidate pairs = " + std::to_string(edge_counts_for_rank_pair.size()));
+
+    std::vector<motif_pair_with_count> motif_pairs;
+
+    for (auto const& [m, count]: edge_counts_for_rank_pair)
+        motif_pairs.push_back({m, count});
+
+    std::sort(motif_pairs.begin(), motif_pairs.end());
+
+    INT k = 1;
+    DBG("Top k=" << k << " motive pairs");
+    for (int i = 1; i <= k; i++) {
+        auto idx = motif_pairs.size() - i;
+        auto r1 = motif_pairs[idx].mp.r1;
+        auto r2 = motif_pairs[idx].mp.r2;
+        auto m1 = index_u.get_substr_with_rank(r1);
+        auto m2 = index_v.get_substr_with_rank(r2);
+        DBG("\t(" + std::to_string(r1) + "=" + std::string(m1) + "," + std::to_string(r2) + "=" + std::string(m2) + ") \t\t" + std::to_string(motif_pairs[idx].count));
+    }
+
+    DBG("Bottom k=" << k << " motive pairs");
+    for (int i = 0; i < k; i++) {
+        auto idx = i;
+        auto r1 = motif_pairs[idx].mp.r1;
+        auto r2 = motif_pairs[idx].mp.r2;
+        auto m1 = index_u.get_substr_with_rank(r1);
+        auto m2 = index_v.get_substr_with_rank(r2);
+        DBG("\t(" + std::to_string(r1) + "=" + std::string(m1) + "," + std::to_string(r2) + "=" + std::string(m2) + ") \t\t" + std::to_string(motif_pairs[idx].count));
+    }
+
+   // TODO: At this point, save the most frequent motif pair somewhere and go to next combination H.
+
 }
