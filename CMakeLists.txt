@@ -15,21 +15,23 @@ endif()
 include(FetchContent)
 
 FetchContent_Declare(
-  libsais
-  GIT_REPOSITORY https://github.com/IlyaGrebnov/libsais.git
-  GIT_TAG master
+    libsais
+    GIT_REPOSITORY https://github.com/IlyaGrebnov/libsais.git
+    GIT_TAG master
 )
 
 FetchContent_Declare(
-  sdsl
-  GIT_REPOSITORY https://github.com/vgteam/sdsl-lite.git
-  GIT_TAG master
+    sdsl
+    GIT_REPOSITORY https://github.com/vgteam/sdsl-lite.git
+    GIT_TAG master
 )
 
 FetchContent_MakeAvailable(libsais sdsl)
 
-add_executable(bpm src/preprocessing.hpp src/preprocessing.cpp src/utils.hpp
-        src/data_import.hpp src/data_import.cpp
-        src/main.cpp
+add_executable(bpm
+    src/main.cpp src/utils.hpp
+    src/motifs_search.hpp src/motifs_search.cpp
+    src/preprocessing.hpp src/preprocessing.cpp
+    src/data_import.hpp src/data_import.cpp
 )
 target_link_libraries(bpm PRIVATE libsais sdsl)
