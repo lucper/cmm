@@ -6,6 +6,7 @@
 #include <tuple>
 #include <sdsl/int_vector.hpp>
 #include "utils.hpp"
+#include "defs.hpp"
 #include "preprocessing.hpp"
 
 struct motif_pair {

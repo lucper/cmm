@@ -1,5 +1,24 @@
 #include "motifs_search.hpp"
 
+static std::vector<INT> get_active_ranks(const sdsl::bit_vector& ranks)
+{
+    int num_words = (ranks.size() + (WSIZE - 1)) / WSIZE;
+    const UINT *ranks_bitvec = ranks.data();
+
+    std::vector<INT> active_ranks;
+    active_ranks.reserve(sdsl::util::cnt_one_bits(ranks));
+    for (int i = 0; i < num_words; i++) {
+        UINT word = ranks_bitvec[i];
+        while (word > 0) {
+            INT rank = (i * WSIZE) + __builtin_ctzll(word);
+            active_ranks.push_back(rank);
+            word &= (word - 1);
+        }
+    }
+
+    return active_ranks;
+}
+
 void main_algo(const std::vector<std::string>& U, const std::vector<std::string>& V,
                const std::vector<std::tuple<INT, INT>>& edges, INT ell, INT d)
 {
@@ -15,8 +34,8 @@ void main_algo(const std::vector<std::string>& U, const std::vector<std::string>
     INT max_ru = index_u.map_ell_mers_to_ranks(H);
     INT max_rv = index_v.map_ell_mers_to_ranks(H);
 
-    sdsl::bit_vector seen_u(max_ru + 1, 0);
-    sdsl::bit_vector seen_v(max_rv + 1, 0);
+    sdsl::bit_vector ranks_u(max_ru + 1, 0);
+    sdsl::bit_vector ranks_v(max_rv + 1, 0);
 
     DBG("Starting main algorithm loop... (l=" << ell << ")");
 
@@ -32,19 +51,19 @@ void main_algo(const std::vector<std::string>& U, const std::vector<std::string>
         if (i % update_every == 0 || i + 1 == total)
             print_progress(i + 1, total);
 
-        INT u_len = U[u].length(), v_len = V[v].length();
+        sdsl::util::set_to_value(ranks_u, 0);
+        for (int i = 0; i < U[u].length() - ell + 1; i++)
+            ranks_u[index_u.get_rank_of_substr(i, u)] = 1;
+        std::vector<INT> unique_ranks_u = get_active_ranks(ranks_u);
 
-        sdsl::util::set_to_value(seen_u, 0);
-        for (int i = 0; i < u_len - ell + 1; i++)
-            seen_u[index_u.get_rank_of_substr(i, u)] = 1;
+        sdsl::util::set_to_value(ranks_v, 0);
+        for (int i = 0; i < V[v].length() - ell + 1; i++)
+            ranks_v[index_v.get_rank_of_substr(i, v)] = 1;
+        std::vector<INT> unique_ranks_v = get_active_ranks(ranks_v);
 
-        sdsl::util::set_to_value(seen_v, 0);
-        for (int j = 0; j < v_len - ell + 1; j++)
-            seen_v[index_v.get_rank_of_substr(j, v)] = 1;
-
-        //////////////////
-        // TODO: Enumerate over ranks in bitvectors by jumping thorugh 1s.
-        //////////////////
+        for (INT rank_u : unique_ranks_u)
+            for (INT rank_v : unique_ranks_v)
+                edge_counts_for_rank_pair[{rank_u, rank_v}]++;
     }
 
     DBG("Done with main loop");
