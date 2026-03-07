@@ -10,7 +10,7 @@
 #include "utils.hpp"
 
 class rank_index {
-    public:
+public:
     rank_index(const std::vector<std::string>& seqs, INT ell);
     ~rank_index();
 
@@ -42,7 +42,7 @@ class rank_index {
     // Debugging.
     void show() const;
 
-    private:
+private:
     unsigned char *concat_seq;
     INT concat_seq_len;
     sdsl::bit_vector concat_seq_separators;
