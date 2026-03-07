@@ -24,14 +24,14 @@ void rank_index::show() const
     std::cout << "\n";
 }
 
-rank_index::rank_index(unsigned char **seqs, INT seqs_n, INT ell)
+rank_index::rank_index(const std::vector<std::string>& seqs, INT ell)
 {
     // Length ell of ell-mers.
     this->ell = ell;
     max_rank = 0;
 
     // Concatenate the strings with SEP symbols.
-    build_concat_seq(seqs, seqs_n);
+    build_concat_seq(seqs);
 
     // Build bitvector with SEP positions and rank/select structures.
     concat_seq_separators = sdsl::bit_vector(concat_seq_len, 0);
@@ -94,19 +94,22 @@ rank_index::~rank_index()
     free(ISA);
 }
 
-void rank_index::build_concat_seq(unsigned char **seqs, INT seqs_n)
+void rank_index::build_concat_seq(const std::vector<std::string>& seqs)
 {
     concat_seq_len = 0;
-    for (int i = 0; i < seqs_n; i++) concat_seq_len += strlen((const char *) seqs[i]) + 1;
-    concat_seq = (unsigned char *) malloc(concat_seq_len * sizeof(char));
+    for (const auto& seq : seqs)
+        concat_seq_len += seq.length() + 1;
+
+    concat_seq = (unsigned char *) malloc(concat_seq_len * sizeof(unsigned char));
     if (!concat_seq) {
         fprintf(stderr, "Could not allocate memory for concatenated string.\n");
         exit(EXIT_FAILURE);
     }
-    for (int i = 0, offset = 0; i < seqs_n; i++) {
-        INT seq_len = strlen((const char *) seqs[i]);
-        memcpy(concat_seq + offset, seqs[i], seq_len);
-        offset += seq_len;
+
+    INT offset = 0;
+    for (const auto& seq: seqs) {
+        memcpy(concat_seq + offset, seq.data(), seq.length());
+        offset += seq.length();
         concat_seq[offset++] = SEP;
     }
 }

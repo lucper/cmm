@@ -11,7 +11,7 @@
 
 class rank_index {
     public:
-    rank_index(unsigned char **seqs, INT seqs_n, INT ell);
+    rank_index(const std::vector<std::string>& seqs, INT ell);
     ~rank_index();
 
     /* Assigns ranks to suffixes whose prefixes have length >= ell and wildcards in positions
@@ -69,7 +69,7 @@ class rank_index {
 
     // Helper methods.
     void build_LCP();
-    void build_concat_seq(unsigned char **seqs, INT seqs_n);
+    void build_concat_seq(const std::vector<std::string>& seqs);
     bool is_valid_suffix(INT i) const;
     INT assign_ranks(std::vector<INT>& rank_buffer, INT frag_len, INT offset);
 };
