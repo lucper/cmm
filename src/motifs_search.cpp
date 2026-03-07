@@ -15,6 +15,9 @@ void main_algo(const std::vector<std::string>& U, const std::vector<std::string>
     INT max_ru = index_u.map_ell_mers_to_ranks(H);
     INT max_rv = index_v.map_ell_mers_to_ranks(H);
 
+    sdsl::bit_vector seen_u(max_ru + 1, 0);
+    sdsl::bit_vector seen_v(max_rv + 1, 0);
+
     DBG("Starting main algorithm loop... (l=" << ell << ")");
 
     int total = edges.size();
@@ -31,23 +34,17 @@ void main_algo(const std::vector<std::string>& U, const std::vector<std::string>
 
         INT u_len = U[u].length(), v_len = V[v].length();
 
-        sdsl::bit_vector seen_u(max_ru + 1, 0);
+        sdsl::util::set_to_value(seen_u, 0);
         for (int i = 0; i < u_len - ell + 1; i++)
             seen_u[index_u.get_rank_of_substr(i, u)] = 1;
 
-        sdsl::bit_vector seen_v(max_rv + 1, 0);
+        sdsl::util::set_to_value(seen_v, 0);
         for (int j = 0; j < v_len - ell + 1; j++)
             seen_v[index_v.get_rank_of_substr(j, v)] = 1;
 
-        for (int i = 0; i < u_len - ell + 1; i++) {
-            INT r1 = index_u.get_rank_of_substr(i, u);
-            for (int j = 0; j < v_len - ell + 1; j++) {
-                INT r2 = index_v.get_rank_of_substr(j, v);
-                if (seen_u[r1] && seen_v[r2])
-                    edge_counts_for_rank_pair[{r1, r2}]++;
-            }
-        }
-
+        //////////////////
+        // TODO: Enumerate over ranks in bitvectors by jumping thorugh 1s.
+        //////////////////
     }
 
     DBG("Done with main loop");
