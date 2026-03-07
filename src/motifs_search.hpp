@@ -35,7 +35,7 @@ struct motif_match {
 
 // TODO: Generalize to arbitrary graphs.
 // TODO: Make const collections work.
-void main_algo(std::vector<std::string>& U, std::vector<std::string>& V,
+void main_algo(const std::vector<std::string>& U, const std::vector<std::string>& V,
                const std::vector<std::tuple<INT, INT>>& edges, INT ell, INT d);
 
 #endif
