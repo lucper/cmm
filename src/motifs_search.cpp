@@ -56,8 +56,8 @@ void main_algo(const std::vector<std::string>& U, const std::vector<std::string>
 
     std::vector<motif_pair_with_count> motif_pairs;
 
-    for (auto const& [m, count]: edge_counts_for_rank_pair)
-        motif_pairs.push_back({m, count});
+    for (const auto& [mp, count]: edge_counts_for_rank_pair)
+        motif_pairs.push_back({mp, count});
 
     std::sort(motif_pairs.begin(), motif_pairs.end());
 
