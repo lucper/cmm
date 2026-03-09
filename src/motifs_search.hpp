@@ -21,21 +21,9 @@ struct motif_pair {
     }
 };
 
-struct motif_pair_with_count {
-    motif_pair mp;
-    INT count;
-
-    bool operator<(const motif_pair_with_count& other) const {
-        return std::tie(count, mp) < std::tie(other.count, other.mp);
-    }
-};
-
-struct motif_match {
-    INT r1, r2, u, v;
-};
-
 // TODO: Generalize to arbitrary graphs.
-void main_algo(const std::vector<std::string>& U, const std::vector<std::string>& V,
-               const std::vector<std::tuple<INT, INT>>& edges, INT ell, INT d);
+std::tuple<std::string, std::string, INT>
+main_algo(const std::vector<std::string>& U, const std::vector<std::string>& V,
+          const std::vector<std::tuple<INT, INT>>& edges, INT ell, INT d);
 
 #endif
