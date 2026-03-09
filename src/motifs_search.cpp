@@ -21,6 +21,7 @@ void main_algo(const std::vector<std::string>& U, const std::vector<std::string>
     int update_every = 1 + total / 200; // ~200 updates max
 
     sdsl::bit_vector ranks_u, ranks_v;
+    // TODO: Allocate max size = max length of string in U \cup V?
     std::vector<INT> unique_ranks_u, unique_ranks_v;
 
     do {
@@ -39,7 +40,6 @@ void main_algo(const std::vector<std::string>& U, const std::vector<std::string>
         // TODO: Change message.
         DBG("Starting main algorithm loop... (l=" << ell << ")");
 
-        // TODO: This is H dependent. Need to save the most frequent.
         std::map<motif_pair, INT> edge_counts_for_rank_pair;
 
         // TODO: Parallelize here.
@@ -70,45 +70,16 @@ void main_algo(const std::vector<std::string>& U, const std::vector<std::string>
                     edge_counts_for_rank_pair[{rank_u, rank_v}]++;
 
             for (INT r : unique_ranks_u) ranks_u[r] = 0;
-            for (INT r : unique_ranks_v) ranks_v[r] = 0;
-
             unique_ranks_u.clear();
+
+            for (INT r : unique_ranks_v) ranks_v[r] = 0;
             unique_ranks_v.clear();
         }
 
         DBG("Done with main loop");
 
-        DBG("\tCandidate pairs = " + std::to_string(edge_counts_for_rank_pair.size()));
-
-        std::vector<motif_pair_with_count> motif_pairs;
-
-        for (const auto& [mp, count]: edge_counts_for_rank_pair)
-            motif_pairs.push_back({mp, count});
-
-        std::sort(motif_pairs.begin(), motif_pairs.end());
-
-        INT k = 1;
-        DBG("Top k=" << k << " motive pairs");
-        for (int i = 1; i <= k; i++) {
-            auto idx = motif_pairs.size() - i;
-            auto r1 = motif_pairs[idx].mp.r1;
-            auto r2 = motif_pairs[idx].mp.r2;
-            auto m1 = index_u.get_substr_with_rank(r1);
-            auto m2 = index_v.get_substr_with_rank(r2);
-            DBG("\t(" + std::to_string(r1) + "=" + std::string(m1) + "," + std::to_string(r2) + "=" + std::string(m2) + ") \t\t" + std::to_string(motif_pairs[idx].count));
-        }
-
-        DBG("Bottom k=" << k << " motive pairs");
-        for (int i = 0; i < k; i++) {
-            auto idx = i;
-            auto r1 = motif_pairs[idx].mp.r1;
-            auto r2 = motif_pairs[idx].mp.r2;
-            auto m1 = index_u.get_substr_with_rank(r1);
-            auto m2 = index_v.get_substr_with_rank(r2);
-            DBG("\t(" + std::to_string(r1) + "=" + std::string(m1) + "," + std::to_string(r2) + "=" + std::string(m2) + ") \t\t" + std::to_string(motif_pairs[idx].count));
-        }
-
         // TODO: At this point, save the most frequent motif pair somewhere and go to next combination H.
-        // Keep updating the most frequent motifs pairs.
+        // Get rank pair with max count from edge_counts_for_rank_pair.
+        // Retrieve strings and save them.
     } while (std::next_permutation(mask.begin(), mask.end()));
 }
