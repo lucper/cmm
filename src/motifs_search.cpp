@@ -65,11 +65,11 @@ main_algo(const std::vector<std::string>& U, const std::vector<std::string>& V,
             edge_counts_for_rank_pair.clear();
 
             // TODO: Parallelize here.
-            for (int i = 0; i < total; i++) {
-                auto [u, v] = edges[i];
+            for (int j = 0; j < total; j++) {
+                auto [u, v] = edges[j];
 
-                if (i % update_every == 0 || i + 1 == total)
-                    print_progress(i + 1, total);
+                if (j % update_every == 0 || j + 1 == total)
+                    print_progress(j + 1, total);
 
                 for (int i = 0; i < U[u].length() - ell + 1; i++) {
                     INT r = index_u.get_rank_of_substr(i, u);
