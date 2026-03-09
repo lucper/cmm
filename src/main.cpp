@@ -33,7 +33,9 @@ int main() {
     std::vector<std::string> V = {"babaa"};
     std::vector<std::tuple<INT, INT>> edges = {{0,0}};
     
-    main_algo(U, V, edges, ell, 0);
+    auto [m1, m2, k] = main_algo(U, V, edges, ell, 0);
+
+    std::cout << "(" << m1 << ", " << m2 << ", " << k << ")" << "\n";
 
     return 0;
 }
