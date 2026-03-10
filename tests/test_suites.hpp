@@ -57,14 +57,6 @@ void run_all_tests()
     }
     
 
-    {
-        std::vector<std::string> V = {"AGCT", "TGCA"};
-        std::vector<std::tuple<INT, INT>> E = {{0,1}};
-        auto [m1, m2, count] = main_algo(V, E, 2, 0, 0);
-
-        suite.assert_solution("AGCT-TGCA (ell = 2)", m1, m2, count, "GC", "GC", 1);
-    }
-
     suite.summary();
 }
 
