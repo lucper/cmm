@@ -1,5 +1,14 @@
 #include "motifs_search.hpp"
 
+static std::string apply_mask(std::string_view motif, const std::vector<INT>& H, char wildcard = '*')
+{
+    std::string masked_motif(motif);
+    for (INT pos : H)
+        if (pos >= 0 && pos < masked_motif.length())
+            masked_motif[pos] = wildcard;
+    return masked_motif;
+}
+
 std::tuple<std::string, std::string, INT>
 main_algo(const std::vector<std::string>& V, const std::vector<std::tuple<INT, INT>>& E,
           INT ell, INT d, INT k)
@@ -97,8 +106,8 @@ main_algo(const std::vector<std::string>& V, const std::vector<std::tuple<INT, I
                 global_max_count = max_count;
                 global_max_motif_pair = max_motif_pair;
                 solution = {
-                    std::string(index_u.get_substr_with_rank(max_motif_pair.r1)),
-                    std::string(index_v.get_substr_with_rank(max_motif_pair.r2)),
+                    apply_mask(index_u.get_substr_with_rank(max_motif_pair.r1), H_u),
+                    apply_mask(index_v.get_substr_with_rank(max_motif_pair.r2), H_v),
                     max_count
                 };
             }
