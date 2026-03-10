@@ -1,8 +1,8 @@
 #include "motifs_search.hpp"
 
 std::tuple<std::string, std::string, INT>
-main_algo(const std::vector<std::string>& U, const std::vector<std::string>& V,
-          const std::vector<std::tuple<INT, INT>>& edges, INT ell, INT d)
+main_algo(const std::vector<std::string>& V, const std::vector<std::tuple<INT, INT>>& E,
+          INT ell, INT d)
 {
     std::tuple<std::string, std::string, INT> solution;
     INT global_max_count = 0;
@@ -10,7 +10,7 @@ main_algo(const std::vector<std::string>& U, const std::vector<std::string>& V,
 
     DBG("Building rank index...");
 
-    rank_index index_u(U, ell);
+    rank_index index_u(V, ell);
     rank_index index_v(V, ell);
 
     DBG("Done.");
@@ -25,7 +25,7 @@ main_algo(const std::vector<std::string>& U, const std::vector<std::string>& V,
     std::vector<int> mask_v(ell, 0);
     std::fill(mask_v.begin(), mask_v.begin() + d, 1);
 
-    int total = edges.size();
+    int total = E.size();
     int update_every = 1 + total / 200; // ~200 updates max
 
     sdsl::bit_vector ranks_u, ranks_v;
@@ -59,19 +59,19 @@ main_algo(const std::vector<std::string>& U, const std::vector<std::string>& V,
             std::string hv;
             hv.reserve(H_v.size());
             for (int bit : mask_v) hv += std::to_string(bit);
-            DBG("Starting main algorithm loop... (l=" << ell << ", H(U)=" << hu << ", H(V)=" << hv << ")");
+            DBG("Starting main algorithm loop... (l=" << ell << ", H(u)=" << hu << ", H(v)=" << hv << ")");
 
             // Starting new motif pair count under H_u and H_v.
             edge_counts_for_rank_pair.clear();
 
             // TODO: Parallelize here.
             for (int j = 0; j < total; j++) {
-                auto [u, v] = edges[j];
+                auto [u, v] = E[j];
 
                 if (j % update_every == 0 || j + 1 == total)
                     print_progress(j + 1, total);
 
-                for (int i = 0; i < U[u].length() - ell + 1; i++) {
+                for (int i = 0; i < V[u].length() - ell + 1; i++) {
                     INT r = index_u.get_rank_of_substr(i, u);
                     if (ranks_u[r] == 0) {
                         ranks_u[r] = 1;
