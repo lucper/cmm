@@ -29,11 +29,10 @@ int main() {
     // std::vector<std::tuple<INT, INT>> edges = gi.edges;
 
     INT ell = 3;
-    std::vector<std::string> U = {"abaaba"};
-    std::vector<std::string> V = {"babaa"};
-    std::vector<std::tuple<INT, INT>> edges = {{0,0}};
+    std::vector<std::string> V = {"abaaba", "babaa"};
+    std::vector<std::tuple<INT, INT>> E = {{0,1}};
     
-    auto [m1, m2, k] = main_algo(U, V, edges, ell, 0);
+    auto [m1, m2, k] = main_algo(V, E, ell, 0);
 
     std::cout << "(" << m1 << ", " << m2 << ", " << k << ")" << "\n";
 
