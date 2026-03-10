@@ -7,13 +7,14 @@
 #include "data_import.hpp"
 
 void print_usage(const char* prog_name) {
-    std::printf("Usage: %s <nodes.csv> <edges.csv> <ell> <d>\n", prog_name);
+    std::printf("Usage: %s <nodes.csv> <edges.csv> <ell> <d> <k>\n", prog_name);
     std::printf("\n");
     std::printf("Arguments:\n");
     std::printf("  nodes.dat    Path to text file with lines formatted as 'id;label', where id is an integer >= 0 and label is a string.\n");
     std::printf("  edges.dat    Path to text file with lines formatted as 'u;v', where u and v are integers in nodes.dat.\n");
-    std::printf("  ell          Integer length of the motif\n");
-    std::printf("  d            Integer number in [0,ell] of wildcards in motif\n");
+    std::printf("  ell          Integer length of the motif.\n");
+    std::printf("  d            Integer number in [0,ell] of wildcards in motif.\n");
+    std::printf("  k            Integer number of top k motifs.\n");
     std::printf("\n");
     std::printf("Example:\n");
     std::printf("  %s data/nodes.dat data/edges.dat 10 4\n", prog_name);
@@ -25,7 +26,7 @@ int main(int argc, char* argv[]) {
         return EXIT_SUCCESS;
     }
 
-    if (argc != 5) {
+    if (argc != 6) {
         std::fprintf(stderr, "Error: Invalid number of arguments.\n");
         print_usage(argv[0]);
         return EXIT_FAILURE;
@@ -52,11 +53,20 @@ int main(int argc, char* argv[]) {
         return EXIT_FAILURE;
     }
 
+    INT k = 0;
+    try {
+        k = std::stoi(argv[5]);
+        if (k <= 0) throw std::invalid_argument("k must be positive");
+    } catch (const std::exception& e) {
+        std::fprintf(stderr, "Error: Invalid value for k ('%s'). Must be a positive integer.\n", argv[5]);
+        return EXIT_FAILURE;
+    }
+
     auto gi = read_graph_files(path_to_edges, path_to_labels);
 
-    auto [m1, m2, k] = main_algo(gi.node_labels, gi.edges, ell, d);
+    auto [m1, m2, c] = main_algo(gi.node_labels, gi.edges, ell, d, k);
 
-    std::cout << "(" << m1 << ", " << m2 << ", " << k << ")" << "\n";
+    std::cout << "(" << m1 << ", " << m2 << ", " << c << ")" << "\n";
 
     return 0;
 }

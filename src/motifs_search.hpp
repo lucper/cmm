@@ -21,9 +21,8 @@ struct motif_pair {
     }
 };
 
-// TODO: Generalize to arbitrary graphs.
 std::tuple<std::string, std::string, INT>
-main_algo(const std::vector<std::string>& S, const std::vector<std::tuple<INT, INT>>& edges,
-          INT ell, INT d);
+main_algo(const std::vector<std::string>& V, const std::vector<std::tuple<INT, INT>>& E,
+          INT ell, INT d, INT k);
 
 #endif
