@@ -10,17 +10,24 @@ void rank_index::show() const
         std::cout << SA[i] << " ";
     std::cout << "\n";
 
-    std::cout << "LCP: " << "\n";
-    for (int i = 0; i < concat_seq_len; i++)
-        std::cout << LCP[i] << " ";
+    std::cout << "activeSA: " << "\n";
+    for (int i = 0; i < activeSA.size(); i++)
+        std::cout << activeSA[i] << " ";
     std::cout << "\n";
+
     std::cout << "main_rank_buffer: " << "\n";
     for (int i = 0; i < concat_seq_len; i++)
         std::cout << main_rank_buffer[i] << " ";
     std::cout << "\n";
+
     std::cout << "secondary_rank_buffer: " << "\n";
     for (int i = 0; i < concat_seq_len; i++)
         std::cout << secondary_rank_buffer[i] << " ";
+    std::cout << "\n";
+
+    std::cout << "rank_to_sa: " << "\n";
+    for (int i = 0; i < concat_seq_len; i++)
+        std::cout << rank_to_sa[i] << " ";
     std::cout << "\n";
 }
 
@@ -74,13 +81,12 @@ rank_index::rank_index(const std::vector<std::string>& seqs, INT ell)
     // Allocate buffers for rank assignments.
     main_rank_buffer.resize(concat_seq_len);
     secondary_rank_buffer.resize(concat_seq_len);
+    rank_to_sa.resize(concat_seq_len);
 
     // Get suffixes whose prefixes have >= ell characters without SEP.
     for (int i = 0; i < concat_seq_len; i++)
         if (is_valid_suffix(SA[i]))
             activeSA.push_back(SA[i]);
-
-    rank_to_sa.resize(activeSA.size());
 
     // Allocate buffers for counting sort and refinement.
     activeSA_buffer.resize(activeSA.size());
@@ -138,8 +144,6 @@ INT rank_index::map_ell_mers_to_ranks(const std::vector<INT>& H)
 
     max_rank = assign_ranks(main_rank_buffer, (H.empty() ? ell : H[0]), 0);
 
-    if (H.empty()) return max_rank;
-
     for (int d = 0; d < H.size(); d++) {
         int next_frag_start = H[d] + 1;
         int next_frag_end = d + 1 < H.size() ? H[d + 1] : ell;
@@ -168,6 +172,7 @@ INT rank_index::map_ell_mers_to_ranks(const std::vector<INT>& H)
         max_rank = new_max_rank;
     }
 
+    // TODO: Note that main_rank_buffer may have repeated entries, which will be overwritten multiple times.
     for (int i = 0; i < activeSA.size(); i++)
         rank_to_sa[main_rank_buffer[activeSA[i]]] = activeSA[i];
 
