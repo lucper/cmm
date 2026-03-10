@@ -8,12 +8,8 @@ main_algo(const std::vector<std::string>& V, const std::vector<std::tuple<INT, I
     INT global_max_count = 0;
     motif_pair global_max_motif_pair = {0, 0};
 
-    DBG("Building rank index...");
-
     rank_index index_u(V, ell);
     rank_index index_v(V, ell);
-
-    DBG("Done.");
 
     std::vector<INT> H_u(d);
     // 0 for character positions, 1 for wildcard positions.
@@ -52,15 +48,6 @@ main_algo(const std::vector<std::string>& V, const std::vector<std::tuple<INT, I
             INT max_rv = index_v.map_ell_mers_to_ranks(H_v);
             ranks_v.resize(max_rv + 1);
 
-            // Debug.
-            std::string hu;
-            hu.reserve(H_u.size());
-            for (int bit : mask_u) hu += std::to_string(bit);
-            std::string hv;
-            hv.reserve(H_v.size());
-            for (int bit : mask_v) hv += std::to_string(bit);
-            DBG("Starting main algorithm loop... (l=" << ell << ", H(u)=" << hu << ", H(v)=" << hv << ")");
-
             // Starting new motif pair count under H_u and H_v.
             edge_counts_for_rank_pair.clear();
 
@@ -68,8 +55,8 @@ main_algo(const std::vector<std::string>& V, const std::vector<std::tuple<INT, I
             for (int j = 0; j < total; j++) {
                 auto [u, v] = E[j];
 
-                if (j % update_every == 0 || j + 1 == total)
-                    print_progress(j + 1, total);
+                //if (j % update_every == 0 || j + 1 == total)
+                //    print_progress(j + 1, total);
 
                 for (int i = 0; i < V[u].length() - ell + 1; i++) {
                     INT r = index_u.get_rank_of_substr(i, u);
@@ -98,15 +85,16 @@ main_algo(const std::vector<std::string>& V, const std::vector<std::tuple<INT, I
                 unique_ranks_v.clear();
             }
 
-            DBG("Done with main loop");
-
             INT max_count = 0;
             motif_pair max_motif_pair = {0, 0};
-            for (const auto& [mp, count] : edge_counts_for_rank_pair)
+            DBG("Motif match counts:");
+            for (const auto& [mp, count] : edge_counts_for_rank_pair) {
+                DBG(mp.r1 << " " << index_u.get_substr_with_rank(mp.r1) << " " << mp.r2 << " " << index_v.get_substr_with_rank(mp.r2) << " " << count);
                 if (count > max_count) {
                     max_count = count;
                     max_motif_pair = mp;
                 }
+            }
 
             if (max_count > global_max_count) {
                 global_max_count = max_count;
