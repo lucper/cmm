@@ -149,10 +149,8 @@ INT rank_index::map_ell_mers_to_ranks(const std::vector<INT>& H)
 
         INT max_tmp_rank = assign_ranks(secondary_rank_buffer, next_frag_len, next_frag_start);
 
-        counting_sort(activeSA, max_tmp_rank, activeSA_buffer, count_buffer,
-                      [&](INT suff_i) { return secondary_rank_buffer[suff_i]; });
-        counting_sort(activeSA, max_rank, activeSA_buffer, count_buffer,
-                      [&](INT suff_i) { return main_rank_buffer[suff_i]; });
+        radix_pass_over_activeSA(max_tmp_rank, secondary_rank_buffer);
+        radix_pass_over_activeSA(max_rank, main_rank_buffer);
 
         // Use first positions of activeSA_buffer as temporary storage.
         INT new_max_rank = 0;
@@ -210,4 +208,16 @@ INT rank_index::assign_ranks(std::vector<INT>& rank_buffer, INT frag_len, INT of
     }
 
     return r;
+}
+
+void rank_index::radix_pass_over_activeSA(INT max_val, const std::vector<INT>& key)
+{
+    std::fill(count_buffer.begin(), count_buffer.begin() + max_val + 1, 0);
+    for (int i = 0; i < activeSA.size(); i++) count_buffer[key[activeSA[i]]]++;
+    for (int i = 1; i < max_val + 1; i++) count_buffer[i] += count_buffer[i - 1];
+
+    for (int i = activeSA.size() - 1; i >= 0; i--)
+        activeSA_buffer[--count_buffer[key[activeSA[i]]]] = activeSA[i];
+
+    activeSA = activeSA_buffer;
 }
