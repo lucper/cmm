@@ -6,35 +6,67 @@
 #include "motifs_search.hpp"
 #include "data_import.hpp"
 
-std::string test_data = "data/generated/string_195_v12/";
-INT k = 10;
+void print_usage(const char* prog_name) {
+    std::printf("Usage: %s <nodes.csv> <edges.csv> <ell> <d> <k>\n", prog_name);
+    std::printf("\n");
+    std::printf("Arguments:\n");
+    std::printf("  nodes.dat    Path to text file with lines formatted as 'id;label', where id is an integer >= 0 and label is a string.\n");
+    std::printf("  edges.dat    Path to text file with lines formatted as 'u;v', where u and v are integers in nodes.dat.\n");
+    std::printf("  ell          Integer length of the motif.\n");
+    std::printf("  d            Integer number in [0,ell] of wildcards in motif.\n");
+    std::printf("  k            Integer number of top k motifs.\n");
+    std::printf("\n");
+    std::printf("Example:\n");
+    std::printf("  %s data/nodes.dat data/edges.dat 10 4\n", prog_name);
+}
 
-int main() {
-    //DBG("Reading input...");
-    //auto gi = read_graph_files(test_data + "edge_list_head10000.csv", test_data + "node_labels.csv");
+int main(int argc, char* argv[]) {
+    if (argc == 1 || (argc == 2 && (std::string(argv[1]) == "-h" || std::string(argv[1]) == "--help"))) {
+        print_usage(argv[0]);
+        return EXIT_SUCCESS;
+    }
 
-    //std::vector<std::vector<unsigned char>> buffers;
-    //buffers.reserve(gi.node_labels.size());
+    if (argc != 6) {
+        std::fprintf(stderr, "Error: Invalid number of arguments.\n");
+        print_usage(argv[0]);
+        return EXIT_FAILURE;
+    }
 
-    //std::vector<unsigned char *> nodes;
-    //nodes.reserve(gi.node_labels.size());
+    std::string path_to_labels(argv[1]);
+    std::string path_to_edges(argv[2]);
 
-    //for (const auto &s: gi.node_labels) {
-    //    buffers.emplace_back(s.begin(), s.end());
-    //    buffers.back().push_back('\0'); // NUL terminator
-    //    nodes.push_back(buffers.back().data()); // mutable unsigned char*
-    //}
+    INT ell = 0;
+    try {
+        ell = std::stoi(argv[3]);
+        if (ell <= 0) throw std::invalid_argument("ell must be positive");
+    } catch (const std::exception& e) {
+        std::fprintf(stderr, "Error: Invalid value for ell ('%s'). Must be a positive integer.\n", argv[3]);
+        return EXIT_FAILURE;
+    }
 
-    // What is U and V here?
-    // std::vector<std::tuple<INT, INT>> edges = gi.edges;
+    INT d = 0;
+    try {
+        d = std::stoi(argv[4]);
+        if (d < 0 || d > ell) throw std::invalid_argument("d must be in interval [0,ell]");
+    } catch (const std::exception& e) {
+        std::fprintf(stderr, "Error: Invalid value for d ('%s'). Must be an integer in the interval [0,ell].\n", argv[4]);
+        return EXIT_FAILURE;
+    }
 
-    INT ell = 3;
-    std::vector<std::string> V = {"abaaba", "babaa"};
-    std::vector<std::tuple<INT, INT>> E = {{0,1}};
-    
-    auto [m1, m2, k] = main_algo(V, E, ell, 0);
+    INT k = 0;
+    try {
+        k = std::stoi(argv[5]);
+        if (k <= 0) throw std::invalid_argument("k must be positive");
+    } catch (const std::exception& e) {
+        std::fprintf(stderr, "Error: Invalid value for k ('%s'). Must be a positive integer.\n", argv[5]);
+        return EXIT_FAILURE;
+    }
 
-    std::cout << "(" << m1 << ", " << m2 << ", " << k << ")" << "\n";
+    auto gi = read_graph_files(path_to_edges, path_to_labels);
+
+    auto [m1, m2, c] = main_algo(gi.node_labels, gi.edges, ell, d, k);
+
+    std::cout << "(" << m1 << ", " << m2 << ", " << c << ")" << "\n";
 
     return 0;
 }

@@ -2,7 +2,7 @@
 
 std::tuple<std::string, std::string, INT>
 main_algo(const std::vector<std::string>& V, const std::vector<std::tuple<INT, INT>>& E,
-          INT ell, INT d)
+          INT ell, INT d, INT k)
 {
     std::tuple<std::string, std::string, INT> solution;
     INT global_max_count = 0;

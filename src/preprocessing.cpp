@@ -42,25 +42,25 @@ rank_index::rank_index(const std::vector<std::string>& seqs, INT ell)
 
     SA = (INT *) malloc(concat_seq_len * sizeof(INT));
     if (!SA) {
-        fprintf(stderr, "Could not allocate memory for suffix array.\n");
+        std::fprintf(stderr, "Could not allocate memory for suffix array.\n");
         exit(EXIT_FAILURE);
     }
 #ifdef _USE_64
     if (libsais64(concat_seq, SA, concat_seq_len, 0, NULL) != 0) {
-        fprintf(stderr, "Could not construct suffix array.\n");
+        std::fprintf(stderr, "Could not construct suffix array.\n");
         exit(EXIT_FAILURE);
     }
 #endif
 #ifdef _USE_32
     if (libsais(concat_seq, SA, concat_seq_len, 0, NULL) != 0) {
-        fprintf(stderr, "Could not construct suffix array.\n");
+        std::fprintf(stderr, "Could not construct suffix array.\n");
         exit(EXIT_FAILURE);
     }
 #endif
 
     ISA = (INT *) malloc(concat_seq_len * sizeof(INT));
     if (!ISA) {
-        fprintf(stderr, "Could not construct suffix array.\n");
+        std::fprintf(stderr, "Could not construct suffix array.\n");
         exit(EXIT_FAILURE);
     }
     for (int i = 0; i < concat_seq_len; i++)
@@ -102,7 +102,7 @@ void rank_index::build_concat_seq(const std::vector<std::string>& seqs)
 
     concat_seq = (unsigned char *) malloc(concat_seq_len * sizeof(unsigned char));
     if (!concat_seq) {
-        fprintf(stderr, "Could not allocate memory for concatenated string.\n");
+        std::fprintf(stderr, "Could not allocate memory for concatenated string.\n");
         exit(EXIT_FAILURE);
     }
 
@@ -118,7 +118,7 @@ INT rank_index::get_rank_of_substr(INT i, INT k) const
 {
     INT suff_of_concat_seq =  (k == 0 ? 0 : select(k) + 1) + i;
     if (!is_valid_suffix(suff_of_concat_seq)) {
-        fprintf(stderr, "Tried to access an substring in invalid suffix.\n");
+        std::fprintf(stderr, "Tried to access an substring in invalid suffix.\n");
         exit(EXIT_FAILURE);
     }
     return main_rank_buffer[suff_of_concat_seq];
