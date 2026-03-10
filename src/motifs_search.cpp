@@ -87,14 +87,11 @@ main_algo(const std::vector<std::string>& V, const std::vector<std::tuple<INT, I
 
             INT max_count = 0;
             motif_pair max_motif_pair = {0, 0};
-            DBG("Motif match counts:");
-            for (const auto& [mp, count] : edge_counts_for_rank_pair) {
-                DBG(mp.r1 << " " << index_u.get_substr_with_rank(mp.r1) << " " << mp.r2 << " " << index_v.get_substr_with_rank(mp.r2) << " " << count);
+            for (const auto& [mp, count] : edge_counts_for_rank_pair)
                 if (count > max_count) {
                     max_count = count;
                     max_motif_pair = mp;
                 }
-            }
 
             if (max_count > global_max_count) {
                 global_max_count = max_count;
