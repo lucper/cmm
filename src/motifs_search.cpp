@@ -9,13 +9,13 @@ static std::string apply_mask(std::string_view motif, const std::vector<INT>& H,
     return masked_motif;
 }
 
-std::tuple<std::string, std::string, INT>
+std::vector<motif_pair_record>
 main_algo(const std::vector<std::string>& V, const std::vector<std::tuple<INT, INT>>& E,
           INT ell, INT d, INT k)
 {
-    std::tuple<std::string, std::string, INT> solution;
-    INT global_max_count = 0;
-    motif_pair global_max_motif_pair = {0, 0};
+    if (k <= 0) throw std::invalid_argument("k must be positive");
+
+    std::priority_queue<motif_pair_record, std::vector<motif_pair_record>, std::greater<motif_pair_record>> topK_motif_pairs;
 
     rank_index index_u(V, ell);
     rank_index index_v(V, ell);
@@ -37,7 +37,7 @@ main_algo(const std::vector<std::string>& V, const std::vector<std::tuple<INT, I
     // TODO: Allocate max size = max length of string in U \cup V?
     std::vector<INT> unique_ranks_u, unique_ranks_v;
 
-    std::unordered_map<motif_pair, INT> edge_counts_for_rank_pair;
+    std::unordered_map<motif_pair_id, INT> edge_counts_for_rank_pair;
 
     std::sort(mask_u.begin(), mask_u.end());
     do {
@@ -94,25 +94,27 @@ main_algo(const std::vector<std::string>& V, const std::vector<std::tuple<INT, I
                 unique_ranks_v.clear();
             }
 
-            INT max_count = 0;
-            motif_pair max_motif_pair = {0, 0};
-            for (const auto& [mp, count] : edge_counts_for_rank_pair)
-                if (count > max_count) {
-                    max_count = count;
-                    max_motif_pair = mp;
+            for (auto& [mp_id, count] : edge_counts_for_rank_pair)
+                if (topK_motif_pairs.size() < k || count > topK_motif_pairs.top().count) {
+                    std::string s1 = apply_mask(index_u.get_substr_with_rank(mp_id.r1), H_u);
+                    std::string s2 = apply_mask(index_v.get_substr_with_rank(mp_id.r2), H_v);
+                    if (topK_motif_pairs.size() >= k)
+                        topK_motif_pairs.pop();
+                    topK_motif_pairs.push({mp_id, count, s1, s2});
                 }
-
-            if (max_count > global_max_count) {
-                global_max_count = max_count;
-                global_max_motif_pair = max_motif_pair;
-                solution = {
-                    apply_mask(index_u.get_substr_with_rank(max_motif_pair.r1), H_u),
-                    apply_mask(index_v.get_substr_with_rank(max_motif_pair.r2), H_v),
-                    max_count
-                };
-            }
         } while (std::next_permutation(mask_v.begin(), mask_v.end()));
     } while (std::next_permutation(mask_u.begin(), mask_u.end()));
+
+    // Get solution from priority queue.
+    std::vector<motif_pair_record> solution;
+    solution.reserve(topK_motif_pairs.size());
+
+    while (!topK_motif_pairs.empty()) {
+        solution.push_back(topK_motif_pairs.top());
+        topK_motif_pairs.pop();
+    }
+
+    std::reverse(solution.begin(), solution.end());
 
     return solution;
 }
