@@ -37,7 +37,7 @@ main_algo(const std::vector<std::string>& V, const std::vector<std::tuple<INT, I
     // TODO: Allocate max size = max length of string in U \cup V?
     std::vector<INT> unique_ranks_u, unique_ranks_v;
 
-    std::map<motif_pair, INT> edge_counts_for_rank_pair;
+    std::unordered_map<motif_pair, INT> edge_counts_for_rank_pair;
 
     std::sort(mask_u.begin(), mask_u.end());
     do {
@@ -64,8 +64,8 @@ main_algo(const std::vector<std::string>& V, const std::vector<std::tuple<INT, I
             for (int j = 0; j < total; j++) {
                 auto [u, v] = E[j];
 
-                //if (j % update_every == 0 || j + 1 == total)
-                //    print_progress(j + 1, total);
+                if (j % update_every == 0 || j + 1 == total)
+                    print_progress(j + 1, total);
 
                 for (int i = 0; i < V[u].length() - ell + 1; i++) {
                     INT r = index_u.get_rank_of_substr(i, u);
