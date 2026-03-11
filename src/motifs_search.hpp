@@ -2,7 +2,7 @@
 #define H_MOTIF_SEARCH
 
 #include <vector>
-#include <map>
+#include <unordered_map>
 #include <tuple>
 #include <sdsl/int_vector.hpp>
 #include "utils.hpp"
@@ -18,6 +18,19 @@ struct motif_pair {
 
     bool operator==(const motif_pair& other) const {
         return r1 == other.r1 && r2 == other.r2;
+    }
+
+};
+
+/* Hash function for unordered_map of motif_pair counts. */
+template<>
+struct std::hash<motif_pair>
+{
+    std::size_t operator()(const motif_pair &f) const
+    {
+        size_t seed = std::hash<INT>{}(f.r1);
+        seed ^= std::hash<INT>{}(f.r2) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+        return seed;
     }
 };
 
