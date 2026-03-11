@@ -35,7 +35,18 @@ struct std::hash<motif_pair_id>
     }
 };
 
-std::tuple<std::string, std::string, INT>
+struct motif_pair_record {
+    motif_pair_id ranks;
+    INT count;
+    std::string s1, s2;
+
+    // For min-heap.
+    bool operator>(const motif_pair_record& other) const {
+        return count > other.count;
+    }
+};
+
+std::vector<motif_pair_record>
 main_algo(const std::vector<std::string>& V, const std::vector<std::tuple<INT, INT>>& E,
           INT ell, INT d, INT k);
 
