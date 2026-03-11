@@ -15,7 +15,7 @@ main_algo(const std::vector<std::string>& V, const std::vector<std::tuple<INT, I
 {
     std::tuple<std::string, std::string, INT> solution;
     INT global_max_count = 0;
-    motif_pair global_max_motif_pair = {0, 0};
+    motif_pair_id global_max_motif_pair = {0, 0};
 
     rank_index index_u(V, ell);
     rank_index index_v(V, ell);
@@ -37,7 +37,7 @@ main_algo(const std::vector<std::string>& V, const std::vector<std::tuple<INT, I
     // TODO: Allocate max size = max length of string in U \cup V?
     std::vector<INT> unique_ranks_u, unique_ranks_v;
 
-    std::unordered_map<motif_pair, INT> edge_counts_for_rank_pair;
+    std::unordered_map<motif_pair_id, INT> edge_counts_for_rank_pair;
 
     std::sort(mask_u.begin(), mask_u.end());
     do {
@@ -95,7 +95,7 @@ main_algo(const std::vector<std::string>& V, const std::vector<std::tuple<INT, I
             }
 
             INT max_count = 0;
-            motif_pair max_motif_pair = {0, 0};
+            motif_pair_id max_motif_pair = {0, 0};
             for (const auto& [mp, count] : edge_counts_for_rank_pair)
                 if (count > max_count) {
                     max_count = count;
