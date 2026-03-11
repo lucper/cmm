@@ -64,9 +64,12 @@ int main(int argc, char* argv[]) {
 
     auto gi = read_graph_files(path_to_edges, path_to_labels);
 
-    auto [m1, m2, c] = main_algo(gi.node_labels, gi.edges, ell, d, k);
+    auto motifs = main_algo(gi.node_labels, gi.edges, ell, d, k);
 
-    std::cout << "(" << m1 << ", " << m2 << ", " << c << ")" << "\n";
+    auto [e,r,t,y] = motifs[0];
+
+    for (auto &[mp_id, count, s1, s2] : motifs)
+        std::cout << "(" << s1 << ", " << s2 << ", " << count << ")" << "\n";
 
     return 0;
 }
