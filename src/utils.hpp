@@ -1,6 +1,9 @@
 #ifndef H_UTILS
 #define H_UTILS
 
+#include <iostream>
+#include <iomanip>
+
 inline void print_progress(std::size_t done, std::size_t total)
 {
     if (total == 0) return;
