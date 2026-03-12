@@ -39,23 +39,22 @@ main_algo(const std::vector<std::string>& V, const std::vector<std::tuple<INT, I
 
     std::unordered_map<motif_pair_id, INT> edge_counts_for_rank_pair;
 
+    // TODO: After parallelization, put this inside the loop so that each thread has a vector.
+    std::vector<INT> ranks_u, ranks_v;
+
     std::sort(mask_u.begin(), mask_u.end());
     do {
         H_u.clear();
         for (int i = 0; i < ell; ++i)
             if (mask_u[i]) H_u.push_back(i);
-        INT max_ru = index_u.map_ell_mers_to_ranks(H_u);
-        // Initialize bitvectors to 0.
-        ranks_u.resize(max_ru + 1);
+        index_u.map_ell_mers_to_ranks(H_u);
 
         std::sort(mask_v.begin(), mask_v.end());
         do {
             H_v.clear();
             for (int i = 0; i < ell; ++i)
                 if (mask_v[i]) H_v.push_back(i);
-            // Initialize bitvectors to 0.
-            INT max_rv = index_v.map_ell_mers_to_ranks(H_v);
-            ranks_v.resize(max_rv + 1);
+            index_v.map_ell_mers_to_ranks(H_v);
 
             // Starting new motif pair count under H_u and H_v.
             edge_counts_for_rank_pair.clear();
@@ -63,6 +62,15 @@ main_algo(const std::vector<std::string>& V, const std::vector<std::tuple<INT, I
             // TODO: Parallelize here.
             for (int j = 0; j < total; j++) {
                 auto [u, v] = E[j];
+
+                ranks_u.clear();
+                ranks_v.clear();
+
+                INT u_len = V[u].length() - ell + 1;
+                INT v_len = V[v].length() - ell + 1;
+
+                if (u_len > ranks_u.capacity()) ranks_u.reserve(u_len);
+                if (v_len > ranks_v.capacity()) ranks_v.reserve(v_len);
 
                 if (j % update_every == 0 || j + 1 == total)
                     print_progress(j + 1, total);
@@ -83,21 +91,16 @@ main_algo(const std::vector<std::string>& V, const std::vector<std::tuple<INT, I
                     }
                 }
 
-                for (INT rank_u : unique_ranks_u)
-                    for (INT rank_v : unique_ranks_v)
-                        edge_counts_for_rank_pair[{rank_u, rank_v}]++;
+                for (auto it_u = ranks_u.begin(); it_u != ranks_u_end; it_u++)
+                    for (auto it_v = ranks_v.begin(); it_v != ranks_v_end; it_v++)
+                        edge_counts_for_rank_pair[{*it_u, *it_v}]++;
 
-                for (INT r : unique_ranks_u) ranks_u[r] = 0;
-                unique_ranks_u.clear();
-
-                for (INT r : unique_ranks_v) ranks_v[r] = 0;
-                unique_ranks_v.clear();
             }
 
-            for (auto& [mp_id, count] : edge_counts_for_rank_pair)
-                if (topK_motif_pairs.size() < k || count > topK_motif_pairs.top().count) {
-                    std::string s1 = apply_mask(index_u.get_substr_with_rank(mp_id.r1), H_u);
-                    std::string s2 = apply_mask(index_v.get_substr_with_rank(mp_id.r2), H_v);
+            for (auto& [mp_id, E] : edge_counts_for_rank_pair)
+                if (topK_motif_pairs.size() < k || E > topK_motif_pairs.top().E) {
+                    std::string X = apply_mask(index_u.get_substr_with_rank(mp_id.rankX), H_u);
+                    std::string Y = apply_mask(index_v.get_substr_with_rank(mp_id.rankY), H_v);
                     if (topK_motif_pairs.size() >= k)
                         topK_motif_pairs.pop();
                     topK_motif_pairs.push({mp_id, count, s1, s2});

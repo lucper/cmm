@@ -5,7 +5,7 @@
 #include <unordered_map>
 #include <tuple>
 #include <queue>
-#include <sdsl/int_vector.hpp>
+#include <algorithm>
 #include "utils.hpp"
 #include "defs.hpp"
 #include "preprocessing.hpp"
