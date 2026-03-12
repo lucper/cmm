@@ -35,17 +35,22 @@ main_algo(const std::vector<std::string>& V, const std::vector<std::tuple<INT, I
 
     std::unordered_map<motif_pair_id, INT> edge_counts_for_rank_pair;
 
+    // TODO: After parallelization, put this inside the loop so that each thread has a vector.
+    std::vector<INT> ranks_u, ranks_v;
+
     std::sort(mask_u.begin(), mask_u.end());
     do {
         H_u.clear();
         for (int i = 0; i < ell; ++i)
             if (mask_u[i]) H_u.push_back(i);
+        index_u.map_ell_mers_to_ranks(H_u);
 
         std::sort(mask_v.begin(), mask_v.end());
         do {
             H_v.clear();
             for (int i = 0; i < ell; ++i)
                 if (mask_v[i]) H_v.push_back(i);
+            index_v.map_ell_mers_to_ranks(H_v);
 
             // Starting new motif pair count under H_u and H_v.
             edge_counts_for_rank_pair.clear();
@@ -54,15 +59,14 @@ main_algo(const std::vector<std::string>& V, const std::vector<std::tuple<INT, I
             for (int j = 0; j < total; j++) {
                 auto [u, v] = E[j];
 
+                ranks_u.clear();
+                ranks_v.clear();
+
                 INT u_len = V[u].length() - ell + 1;
-
-                std::vector<INT> ranks_u;
-                ranks_u.resize(u_len);
-
                 INT v_len = V[v].length() - ell + 1;
 
-                std::vector<INT> ranks_v;
-                ranks_v.resize(v_len);
+                if (u_len > ranks_u.capacity()) ranks_u.reserve(u_len);
+                if (v_len > ranks_v.capacity()) ranks_v.reserve(v_len);
 
                 if (j % update_every == 0 || j + 1 == total)
                     print_progress(j + 1, total);
@@ -84,9 +88,8 @@ main_algo(const std::vector<std::string>& V, const std::vector<std::tuple<INT, I
                 for (auto it_u = ranks_u.begin(); it_u != ranks_u_end; it_u++)
                     for (auto it_v = ranks_v.begin(); it_v != ranks_v_end; it_v++)
                         edge_counts_for_rank_pair[{*it_u, *it_v}]++;
-            }
 
-            // At this point, we have E for every X,Y under this combination of wildcards.
+            }
 
             for (auto& [mp_id, E] : edge_counts_for_rank_pair)
                 if (topK_motif_pairs.size() < k || E > topK_motif_pairs.top().E) {
