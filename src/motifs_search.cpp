@@ -1,5 +1,29 @@
 #include "motifs_search.hpp"
 
+static INT count_kXY(const std::vector<INT>& ranksX, const std::vector<INT>& ranksY)
+{
+    int kXY = 0, i = 0, j = 0;
+    while (i < ranksX.size() && j < ranksY.size())
+        if (ranksX[i] == ranksY[j])
+            kXY++, i++, j++;
+        else if (ranksX[i] < ranksY[j])
+            i++;
+        else
+            j++;
+    return kXY;
+}
+
+static void fill_nodes(INT j, INT len, std::vector<std::vector<INT>>& rank_to_nodes, const rank_index& index)
+{
+    std::vector<INT> ranks;
+    for (int i = 0; i < len; i++)
+        ranks.push_back(index.get_rank_of_substr(i, j));
+    std::sort(ranks.begin(), ranks.end());
+    auto end = std::unique(ranks.begin(), ranks.end());
+    for (auto it = ranks.begin(); it != end; it++)
+        rank_to_nodes[*it].push_back(j);
+}
+
 static std::string apply_mask(std::string_view motif, const std::vector<INT>& H, char wildcard = '*')
 {
     std::string masked_motif(motif);
@@ -34,6 +58,8 @@ main_algo(const std::vector<std::string>& V, const std::vector<std::tuple<INT, I
     int update_every = 1 + total / 200; // ~200 updates max
 
     std::unordered_map<motif_pair_id, INT> edge_counts_for_rank_pair;
+    std::vector<std::vector<INT>> rankX_to_nodes;
+    std::vector<std::vector<INT>> rankY_to_nodes;
 
     // TODO: After parallelization, put this inside the loop so that each thread has a vector.
     std::vector<INT> ranks_u, ranks_v;
@@ -43,18 +69,27 @@ main_algo(const std::vector<std::string>& V, const std::vector<std::tuple<INT, I
         H_u.clear();
         for (int i = 0; i < ell; ++i)
             if (mask_u[i]) H_u.push_back(i);
-        index_u.map_ell_mers_to_ranks(H_u);
+        INT max_rank_u = index_u.map_ell_mers_to_ranks(H_u);
+
+        rankX_to_nodes.resize(max_rank_u + 1);
+        for (auto &nodes : rankX_to_nodes) nodes.clear();
+        for (int j = 0; j < V.size(); j++)
+            fill_nodes(j, V[j].length() - ell + 1, rankX_to_nodes, index_u);
 
         std::sort(mask_v.begin(), mask_v.end());
         do {
             H_v.clear();
             for (int i = 0; i < ell; ++i)
                 if (mask_v[i]) H_v.push_back(i);
-            index_v.map_ell_mers_to_ranks(H_v);
+            INT max_rank_v = index_v.map_ell_mers_to_ranks(H_v);
 
-            // Starting new motif pair count under H_u and H_v.
+            rankY_to_nodes.resize(max_rank_v + 1);
+            for (auto &nodes : rankY_to_nodes) nodes.clear();
+            for (int j = 0; j < V.size(); j++)
+                fill_nodes(j, V[j].length() - ell + 1, rankY_to_nodes, index_v);
+
+            // Starting new motif pair count for edges under H_u and H_v.
             edge_counts_for_rank_pair.clear();
-
             // TODO: Parallelize here.
             for (int j = 0; j < total; j++) {
                 auto [u, v] = E[j];
@@ -91,14 +126,17 @@ main_algo(const std::vector<std::string>& V, const std::vector<std::tuple<INT, I
 
             }
 
-            for (auto& [mp_id, E] : edge_counts_for_rank_pair)
+            // TODO: Still returning just the edge count.
+            for (auto& [mp_id, E] : edge_counts_for_rank_pair) {
+                INT kXY = count_kXY(rankX_to_nodes[mp_id.rankX], rankY_to_nodes[mp_id.rankY]);
                 if (topK_motif_pairs.size() < k || E > topK_motif_pairs.top().E) {
                     std::string X = apply_mask(index_u.get_substr_with_rank(mp_id.rankX), H_u);
                     std::string Y = apply_mask(index_v.get_substr_with_rank(mp_id.rankY), H_v);
                     if (topK_motif_pairs.size() >= k)
                         topK_motif_pairs.pop();
-                    topK_motif_pairs.push({mp_id, X, Y, E, 0, 0, 0});
+                    topK_motif_pairs.push({mp_id, X, Y, E, 0, 0, kXY});
                 }
+            }
         } while (std::next_permutation(mask_v.begin(), mask_v.end()));
     } while (std::next_permutation(mask_u.begin(), mask_u.end()));
 
