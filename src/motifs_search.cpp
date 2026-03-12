@@ -33,10 +33,6 @@ main_algo(const std::vector<std::string>& V, const std::vector<std::tuple<INT, I
     int total = E.size();
     int update_every = 1 + total / 200; // ~200 updates max
 
-    sdsl::bit_vector ranks_u, ranks_v;
-    // TODO: Allocate max size = max length of string in U \cup V?
-    std::vector<INT> unique_ranks_u, unique_ranks_v;
-
     std::unordered_map<motif_pair_id, INT> edge_counts_for_rank_pair;
 
     // TODO: After parallelization, put this inside the loop so that each thread has a vector.
@@ -75,26 +71,23 @@ main_algo(const std::vector<std::string>& V, const std::vector<std::tuple<INT, I
                 if (j % update_every == 0 || j + 1 == total)
                     print_progress(j + 1, total);
 
-                for (int i = 0; i < V[u].length() - ell + 1; i++) {
+                for (int i = 0; i < u_len; i++) {
                     INT r = index_u.get_rank_of_substr(i, u);
-                    if (ranks_u[r] == 0) {
-                        ranks_u[r] = 1;
-                        unique_ranks_u.push_back(r);
-                    }
+                    ranks_u.push_back(r);
                 }
+                std::sort(ranks_u.begin(), ranks_u.end());
+                auto ranks_u_end = std::unique(ranks_u.begin(), ranks_u.end());
 
-                for (int i = 0; i < V[v].length() - ell + 1; i++) {
+                for (int i = 0; i < v_len; i++) {
                     INT r = index_v.get_rank_of_substr(i, v);
-                    if (ranks_v[r] == 0) {
-                        ranks_v[r] = 1;
-                        unique_ranks_v.push_back(r);
-                    }
+                    ranks_v.push_back(r);
                 }
+                std::sort(ranks_v.begin(), ranks_v.end());
+                auto ranks_v_end = std::unique(ranks_v.begin(), ranks_v.end());
 
                 for (auto it_u = ranks_u.begin(); it_u != ranks_u_end; it_u++)
                     for (auto it_v = ranks_v.begin(); it_v != ranks_v_end; it_v++)
                         edge_counts_for_rank_pair[{*it_u, *it_v}]++;
-
             }
 
             for (auto& [mp_id, E] : edge_counts_for_rank_pair)
