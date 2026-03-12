@@ -94,13 +94,15 @@ main_algo(const std::vector<std::string>& V, const std::vector<std::tuple<INT, I
                 unique_ranks_v.clear();
             }
 
-            for (auto& [mp_id, count] : edge_counts_for_rank_pair)
-                if (topK_motif_pairs.size() < k || count > topK_motif_pairs.top().count) {
-                    std::string s1 = apply_mask(index_u.get_substr_with_rank(mp_id.r1), H_u);
-                    std::string s2 = apply_mask(index_v.get_substr_with_rank(mp_id.r2), H_v);
+            // At this point, we have E for every X,Y under this combination of wildcards.
+
+            for (auto& [mp_id, E] : edge_counts_for_rank_pair)
+                if (topK_motif_pairs.size() < k || E > topK_motif_pairs.top().E) {
+                    std::string X = apply_mask(index_u.get_substr_with_rank(mp_id.rankX), H_u);
+                    std::string Y = apply_mask(index_v.get_substr_with_rank(mp_id.rankY), H_v);
                     if (topK_motif_pairs.size() >= k)
                         topK_motif_pairs.pop();
-                    topK_motif_pairs.push({mp_id, count, s1, s2});
+                    topK_motif_pairs.push({mp_id, E, X, Y});
                 }
         } while (std::next_permutation(mask_v.begin(), mask_v.end()));
     } while (std::next_permutation(mask_u.begin(), mask_u.end()));
