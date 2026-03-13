@@ -40,12 +40,11 @@ rank_index::rank_index(const std::vector<std::string>& seqs, INT ell)
     // Concatenate the strings with SEP symbols.
     build_concat_seq(seqs);
 
-    // Build bitvector with SEP positions and rank/select structures.
-    concat_seq_separators = sdsl::bit_vector(concat_seq_len, 0);
-    for (int i = 0; i < concat_seq_len; i++)
-        if (concat_seq[i] == SEP) concat_seq_separators[i] = 1;
-    sdsl::util::init_support(rank, &concat_seq_separators);
-    sdsl::util::init_support(select, &concat_seq_separators);
+    // Store offsets of each individual string in the concatenated string.
+    seq_offset.reserve(seqs.size() + 1); // Add 1 for pos of empty string after last string.
+    seq_offset.push_back(0);
+    for (int i = 1; i < seqs.size() + 1; i++)
+        seq_offset.push_back(seq_offset[i-1] + seqs[i-1].length() + 1);
 
     SA = (INT *) malloc(concat_seq_len * sizeof(INT));
     if (!SA) {
@@ -84,9 +83,13 @@ rank_index::rank_index(const std::vector<std::string>& seqs, INT ell)
     rank_to_sa.resize(concat_seq_len);
 
     // Get suffixes whose prefixes have >= ell characters without SEP.
-    for (int i = 0; i < concat_seq_len; i++)
-        if (is_valid_suffix(SA[i]))
+    for (int i = 0; i < concat_seq_len; i++) {
+        // Binary search string of suffix SA[i].
+        auto it = std::upper_bound(seq_offset.begin(), seq_offset.end(), SA[i]);
+        INT k = std::distance(seq_offset.begin(), it) - 1;
+        if (SA[i] + ell < seq_offset[k + 1])
             activeSA.push_back(SA[i]);
+    }
 
     // Allocate buffers for counting sort and refinement.
     activeSA_buffer.resize(activeSA.size());
@@ -122,9 +125,9 @@ void rank_index::build_concat_seq(const std::vector<std::string>& seqs)
 
 INT rank_index::get_rank_of_substr(INT i, INT k) const
 {
-    INT suff_of_concat_seq =  (k == 0 ? 0 : select(k) + 1) + i;
-    if (!is_valid_suffix(suff_of_concat_seq)) {
-        std::fprintf(stderr, "Tried to access an substring in invalid suffix.\n");
+    INT suff_of_concat_seq = seq_offset[k] + i;
+    if (suff_of_concat_seq + ell >= seq_offset[k + 1]) { // ell-mer covers a SEP symbol.
+        std::fprintf(stderr, "Tried to access a substring in invalid suffix.\n");
         exit(EXIT_FAILURE);
     }
     return main_rank_buffer[suff_of_concat_seq];
@@ -192,11 +195,6 @@ void rank_index::build_LCP()
                 j++;
             LCP[ISA[i]] = j;
         }
-}
-
-bool rank_index::is_valid_suffix(INT i) const
-{
-    return i <= concat_seq_len - ell && rank(i) == rank(i + ell);
 }
 
 INT rank_index::assign_ranks(std::vector<INT>& rank_buffer, INT frag_len, INT offset)
