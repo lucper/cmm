@@ -11,14 +11,14 @@
 #include "preprocessing.hpp"
 
 struct motif_pair_id {
-    INT r1, r2;
+    INT rankX, rankY;
 
     bool operator<(const motif_pair_id& other) const {
-        return std::tie(r1, r2) < std::tie(other.r1, other.r2);
+        return std::tie(rankX, rankY) < std::tie(other.rankX, other.rankY);
     }
 
     bool operator==(const motif_pair_id& other) const {
-        return r1 == other.r1 && r2 == other.r2;
+        return rankX == other.rankX && rankY == other.rankY;
     }
 
 };
@@ -29,20 +29,20 @@ struct std::hash<motif_pair_id>
 {
     std::size_t operator()(const motif_pair_id &f) const
     {
-        size_t seed = std::hash<INT>{}(f.r1);
-        seed ^= std::hash<INT>{}(f.r2) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+        size_t seed = std::hash<INT>{}(f.rankX);
+        seed ^= std::hash<INT>{}(f.rankY) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
         return seed;
     }
 };
 
 struct motif_pair_record {
     motif_pair_id ranks;
-    INT count;
-    std::string s1, s2;
+    INT edge_count;
+    std::string X, Y;
 
     // For min-heap.
     bool operator>(const motif_pair_record& other) const {
-        return count > other.count;
+        return edge_count > other.edge_count;
     }
 };
 

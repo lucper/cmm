@@ -90,13 +90,13 @@ main_algo(const std::vector<std::string>& V, const std::vector<std::tuple<INT, I
                         edge_counts_for_rank_pair[{*it_u, *it_v}]++;
             }
 
-            for (auto& [mp_id, E] : edge_counts_for_rank_pair)
-                if (topK_motif_pairs.size() < k || E > topK_motif_pairs.top().E) {
+            for (auto& [mp_id, edge_count] : edge_counts_for_rank_pair)
+                if (topK_motif_pairs.size() < k || edge_count > topK_motif_pairs.top().edge_count) {
                     std::string X = apply_mask(index_u.get_substr_with_rank(mp_id.rankX), H_u);
                     std::string Y = apply_mask(index_v.get_substr_with_rank(mp_id.rankY), H_v);
                     if (topK_motif_pairs.size() >= k)
                         topK_motif_pairs.pop();
-                    topK_motif_pairs.push({mp_id, count, s1, s2});
+                    topK_motif_pairs.push({mp_id, edge_count, X, Y});
                 }
         } while (std::next_permutation(mask_v.begin(), mask_v.end()));
     } while (std::next_permutation(mask_u.begin(), mask_u.end()));
