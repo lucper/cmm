@@ -64,7 +64,7 @@ void run_all_tests()
         auto motifs = main_algo(V, E, 3, 1, 1);
         auto [mp_id, count, m1, m2] = motifs[0];
 
-        suite.assert_solution("AAA-ABA;AAA-ACA (ell = 3; d = 1)", m1, m2, count, "*AA", "A*A", 2);
+        suite.assert_solution("CAA-ABA;DAA-ACA (ell = 3; d = 1)", m1, m2, count, "*AA", "A*A", 2);
     }
     
 

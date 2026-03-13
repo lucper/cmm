@@ -49,9 +49,7 @@ public:
 private:
     unsigned char *concat_seq;
     INT concat_seq_len;
-    sdsl::bit_vector concat_seq_separators;
-    sdsl::rank_support_v5<> rank;
-    sdsl::select_support_mcl<> select;
+    std::vector<INT> seq_offset;
 
     INT ell;
     INT max_rank;
