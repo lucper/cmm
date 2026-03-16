@@ -7,7 +7,6 @@
 #include <queue>
 #include <algorithm>
 #include "utils.hpp"
-#include "defs.hpp"
 #include "preprocessing.hpp"
 #include "esa.hpp"
 

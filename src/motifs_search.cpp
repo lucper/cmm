@@ -18,8 +18,8 @@ main_algo(const std::vector<std::string>& V, const std::vector<std::tuple<INT, I
     std::priority_queue<motif_pair_record, std::vector<motif_pair_record>, std::greater<motif_pair_record>> topK_motif_pairs;
 
     esa_t ESA(V);
-    rank_index index_u(ell, ESA);
-    rank_index index_v(ell, ESA);
+    rank_table_t index_u(ell, ESA);
+    rank_table_t index_v(ell, ESA);
 
     std::vector<INT> H_u(d);
     // 0 for character positions, 1 for wildcard positions.
@@ -44,14 +44,14 @@ main_algo(const std::vector<std::string>& V, const std::vector<std::tuple<INT, I
         H_u.clear();
         for (int i = 0; i < ell; ++i)
             if (mask_u[i]) H_u.push_back(i);
-        index_u.map_ell_mers_to_ranks(H_u);
+        index_u.sort_by_prefix(H_u);
 
         std::sort(mask_v.begin(), mask_v.end());
         do {
             H_v.clear();
             for (int i = 0; i < ell; ++i)
                 if (mask_v[i]) H_v.push_back(i);
-            index_v.map_ell_mers_to_ranks(H_v);
+            index_v.sort_by_prefix(H_v);
 
             // Starting new motif pair count under H_u and H_v.
             edge_counts_for_rank_pair.clear();
