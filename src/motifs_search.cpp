@@ -17,8 +17,9 @@ main_algo(const std::vector<std::string>& V, const std::vector<std::tuple<INT, I
 
     std::priority_queue<motif_pair_record, std::vector<motif_pair_record>, std::greater<motif_pair_record>> topK_motif_pairs;
 
-    rank_index index_u(V, ell);
-    rank_index index_v(V, ell);
+    esa_t ESA(V);
+    rank_index index_u(ell, ESA);
+    rank_index index_v(ell, ESA);
 
     std::vector<INT> H_u(d);
     // 0 for character positions, 1 for wildcard positions.
