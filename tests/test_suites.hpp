@@ -70,10 +70,19 @@ void run_all_tests()
     {
         std::vector<std::string> V = {"QCAA", "RABA", "TDAA", "PACA"};
         std::vector<std::tuple<INT, INT>> E = {{0,1}, {2,3}};
-        auto motifs = main_algo(V, E, 4, 2, 5);
+        auto motifs = main_algo(V, E, 4, 2, 1);
         auto [mp_id, count, m1, m2] = motifs[0];
 
         suite.assert_solution("QCAA-RABA;TDAA-PACA (ell = 4; d = 2)", m1, m2, count, "**AA", "*A*A", 2);
+    }
+
+    {
+        std::vector<std::string> V = {"QCAAR", "RABAZ", "TDAAY", "PACAX"};
+        std::vector<std::tuple<INT, INT>> E = {{0,1}, {2,3}};
+        auto motifs = main_algo(V, E, 5, 3, 1);
+        auto [mp_id, count, m1, m2] = motifs[0];
+
+        suite.assert_solution("QCAAR-RABAZ;TDAAY-PACAX (ell = 5; d = 3)", m1, m2, count, "**AA*", "*A*A*", 2);
     }
     
 
