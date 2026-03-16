@@ -24,11 +24,6 @@ void rank_index::show() const
     for (int i = 0; i < concat_seq_len; i++)
         std::cout << R2[i] << " ";
     std::cout << "\n";
-
-//    std::cout << "IR1: " << "\n";
-//    for (int i = 0; i < concat_seq_len; i++)
-//        std::cout << IR1[i] << " ";
-//    std::cout << "\n";
 }
 
 rank_index::rank_index(const std::vector<std::string>& seqs, INT ell)
@@ -77,6 +72,7 @@ rank_index::rank_index(const std::vector<std::string>& seqs, INT ell)
     R2.resize(concat_seq_len);
     R3.resize(concat_seq_len);
     IR1.resize(concat_seq_len);
+    count_buffer.resize(concat_seq_len);
 
     // Get suffixes whose prefixes have >= ell characters without SEP.
     for (int i = 0; i < concat_seq_len; i++) {
@@ -88,7 +84,6 @@ rank_index::rank_index(const std::vector<std::string>& seqs, INT ell)
     }
 
     sSA_buffer.resize(sSA.size());
-    count_buffer.resize(concat_seq_len);
 }
 
 rank_index::~rank_index()
@@ -104,7 +99,7 @@ void rank_index::build_concat_seq(const std::vector<std::string>& seqs)
     for (const auto& seq : seqs)
         concat_seq_len += seq.length() + 1;
 
-    concat_seq = (unsigned char *) malloc(concat_seq_len * sizeof(unsigned char));
+    concat_seq = (unsigned char *) malloc((concat_seq_len + 1) * sizeof(unsigned char));
     if (!concat_seq) {
         std::fprintf(stderr, "Could not allocate memory for concatenated string.\n");
         exit(EXIT_FAILURE);
@@ -116,6 +111,7 @@ void rank_index::build_concat_seq(const std::vector<std::string>& seqs)
         offset += seq.length();
         concat_seq[offset++] = SEP;
     }
+    concat_seq[offset] = '\0';
 }
 
 INT rank_index::get_rank_of_substr(INT i, INT k) const
@@ -163,15 +159,6 @@ INT rank_index::map_ell_mers_to_ranks(const std::vector<INT>& H)
         radix_pass_over_sSA(max_rank_R2, R2, h_start);     // sort sSA using R2[sSA[i] + h_start] as key
         radix_pass_over_sSA(max_rank_R1, R1, 0);           // sort sSA using R1[sSA[i] + 0] as key
 
-        // TODO: If we use LCE queries, R3 may not be needed. I'm using this buffer
-        // because the loop needs to access previous values of R1 and R2, so I cannot
-        // overwrite them here.
-        //
-        // LCE query logic:
-        // if   LCE(sSA[i], sSA[i-1]) < h_start - 1 ||
-        //      LCE(sSA[i]+h_start, sSA[i-1]+h_start) < h_len
-        // then increment the rank
-        // R1[sSA[i]] = rank
         INT max_rank_R3 = 0;
         R3[sSA[0]] = 0;
         for (int i = 1; i < sSA.size(); i++)
@@ -180,26 +167,6 @@ INT rank_index::map_ell_mers_to_ranks(const std::vector<INT>& H)
         max_rank_R1 = max_rank_R3;
         std::swap(R1, R3);
     }
-
-    // TODO: It seems LCE queries are not needed afterward for ranks assignments
-    // since R1 already holds the ranks of ell-length prefixes with wildcards.
-    //
-    // rank = 0
-    // assign rank to SA[0]
-    // for (int i = 1; i < concat_seq_len; i++) {
-        // d + 1 LCE queries between sSA[i] and sSA[i-1]:
-        //
-        // for (int d = 0; d < H.size(); i++) { // d queries, what if H empty
-        //     int h_start = H[d] + 1;
-        //     int h_end = d + 1 < H.size() ? H[d + 1] : ell;
-        //     int h_len = h_end - h_start;
-        //     if (LCE(i + d, i - 1 + d) < h_len) {
-        //         increment rank;
-        //         break
-        //     }
-        // }
-        // assign rank to SA[i]
-    // }
 
     // Note that two suffixes sSA[i] and sSA[j] may have the same rank K in R1.
     // So IR1[K] would be set twice.
@@ -230,6 +197,6 @@ void rank_index::radix_pass_over_sSA(INT max_rank, const std::vector<INT>& key, 
     for (int i = 0; i < sSA.size(); i++) count_buffer[key[sSA[i] + offset]]++;
     for (int i = 1; i < max_rank + 1; i++) count_buffer[i] += count_buffer[i - 1];
     for (int i = sSA.size() - 1; i >= 0; i--)
-        sSA_buffer[--count_buffer[key[sSA[i] + offset]]] = sSA[i]; // TODO: verify
+        sSA_buffer[--count_buffer[key[sSA[i] + offset]]] = sSA[i];
     sSA = sSA_buffer;
 }
