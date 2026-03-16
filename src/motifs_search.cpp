@@ -13,7 +13,7 @@ static INT count_kXY(const std::vector<INT>& ranksX, const std::vector<INT>& ran
     return kXY;
 }
 
-static void fill_nodes(INT j, INT len, std::vector<std::vector<INT>>& rank_to_nodes, const rank_index& index)
+static void fill_nodes(INT j, INT len, std::vector<std::vector<INT>>& rank_to_nodes, const rank_table_t& index)
 {
     std::vector<INT> ranks;
     for (int i = 0; i < len; i++)
@@ -71,9 +71,6 @@ main_algo(const std::vector<std::string>& V, const std::vector<std::tuple<INT, I
     std::vector<std::vector<INT>> rankX_to_nodes;
     std::vector<std::vector<INT>> rankY_to_nodes;
 
-    // TODO: After parallelization, put this inside the loop so that each thread has a vector.
-    std::vector<INT> ranks_u, ranks_v;
-
     auto all_H = all_H_combinations(ell, d);
 
     // TODO: After parallelization, put this inside the loop so that each thread has a vector.
@@ -82,7 +79,7 @@ main_algo(const std::vector<std::string>& V, const std::vector<std::tuple<INT, I
     for (int i = 0; i < all_H.size(); i++) {
         index_u.sort_by_prefix(all_H[i]);
         for (int j = 0; j < all_H.size(); j++) {
-            index_v.sort_by_prefix(all_H[j]);
+            INT max_rank_v = index_v.sort_by_prefix(all_H[j]);
 
             rankY_to_nodes.resize(max_rank_v + 1);
             for (auto &nodes : rankY_to_nodes) nodes.clear();
@@ -132,7 +129,7 @@ main_algo(const std::vector<std::string>& V, const std::vector<std::tuple<INT, I
                     std::string Y = apply_mask(index_v.get_substr_with_rank(mp_id.rankY), all_H[j]);
                     if (topK_motif_pairs.size() >= k)
                         topK_motif_pairs.pop();
-                    topK_motif_pairs.push({mp_id, edge_count, X, Y});
+                    topK_motif_pairs.push({mp_id, X, Y, edge_count, 0, 0, 0});
                 }
         }
     }
