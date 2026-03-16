@@ -1,8 +1,6 @@
 #ifndef H_ESA
 #define H_ESA
 
-#include "defs.hpp"
-
 #ifdef _USE_32
 #define INT int32_t
 #include <libsais.h>
@@ -12,6 +10,8 @@
 #define INT int64_t
 #include <libsais64.h>
 #endif
+
+#include <cstring>
 
 #define SEP '$'
 
