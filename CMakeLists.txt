@@ -20,20 +20,14 @@ FetchContent_Declare(
     GIT_TAG master
 )
 
-FetchContent_Declare(
-    sdsl
-    GIT_REPOSITORY https://github.com/vgteam/sdsl-lite.git
-    GIT_TAG master
-)
-
-FetchContent_MakeAvailable(libsais sdsl)
+FetchContent_MakeAvailable(libsais)
 
 add_library(bpm_core
     src/motifs_search.cpp
     src/preprocessing.cpp
     src/data_import.cpp
 )
-target_link_libraries(bpm_core PUBLIC libsais sdsl)
+target_link_libraries(bpm_core PUBLIC libsais)
 target_compile_options(bpm_core PRIVATE -g -fno-omit-frame-pointer) # profiling
 
 add_executable(bpm src/main.cpp)
