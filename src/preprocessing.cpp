@@ -1,7 +1,7 @@
 #include "preprocessing.hpp"
 #include "utils.hpp"
 
-rank_index::rank_index(INT ell, const esa_t& ESA)
+rank_table_t::rank_table_t(INT ell, const esa_t& ESA)
     : ell(ell), N(ESA.N), S(ESA.S), S_offset(ESA.S_offset), SA(ESA.SA), LCP(ESA.LCP)
 {
     R1.resize(N);
@@ -22,7 +22,7 @@ rank_index::rank_index(INT ell, const esa_t& ESA)
     sSA_buffer.resize(sSA.size());
 }
 
-INT rank_index::get_rank_of_substr(INT i, INT k) const
+INT rank_table_t::get_rank_of_substr(INT i, INT k) const
 {
     INT suff = S_offset[k] + i;
     if (suff + ell >= S_offset[k + 1]) { // ell-mer covers a SEP symbol.
@@ -32,7 +32,7 @@ INT rank_index::get_rank_of_substr(INT i, INT k) const
     return R1[suff];
 }
 
-std::string_view rank_index::get_substr_with_rank(INT r) const
+std::string_view rank_table_t::get_substr_with_rank(INT r) const
 {
     if (r < 0 || r > max_rank_R1)
         throw std::out_of_range("Invalid rank access: Rank " + std::to_string(r) +
@@ -40,7 +40,7 @@ std::string_view rank_index::get_substr_with_rank(INT r) const
     return std::string_view((const char *) S + IR1[r], ell);
 }
 
-INT rank_index::map_ell_mers_to_ranks(const std::vector<INT>& H)
+INT rank_table_t::sort_by_prefix(const std::vector<INT>& H)
 {
     // TODO: Check H positions are in [ell].
 
@@ -84,7 +84,7 @@ INT rank_index::map_ell_mers_to_ranks(const std::vector<INT>& H)
     return max_rank_R1;
 }
 
-void rank_index::radix_pass_over_sSA(INT max_rank, const std::vector<INT>& key, INT offset)
+void rank_table_t::radix_pass_over_sSA(INT max_rank, const std::vector<INT>& key, INT offset)
 {
     std::fill(count_buffer.begin(), count_buffer.begin() + max_rank + 1, 0);
     for (int i = 0; i < sSA.size(); i++) count_buffer[key[sSA[i] + offset]]++;

@@ -5,13 +5,12 @@
 #include <cstring>
 #include <vector>
 #include <algorithm>
-#include "defs.hpp"
 #include "utils.hpp"
 #include "esa.hpp"
 
-class rank_index {
+class rank_table_t {
 public:
-    rank_index(INT ell, const esa_t& ESA);
+    rank_table_t(INT ell, const esa_t& ESA);
 
     /* Assigns ranks to suffixes whose prefixes have length >= ell and wildcards in positions
      * H within the ell-length prefix. The ranks are assigned according to the lexicographical
@@ -23,7 +22,7 @@ public:
      *
      * Output:
      * INT value of maximum rank. */
-    INT map_ell_mers_to_ranks(const std::vector<INT>& H);
+    INT sort_by_prefix(const std::vector<INT>& H);
 
 
     /* Returns a pointer to a substring with rank r. Note that the ranks can change if one runs
