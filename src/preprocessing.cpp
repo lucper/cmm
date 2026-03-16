@@ -1,73 +1,9 @@
 #include "preprocessing.hpp"
 #include "utils.hpp"
 
-void rank_index::show() const
+rank_index::rank_index(INT ell, const esa_t& ESA)
+    : ell(ell), N(ESA.N), S(ESA.S), S_offset(ESA.S_offset), SA(ESA.SA), LCP(ESA.LCP)
 {
-    std::cout << concat_seq << "\n";
-
-    std::cout << "SA: " << "\n";
-    for (int i = 0; i < N; i++)
-        std::cout << SA[i] << " ";
-    std::cout << "\n";
-
-    std::cout << "sSA: " << "\n";
-    for (int i = 0; i < sSA.size(); i++)
-        std::cout << sSA[i] << " ";
-    std::cout << "\n";
-
-    std::cout << "R1: " << "\n";
-    for (int i = 0; i < N; i++)
-        std::cout << R1[i] << " ";
-    std::cout << "\n";
-
-    std::cout << "R2: " << "\n";
-    for (int i = 0; i < N; i++)
-        std::cout << R2[i] << " ";
-    std::cout << "\n";
-}
-
-rank_index::rank_index(const std::vector<std::string>& seqs, INT ell)
-{
-    this->ell = ell;
-
-    build_concat_seq(seqs);
-
-    // Store offsets of each individual string in the concatenated string.
-    seq_offset.reserve(seqs.size() + 1); // Add 1 for pos of empty string after last string.
-    seq_offset.push_back(0);
-    for (int i = 1; i < seqs.size() + 1; i++)
-        seq_offset.push_back(seq_offset[i-1] + seqs[i-1].length() + 1);
-
-    SA = (INT *) malloc(N * sizeof(INT));
-    if (!SA) {
-        std::fprintf(stderr, "Could not allocate memory for suffix array.\n");
-        exit(EXIT_FAILURE);
-    }
-#ifdef _USE_64
-    if (libsais64(concat_seq, SA, N, 0, NULL) != 0) {
-        std::fprintf(stderr, "Could not construct suffix array.\n");
-        exit(EXIT_FAILURE);
-    }
-#endif
-#ifdef _USE_32
-    if (libsais(concat_seq, SA, N, 0, NULL) != 0) {
-        std::fprintf(stderr, "Could not construct suffix array.\n");
-        exit(EXIT_FAILURE);
-    }
-#endif
-
-    ISA = (INT *) malloc(N * sizeof(INT));
-    if (!ISA) {
-        std::fprintf(stderr, "Could not construct suffix array.\n");
-        exit(EXIT_FAILURE);
-    }
-    for (int i = 0; i < N; i++)
-        ISA[SA[i]] = i;
-
-    LCP = (INT *) malloc(N * sizeof(INT));
-    build_LCP();
-    free(ISA);
-
     R1.resize(N);
     R2.resize(N);
     R3.resize(N);
@@ -77,47 +13,19 @@ rank_index::rank_index(const std::vector<std::string>& seqs, INT ell)
     // Get suffixes whose prefixes have >= ell characters without SEP.
     for (int i = 0; i < N; i++) {
         // Binary search string of suffix SA[i].
-        auto it = std::upper_bound(seq_offset.begin(), seq_offset.end(), SA[i]);
-        INT k = std::distance(seq_offset.begin(), it) - 1;
-        if (SA[i] + ell < seq_offset[k + 1])
+        auto it = std::upper_bound(S_offset.begin(), S_offset.end(), SA[i]);
+        INT k = std::distance(S_offset.begin(), it) - 1;
+        if (SA[i] + ell < S_offset[k + 1])
             sSA.push_back(SA[i]);
     }
 
     sSA_buffer.resize(sSA.size());
 }
 
-rank_index::~rank_index()
-{
-    free(concat_seq);
-    free(SA);
-    free(LCP);
-}
-
-void rank_index::build_concat_seq(const std::vector<std::string>& seqs)
-{
-    N = 0;
-    for (const auto& seq : seqs)
-        N += seq.length() + 1;
-
-    concat_seq = (unsigned char *) malloc((N + 1) * sizeof(unsigned char));
-    if (!concat_seq) {
-        std::fprintf(stderr, "Could not allocate memory for concatenated string.\n");
-        exit(EXIT_FAILURE);
-    }
-
-    INT offset = 0;
-    for (const auto& seq: seqs) {
-        memcpy(concat_seq + offset, seq.data(), seq.length());
-        offset += seq.length();
-        concat_seq[offset++] = SEP;
-    }
-    concat_seq[offset] = '\0';
-}
-
 INT rank_index::get_rank_of_substr(INT i, INT k) const
 {
-    INT suff = seq_offset[k] + i;
-    if (suff + ell >= seq_offset[k + 1]) { // ell-mer covers a SEP symbol.
+    INT suff = S_offset[k] + i;
+    if (suff + ell >= S_offset[k + 1]) { // ell-mer covers a SEP symbol.
         std::fprintf(stderr, "Tried to access a substring in invalid suffix.\n");
         exit(EXIT_FAILURE);
     }
@@ -129,7 +37,7 @@ std::string_view rank_index::get_substr_with_rank(INT r) const
     if (r < 0 || r > max_rank_R1)
         throw std::out_of_range("Invalid rank access: Rank " + std::to_string(r) +
                                 " is outside current valid range [0, " + std::to_string(max_rank_R1) + "].");
-    return std::string_view((const char *) concat_seq + IR1[r], ell);
+    return std::string_view((const char *) S + IR1[r], ell);
 }
 
 INT rank_index::map_ell_mers_to_ranks(const std::vector<INT>& H)
@@ -174,21 +82,6 @@ INT rank_index::map_ell_mers_to_ranks(const std::vector<INT>& H)
         IR1[R1[sSA[i]]] = sSA[i];
 
     return max_rank_R1;
-}
-
-void rank_index::build_LCP()
-{
-    int i = 0, j = 0;
-
-    LCP[0] = 0;
-    for (i = 0; i < N; i++)
-        if (ISA[i] != 0) {
-            if (i == 0) j = 0;
-            else j = (LCP[ISA[i - 1]] >= 2) ? LCP[ISA[i - 1]] - 1 : 0;
-            while (concat_seq[i + j] == concat_seq[SA[ISA[i] - 1] + j])
-                j++;
-            LCP[ISA[i]] = j;
-        }
 }
 
 void rank_index::radix_pass_over_sSA(INT max_rank, const std::vector<INT>& key, INT offset)

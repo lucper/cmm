@@ -7,11 +7,11 @@
 #include <algorithm>
 #include "defs.hpp"
 #include "utils.hpp"
+#include "esa.hpp"
 
 class rank_index {
 public:
-    rank_index(const std::vector<std::string>& seqs, INT ell);
-    ~rank_index();
+    rank_index(INT ell, const esa_t& ESA);
 
     /* Assigns ranks to suffixes whose prefixes have length >= ell and wildcards in positions
      * H within the ell-length prefix. The ranks are assigned according to the lexicographical
@@ -24,6 +24,7 @@ public:
      * Output:
      * INT value of maximum rank. */
     INT map_ell_mers_to_ranks(const std::vector<INT>& H);
+
 
     /* Returns a pointer to a substring with rank r. Note that the ranks can change if one runs
      * map_ell_mers_to_ranks multiple times.
@@ -46,16 +47,15 @@ public:
     void show() const;
 
 private:
-    unsigned char *concat_seq;
+    const unsigned char *S;
+    const std::vector<INT>& S_offset;
+    const INT *SA;
+    const INT *LCP;
     INT N;
-    std::vector<INT> seq_offset;
 
     INT ell;
     INT max_rank_R1;
 
-    INT *SA;
-    INT *ISA;
-    INT *LCP;
     std::vector<INT> sSA;
 
     // Buffers.
@@ -66,9 +66,6 @@ private:
     std::vector<INT> sSA_buffer;
     std::vector<INT> count_buffer;
 
-    // Helper methods.
-    void build_LCP();
-    void build_concat_seq(const std::vector<std::string>& seqs);
     void radix_pass_over_sSA(INT max_rank, const std::vector<INT>& rank_buffer, INT offset);
 };
 
