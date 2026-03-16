@@ -7,7 +7,7 @@
 #include <queue>
 #include <algorithm>
 #include "utils.hpp"
-#include "preprocessing.hpp"
+#include "rank_table.hpp"
 #include "esa.hpp"
 
 struct motif_pair_id {

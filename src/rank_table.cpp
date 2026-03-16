@@ -1,5 +1,4 @@
-#include "preprocessing.hpp"
-#include "utils.hpp"
+#include "rank_table.hpp"
 
 rank_table_t::rank_table_t(INT ell, const esa_t& ESA)
     : ell(ell), N(ESA.N), S(ESA.S), S_offset(ESA.S_offset), SA(ESA.SA), LCP(ESA.LCP)

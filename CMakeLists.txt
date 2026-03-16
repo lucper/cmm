@@ -24,7 +24,7 @@ FetchContent_MakeAvailable(libsais)
 
 add_library(bpm_core
     src/motifs_search.cpp
-    src/preprocessing.cpp
+    src/rank_table.cpp
     src/data_import.cpp
 )
 target_link_libraries(bpm_core PUBLIC libsais)
