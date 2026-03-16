@@ -2,10 +2,9 @@
 #define H_PREPROC
 
 #include <cstdlib>
+#include <cstring>
 #include <vector>
 #include <algorithm>
-#include <sdsl/rmq_support.hpp>
-#include <sdsl/int_vector.hpp>
 #include "defs.hpp"
 #include "utils.hpp"
 
@@ -52,30 +51,25 @@ private:
     std::vector<INT> seq_offset;
 
     INT ell;
-    INT max_rank;
+    INT max_rank_R1;
 
     INT *SA;
     INT *ISA;
-    // TODO: Replace int_vector with INT*; need to check conversion and compatibility.
-    sdsl::int_vector<> LCP;
-    // TODO: Replace rmq with lce that uses string synchronizing sets.
-    sdsl::rmq_support_sparse_table<> rmq;
-    std::vector<INT> activeSA;
-    // Inverse of main_rank_buffer for fast substr retrieval.
-    std::vector<INT> rank_to_sa;
+    INT *LCP;
+    std::vector<INT> sSA;
 
     // Buffers.
-    std::vector<INT> main_rank_buffer;
-    std::vector<INT> secondary_rank_buffer;
-    std::vector<INT> activeSA_buffer;
+    std::vector<INT> R1;
+    std::vector<INT> IR1; // inverse of R1 for fast substr retrieval
+    std::vector<INT> R2;
+    std::vector<INT> R3;
+    std::vector<INT> sSA_buffer;
     std::vector<INT> count_buffer;
 
     // Helper methods.
     void build_LCP();
     void build_concat_seq(const std::vector<std::string>& seqs);
-    bool is_valid_suffix(INT i) const;
-    INT assign_ranks(std::vector<INT>& rank_buffer, INT frag_len, INT offset);
-    void radix_pass_over_activeSA(INT max_val, const std::vector<INT>& rank_buffer);
+    void radix_pass_over_sSA(INT max_rank, const std::vector<INT>& rank_buffer, INT offset);
 };
 
 #endif
