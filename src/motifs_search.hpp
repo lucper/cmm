@@ -7,8 +7,8 @@
 #include <queue>
 #include <algorithm>
 #include "utils.hpp"
-#include "defs.hpp"
-#include "preprocessing.hpp"
+#include "rank_table.hpp"
+#include "esa.hpp"
 
 struct motif_pair_id {
     INT rankX, rankY;
@@ -38,11 +38,11 @@ struct std::hash<motif_pair_id>
 struct motif_pair_record {
     motif_pair_id ranks;
     std::string X, Y;
-    INT E, kX, kY, kXY;
+    INT edge_count, kX, kY, kXY;
 
     // For min-heap.
     bool operator>(const motif_pair_record& other) const {
-        return E > other.E;
+        return edge_count > other.edge_count;
     }
 };
 

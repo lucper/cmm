@@ -33,6 +33,25 @@ static std::string apply_mask(std::string_view motif, const std::vector<INT>& H,
     return masked_motif;
 }
 
+static std::vector<std::vector<INT>> all_H_combinations(INT ell, INT d)
+{
+    if (d == 0) return {{}};
+
+    std::vector<std::vector<INT>> all_H;
+    std::vector<INT> mask(ell, 0);
+    std::fill(mask.end() - d, mask.end(), 1); // start with the lexicographically first
+
+    do {
+        std::vector<INT> H;
+        for (int i = 0; i < ell; i++) {
+            if (mask[i]) H.push_back(i);
+        }
+        all_H.push_back(H);
+    } while (std::next_permutation(mask.begin(), mask.end()));
+
+    return all_H;
+}
+
 std::vector<motif_pair_record>
 main_algo(const std::vector<std::string>& V, const std::vector<std::tuple<INT, INT>>& E,
           INT ell, INT d, INT k)
@@ -41,18 +60,9 @@ main_algo(const std::vector<std::string>& V, const std::vector<std::tuple<INT, I
 
     std::priority_queue<motif_pair_record, std::vector<motif_pair_record>, std::greater<motif_pair_record>> topK_motif_pairs;
 
-    rank_index index_u(V, ell);
-    rank_index index_v(V, ell);
-
-    std::vector<INT> H_u(d);
-    // 0 for character positions, 1 for wildcard positions.
-    std::vector<int> mask_u(ell, 0);
-    std::fill(mask_u.begin(), mask_u.begin() + d, 1);
-
-    std::vector<INT> H_v(d);
-    // 0 for character positions, 1 for wildcard positions.
-    std::vector<int> mask_v(ell, 0);
-    std::fill(mask_v.begin(), mask_v.begin() + d, 1);
+    esa_t ESA(V);
+    rank_table_t index_u(ell, ESA);
+    rank_table_t index_v(ell, ESA);
 
     int total = E.size();
     int update_every = 1 + total / 200; // ~200 updates max
@@ -64,24 +74,15 @@ main_algo(const std::vector<std::string>& V, const std::vector<std::tuple<INT, I
     // TODO: After parallelization, put this inside the loop so that each thread has a vector.
     std::vector<INT> ranks_u, ranks_v;
 
-    std::sort(mask_u.begin(), mask_u.end());
-    do {
-        H_u.clear();
-        for (int i = 0; i < ell; ++i)
-            if (mask_u[i]) H_u.push_back(i);
-        INT max_rank_u = index_u.map_ell_mers_to_ranks(H_u);
+    auto all_H = all_H_combinations(ell, d);
 
-        rankX_to_nodes.resize(max_rank_u + 1);
-        for (auto &nodes : rankX_to_nodes) nodes.clear();
-        for (int j = 0; j < V.size(); j++)
-            fill_nodes(j, V[j].length() - ell + 1, rankX_to_nodes, index_u);
+    // TODO: After parallelization, put this inside the loop so that each thread has a vector.
+    std::vector<INT> ranks_u, ranks_v;
 
-        std::sort(mask_v.begin(), mask_v.end());
-        do {
-            H_v.clear();
-            for (int i = 0; i < ell; ++i)
-                if (mask_v[i]) H_v.push_back(i);
-            INT max_rank_v = index_v.map_ell_mers_to_ranks(H_v);
+    for (int i = 0; i < all_H.size(); i++) {
+        index_u.sort_by_prefix(all_H[i]);
+        for (int j = 0; j < all_H.size(); j++) {
+            index_v.sort_by_prefix(all_H[j]);
 
             rankY_to_nodes.resize(max_rank_v + 1);
             for (auto &nodes : rankY_to_nodes) nodes.clear();
@@ -91,8 +92,8 @@ main_algo(const std::vector<std::string>& V, const std::vector<std::tuple<INT, I
             // Starting new motif pair count for edges under H_u and H_v.
             edge_counts_for_rank_pair.clear();
             // TODO: Parallelize here.
-            for (int j = 0; j < total; j++) {
-                auto [u, v] = E[j];
+            for (int e = 0; e < total; e++) {
+                auto [u, v] = E[e];
 
                 ranks_u.clear();
                 ranks_v.clear();
@@ -103,8 +104,8 @@ main_algo(const std::vector<std::string>& V, const std::vector<std::tuple<INT, I
                 if (u_len > ranks_u.capacity()) ranks_u.reserve(u_len);
                 if (v_len > ranks_v.capacity()) ranks_v.reserve(v_len);
 
-                if (j % update_every == 0 || j + 1 == total)
-                    print_progress(j + 1, total);
+                if (e % update_every == 0 || e + 1 == total)
+                    print_progress(e + 1, total);
 
                 for (int i = 0; i < u_len; i++) {
                     INT r = index_u.get_rank_of_substr(i, u);
@@ -123,22 +124,18 @@ main_algo(const std::vector<std::string>& V, const std::vector<std::tuple<INT, I
                 for (auto it_u = ranks_u.begin(); it_u != ranks_u_end; it_u++)
                     for (auto it_v = ranks_v.begin(); it_v != ranks_v_end; it_v++)
                         edge_counts_for_rank_pair[{*it_u, *it_v}]++;
-
             }
 
-            // TODO: Still returning just the edge count.
-            for (auto& [mp_id, E] : edge_counts_for_rank_pair) {
-                INT kXY = count_kXY(rankX_to_nodes[mp_id.rankX], rankY_to_nodes[mp_id.rankY]);
-                if (topK_motif_pairs.size() < k || E > topK_motif_pairs.top().E) {
-                    std::string X = apply_mask(index_u.get_substr_with_rank(mp_id.rankX), H_u);
-                    std::string Y = apply_mask(index_v.get_substr_with_rank(mp_id.rankY), H_v);
+            for (auto& [mp_id, edge_count] : edge_counts_for_rank_pair)
+                if (topK_motif_pairs.size() < k || edge_count > topK_motif_pairs.top().edge_count) {
+                    std::string X = apply_mask(index_u.get_substr_with_rank(mp_id.rankX), all_H[i]);
+                    std::string Y = apply_mask(index_v.get_substr_with_rank(mp_id.rankY), all_H[j]);
                     if (topK_motif_pairs.size() >= k)
                         topK_motif_pairs.pop();
-                    topK_motif_pairs.push({mp_id, X, Y, E, 0, 0, kXY});
+                    topK_motif_pairs.push({mp_id, edge_count, X, Y});
                 }
-            }
-        } while (std::next_permutation(mask_v.begin(), mask_v.end()));
-    } while (std::next_permutation(mask_u.begin(), mask_u.end()));
+        }
+    }
 
     // Get solution from priority queue.
     std::vector<motif_pair_record> solution;

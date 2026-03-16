@@ -7,7 +7,7 @@
 #include <cctype>
 #include <algorithm>
 
-#include "defs.hpp"
+#include "esa.hpp"
 
 static inline void trim_right_cr(std::string &s) {
     if (!s.empty() && s.back() == '\r') s.pop_back();
