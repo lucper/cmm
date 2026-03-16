@@ -47,7 +47,7 @@ public:
 
 private:
     unsigned char *concat_seq;
-    INT concat_seq_len;
+    INT N;
     std::vector<INT> seq_offset;
 
     INT ell;

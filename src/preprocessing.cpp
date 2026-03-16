@@ -6,7 +6,7 @@ void rank_index::show() const
     std::cout << concat_seq << "\n";
 
     std::cout << "SA: " << "\n";
-    for (int i = 0; i < concat_seq_len; i++)
+    for (int i = 0; i < N; i++)
         std::cout << SA[i] << " ";
     std::cout << "\n";
 
@@ -16,12 +16,12 @@ void rank_index::show() const
     std::cout << "\n";
 
     std::cout << "R1: " << "\n";
-    for (int i = 0; i < concat_seq_len; i++)
+    for (int i = 0; i < N; i++)
         std::cout << R1[i] << " ";
     std::cout << "\n";
 
     std::cout << "R2: " << "\n";
-    for (int i = 0; i < concat_seq_len; i++)
+    for (int i = 0; i < N; i++)
         std::cout << R2[i] << " ";
     std::cout << "\n";
 }
@@ -38,44 +38,44 @@ rank_index::rank_index(const std::vector<std::string>& seqs, INT ell)
     for (int i = 1; i < seqs.size() + 1; i++)
         seq_offset.push_back(seq_offset[i-1] + seqs[i-1].length() + 1);
 
-    SA = (INT *) malloc(concat_seq_len * sizeof(INT));
+    SA = (INT *) malloc(N * sizeof(INT));
     if (!SA) {
         std::fprintf(stderr, "Could not allocate memory for suffix array.\n");
         exit(EXIT_FAILURE);
     }
 #ifdef _USE_64
-    if (libsais64(concat_seq, SA, concat_seq_len, 0, NULL) != 0) {
+    if (libsais64(concat_seq, SA, N, 0, NULL) != 0) {
         std::fprintf(stderr, "Could not construct suffix array.\n");
         exit(EXIT_FAILURE);
     }
 #endif
 #ifdef _USE_32
-    if (libsais(concat_seq, SA, concat_seq_len, 0, NULL) != 0) {
+    if (libsais(concat_seq, SA, N, 0, NULL) != 0) {
         std::fprintf(stderr, "Could not construct suffix array.\n");
         exit(EXIT_FAILURE);
     }
 #endif
 
-    ISA = (INT *) malloc(concat_seq_len * sizeof(INT));
+    ISA = (INT *) malloc(N * sizeof(INT));
     if (!ISA) {
         std::fprintf(stderr, "Could not construct suffix array.\n");
         exit(EXIT_FAILURE);
     }
-    for (int i = 0; i < concat_seq_len; i++)
+    for (int i = 0; i < N; i++)
         ISA[SA[i]] = i;
 
-    LCP = (INT *) malloc(concat_seq_len * sizeof(INT));
+    LCP = (INT *) malloc(N * sizeof(INT));
     build_LCP();
     free(ISA);
 
-    R1.resize(concat_seq_len);
-    R2.resize(concat_seq_len);
-    R3.resize(concat_seq_len);
-    IR1.resize(concat_seq_len);
-    count_buffer.resize(concat_seq_len);
+    R1.resize(N);
+    R2.resize(N);
+    R3.resize(N);
+    IR1.resize(N);
+    count_buffer.resize(N);
 
     // Get suffixes whose prefixes have >= ell characters without SEP.
-    for (int i = 0; i < concat_seq_len; i++) {
+    for (int i = 0; i < N; i++) {
         // Binary search string of suffix SA[i].
         auto it = std::upper_bound(seq_offset.begin(), seq_offset.end(), SA[i]);
         INT k = std::distance(seq_offset.begin(), it) - 1;
@@ -95,11 +95,11 @@ rank_index::~rank_index()
 
 void rank_index::build_concat_seq(const std::vector<std::string>& seqs)
 {
-    concat_seq_len = 0;
+    N = 0;
     for (const auto& seq : seqs)
-        concat_seq_len += seq.length() + 1;
+        N += seq.length() + 1;
 
-    concat_seq = (unsigned char *) malloc((concat_seq_len + 1) * sizeof(unsigned char));
+    concat_seq = (unsigned char *) malloc((N + 1) * sizeof(unsigned char));
     if (!concat_seq) {
         std::fprintf(stderr, "Could not allocate memory for concatenated string.\n");
         exit(EXIT_FAILURE);
@@ -139,7 +139,7 @@ INT rank_index::map_ell_mers_to_ranks(const std::vector<INT>& H)
     INT prefix_len = H.empty() ? ell : H[0];
     this->max_rank_R1 = 0;
     R1[SA[0]] = 0;
-    for (int i = 1; i < concat_seq_len; i++)
+    for (int i = 1; i < N; i++)
         R1[SA[i]] = (LCP[i] < prefix_len) ? ++max_rank_R1 : max_rank_R1;
 
     // Invariants:
@@ -153,7 +153,7 @@ INT rank_index::map_ell_mers_to_ranks(const std::vector<INT>& H)
 
         INT max_rank_R2 = 0;
         R2[SA[0]] = 0;
-        for (int i = 1; i < concat_seq_len; i++)
+        for (int i = 1; i < N; i++)
             R2[SA[i]] = (LCP[i] < h_end - h_start) ? ++max_rank_R2 : max_rank_R2;
 
         radix_pass_over_sSA(max_rank_R2, R2, h_start);     // sort sSA using R2[sSA[i] + h_start] as key
@@ -181,7 +181,7 @@ void rank_index::build_LCP()
     int i = 0, j = 0;
 
     LCP[0] = 0;
-    for (i = 0; i < concat_seq_len; i++)
+    for (i = 0; i < N; i++)
         if (ISA[i] != 0) {
             if (i == 0) j = 0;
             else j = (LCP[ISA[i - 1]] >= 2) ? LCP[ISA[i - 1]] - 1 : 0;
