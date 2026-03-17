@@ -23,18 +23,6 @@ struct motif_pair_id {
 
 };
 
-/* Hash function for unordered_map of motif_pair_id counts. */
-template<>
-struct std::hash<motif_pair_id>
-{
-    std::size_t operator()(const motif_pair_id &f) const
-    {
-        size_t seed = std::hash<INT>{}(f.rankX);
-        seed ^= std::hash<INT>{}(f.rankY) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
-        return seed;
-    }
-};
-
 struct motif_pair_record {
     motif_pair_id ranks;
     INT edge_count;

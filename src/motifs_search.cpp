@@ -1,5 +1,38 @@
 #include "motifs_search.hpp"
 
+/* Sorts a vector of 64-bit words by chunks of 16 bits from left to right. */
+static void radix_sort_64(std::vector<uint64_t>& data)
+{
+    std::vector<uint64_t> buffer(data.size());
+
+    const INT bins = 1 << 16; // 2^16 bins
+    const INT passes = 4;     // 64-bit keys
+
+    uint64_t *src = data.data();
+    uint64_t *dst = buffer.data();
+
+    for (int p = 0; p < passes; p++) {
+        INT counts[bins] = {0};
+        INT shift = p * 16;
+
+        // '(src[i] >> shift) & 0xFFFF' extracts the leftmost 16 bits.
+        // By shifting, at each pass we sort based on a 16-bit chunk.
+        for (int i = 0; i < data.size(); i++)
+            counts[(src[i] >> shift) & 0xFFFF]++;
+        for (int i = 0, pos = 0; i < bins; i++) {
+            INT count = counts[i];
+            counts[i] = pos;
+            pos += count;
+        }
+        for (int i = 0; i < data.size(); i++)
+            dst[counts[(src[i] >> shift) & 0xFFFF]++] = src[i];
+        std::swap(src, dst);
+    }
+    // Just to make sure
+    if (src != data.data())
+        std::copy(buffer.begin(), buffer.end(), data.begin());
+}
+
 static std::string apply_mask(std::string_view motif, const std::vector<INT>& H, char wildcard = '*')
 {
     std::string masked_motif(motif);
@@ -43,27 +76,19 @@ main_algo(const std::vector<std::string>& V, const std::vector<std::tuple<INT, I
     int total = E.size();
     int update_every = 1 + total / 200; // ~200 updates max
 
-    std::unordered_map<motif_pair_id, INT> edge_counts_for_rank_pair;
-
     auto all_H = all_H_combinations(ell, d);
 
-    // TODO: After parallelization, put this inside the loop so that each thread has a vector.
-    std::vector<INT> ranks_u, ranks_v;
-
-    for (int i = 0; i < all_H.size(); i++) {
-        index_u.sort_by_prefix(all_H[i]);
-        for (int j = 0; j < all_H.size(); j++) {
-            index_v.sort_by_prefix(all_H[j]);
+    for (const auto& H_u : all_H) {
+        index_u.sort_by_prefix(H_u);
+        for (const auto& H_v : all_H) {
+            index_v.sort_by_prefix(H_v);
 
             // Starting new motif pair count under H_u and H_v.
-            edge_counts_for_rank_pair.clear();
+            std::vector<uint64_t> all_pairs; // Can't estimate capacity here? This can grow a lot.
+            std::vector<INT> ranks_u, ranks_v;
 
-            // TODO: Parallelize here.
             for (int e = 0; e < total; e++) {
                 auto [u, v] = E[e];
-
-                ranks_u.clear();
-                ranks_v.clear();
 
                 INT u_len = V[u].length() - ell + 1;
                 INT v_len = V[v].length() - ell + 1;
@@ -90,17 +115,40 @@ main_algo(const std::vector<std::string>& V, const std::vector<std::tuple<INT, I
 
                 for (auto it_u = ranks_u.begin(); it_u != ranks_u_end; it_u++)
                     for (auto it_v = ranks_v.begin(); it_v != ranks_v_end; it_v++)
-                        edge_counts_for_rank_pair[{*it_u, *it_v}]++;
+                        all_pairs.push_back(((uint64_t) (*it_u) << 32) | (uint64_t) (*it_v)); // Pack rank pair in one word
+
+                ranks_u.clear();
+                ranks_v.clear();
             }
 
-            for (auto& [mp_id, edge_count] : edge_counts_for_rank_pair)
-                if (topK_motif_pairs.size() < k || edge_count > topK_motif_pairs.top().edge_count) {
-                    std::string X = apply_mask(index_u.get_substr_with_rank(mp_id.rankX), all_H[i]);
-                    std::string Y = apply_mask(index_v.get_substr_with_rank(mp_id.rankY), all_H[j]);
-                    if (topK_motif_pairs.size() >= k)
-                        topK_motif_pairs.pop();
-                    topK_motif_pairs.push({mp_id, edge_count, X, Y});
+            radix_sort_64(all_pairs);
+
+            uint64_t curr = all_pairs[0];
+            INT curr_count = 0;
+            for (uint64_t packed_pair : all_pairs)
+                if (packed_pair == curr) curr_count++;
+                else {
+                    // Update
+                    if (topK_motif_pairs.size() < k || curr_count > topK_motif_pairs.top().edge_count) {
+                        uint32_t rankX = (uint32_t) (curr >> 32);
+                        uint32_t rankY = (uint32_t) (curr & 0xFFFFFFFF);
+                        std::string X = apply_mask(index_u.get_substr_with_rank(rankX), H_u);
+                        std::string Y = apply_mask(index_v.get_substr_with_rank(rankY), H_v);
+                        if (topK_motif_pairs.size() >= k) topK_motif_pairs.pop();
+                        topK_motif_pairs.push({{rankX, rankY}, curr_count, X, Y});
+                    }
+                    curr = packed_pair;
+                    curr_count = 1;
                 }
+            // Last group
+            if (topK_motif_pairs.size() < k || curr_count > topK_motif_pairs.top().edge_count) {
+                uint32_t rankX = (uint32_t) (curr >> 32);
+                uint32_t rankY = (uint32_t) (curr & 0xFFFFFFFF);
+                std::string X = apply_mask(index_u.get_substr_with_rank(rankX), H_u);
+                std::string Y = apply_mask(index_v.get_substr_with_rank(rankY), H_v);
+                if (topK_motif_pairs.size() >= k) topK_motif_pairs.pop();
+                topK_motif_pairs.push({{rankX, rankY}, curr_count, X, Y});
+            }
         }
     }
 
