@@ -149,6 +149,8 @@ main_algo(const std::vector<std::string>& V, const std::vector<std::tuple<INT, I
                 if (topK_motif_pairs.size() >= k) topK_motif_pairs.pop();
                 topK_motif_pairs.push({{rankX, rankY}, curr_count, X, Y});
             }
+
+            all_pairs.clear();
         }
     }
 
