@@ -1,5 +1,7 @@
 #include "motifs_search.hpp"
 
+#define FLUSH_THRESHOLD 100000000
+
 /* Sorts a vector of 64-bit words by chunks of 16 bits from left to right. */
 static void radix_sort_64(std::vector<uint64_t>& data)
 {
@@ -61,13 +63,46 @@ static std::vector<std::vector<INT>> all_H_combinations(INT ell, INT d)
     return all_H;
 }
 
+void update_topK(std::priority_queue<motif_pair_record, std::vector<motif_pair_record>, std::greater<motif_pair_record>>& topK, INT k,
+                 const std::vector<uint64_t>& all_pairs,
+                 const rank_table_t& index_u, const std::vector<INT>& H_u,
+                 const rank_table_t& index_v, const std::vector<INT>& H_v)
+{
+    uint64_t curr = all_pairs[0];
+    INT curr_count = 0;
+    for (uint64_t packed_pair : all_pairs)
+        if (packed_pair == curr) curr_count++;
+        else {
+            // Update
+            if (topK.size() < k || curr_count > topK.top().edge_count) {
+                uint32_t rankX = (uint32_t) (curr >> 32);
+                uint32_t rankY = (uint32_t) (curr & 0xFFFFFFFF);
+                std::string X = apply_mask(index_u.get_substr_with_rank(rankX), H_u);
+                std::string Y = apply_mask(index_v.get_substr_with_rank(rankY), H_v);
+                if (topK.size() >= k) topK.pop();
+                topK.push({{rankX, rankY}, curr_count, X, Y});
+            }
+            curr = packed_pair;
+            curr_count = 1;
+        }
+    // Last group
+    if (topK.size() < k || curr_count > topK.top().edge_count) {
+        uint32_t rankX = (uint32_t) (curr >> 32);
+        uint32_t rankY = (uint32_t) (curr & 0xFFFFFFFF);
+        std::string X = apply_mask(index_u.get_substr_with_rank(rankX), H_u);
+        std::string Y = apply_mask(index_v.get_substr_with_rank(rankY), H_v);
+        if (topK.size() >= k) topK.pop();
+        topK.push({{rankX, rankY}, curr_count, X, Y});
+    }
+}
+
 std::vector<motif_pair_record>
 main_algo(const std::vector<std::string>& V, const std::vector<std::tuple<INT, INT>>& E,
           INT ell, INT d, INT k)
 {
     if (k <= 0) throw std::invalid_argument("k must be positive");
 
-    std::priority_queue<motif_pair_record, std::vector<motif_pair_record>, std::greater<motif_pair_record>> topK_motif_pairs;
+    std::priority_queue<motif_pair_record, std::vector<motif_pair_record>, std::greater<motif_pair_record>> topK;
 
     esa_t ESA(V);
     rank_table_t index_u(ell, ESA);
@@ -85,7 +120,9 @@ main_algo(const std::vector<std::string>& V, const std::vector<std::tuple<INT, I
 
             // Starting new motif pair count under H_u and H_v.
             std::vector<uint64_t> all_pairs; // Can't estimate capacity here? This can grow a lot.
-            std::vector<INT> ranks_u, ranks_v;
+            std::vector<uint64_t> radix_buffer;
+            std::vector<INT> ranks_u;
+            std::vector<INT> ranks_v;
 
             for (int e = 0; e < total; e++) {
                 auto [u, v] = E[e];
@@ -117,50 +154,30 @@ main_algo(const std::vector<std::string>& V, const std::vector<std::tuple<INT, I
                     for (auto it_v = ranks_v.begin(); it_v != ranks_v_end; it_v++)
                         all_pairs.push_back(((uint64_t) (*it_u) << 32) | (uint64_t) (*it_v)); // Pack rank pair in one word
 
+                if (all_pairs.size() > FLUSH_THRESHOLD) {
+                    radix_sort_64(all_pairs);
+                    update_topK(topK, k, all_pairs, index_u, H_u, index_v, H_v);
+                    all_pairs.clear();
+                }
+
                 ranks_u.clear();
                 ranks_v.clear();
             }
 
-            radix_sort_64(all_pairs);
-
-            uint64_t curr = all_pairs[0];
-            INT curr_count = 0;
-            for (uint64_t packed_pair : all_pairs)
-                if (packed_pair == curr) curr_count++;
-                else {
-                    // Update
-                    if (topK_motif_pairs.size() < k || curr_count > topK_motif_pairs.top().edge_count) {
-                        uint32_t rankX = (uint32_t) (curr >> 32);
-                        uint32_t rankY = (uint32_t) (curr & 0xFFFFFFFF);
-                        std::string X = apply_mask(index_u.get_substr_with_rank(rankX), H_u);
-                        std::string Y = apply_mask(index_v.get_substr_with_rank(rankY), H_v);
-                        if (topK_motif_pairs.size() >= k) topK_motif_pairs.pop();
-                        topK_motif_pairs.push({{rankX, rankY}, curr_count, X, Y});
-                    }
-                    curr = packed_pair;
-                    curr_count = 1;
-                }
-            // Last group
-            if (topK_motif_pairs.size() < k || curr_count > topK_motif_pairs.top().edge_count) {
-                uint32_t rankX = (uint32_t) (curr >> 32);
-                uint32_t rankY = (uint32_t) (curr & 0xFFFFFFFF);
-                std::string X = apply_mask(index_u.get_substr_with_rank(rankX), H_u);
-                std::string Y = apply_mask(index_v.get_substr_with_rank(rankY), H_v);
-                if (topK_motif_pairs.size() >= k) topK_motif_pairs.pop();
-                topK_motif_pairs.push({{rankX, rankY}, curr_count, X, Y});
+            if (!all_pairs.empty()) {
+                radix_sort_64(all_pairs);
+                update_topK(topK, k, all_pairs, index_u, H_u, index_v, H_v);
             }
-
-            all_pairs.clear();
         }
     }
 
     // Get solution from priority queue.
     std::vector<motif_pair_record> solution;
-    solution.reserve(topK_motif_pairs.size());
+    solution.reserve(topK.size());
 
-    while (!topK_motif_pairs.empty()) {
-        solution.push_back(topK_motif_pairs.top());
-        topK_motif_pairs.pop();
+    while (!topK.empty()) {
+        solution.push_back(topK.top());
+        topK.pop();
     }
 
     std::reverse(solution.begin(), solution.end());
