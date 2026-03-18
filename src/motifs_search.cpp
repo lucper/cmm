@@ -3,9 +3,11 @@
 #define FLUSH_THRESHOLD 100000000
 
 /* Sorts a vector of 64-bit words by chunks of 16 bits from left to right. */
-static void radix_sort_64(std::vector<uint64_t>& data)
+static void radix_sort_64(std::vector<uint64_t>& data, std::vector<uint64_t>& buffer)
 {
-    std::vector<uint64_t> buffer(data.size());
+    if (data.empty()) return;
+
+    if (buffer.size() < data.size()) buffer.resize(data.size());
 
     const INT bins = 1 << 16; // 2^16 bins
     const INT passes = 4;     // 64-bit keys
@@ -155,7 +157,7 @@ main_algo(const std::vector<std::string>& V, const std::vector<std::tuple<INT, I
                         all_pairs.push_back(((uint64_t) (*it_u) << 32) | (uint64_t) (*it_v)); // Pack rank pair in one word
 
                 if (all_pairs.size() > FLUSH_THRESHOLD) {
-                    radix_sort_64(all_pairs);
+                    radix_sort_64(all_pairs, radix_buffer);
                     update_topK(topK, k, all_pairs, index_u, H_u, index_v, H_v);
                     all_pairs.clear();
                 }
@@ -165,7 +167,7 @@ main_algo(const std::vector<std::string>& V, const std::vector<std::tuple<INT, I
             }
 
             if (!all_pairs.empty()) {
-                radix_sort_64(all_pairs);
+                radix_sort_64(all_pairs, radix_buffer);
                 update_topK(topK, k, all_pairs, index_u, H_u, index_v, H_v);
             }
         }
