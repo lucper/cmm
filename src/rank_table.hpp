@@ -42,9 +42,6 @@ public:
      * INT index i of k-th string string seqs[k]. */
     INT get_rank_of_substr(INT i, INT k) const;
 
-    // Debugging.
-    void show() const;
-
 private:
     const unsigned char *S;
     const std::vector<INT>& S_offset;
