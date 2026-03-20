@@ -34,6 +34,10 @@ struct motif_pair_record {
     }
 };
 
+std::vector<INT> prefix_freq_vector(const std::vector<std::string>& V,
+                                    const std::vector<std::tuple<INT, INT>>& E,
+                                    const rank_table_t& rank_table, INT ell, INT max_rank);
+
 std::vector<motif_pair_record>
 main_algo(const std::vector<std::string>& V, const std::vector<std::tuple<INT, INT>>& E,
           INT ell, INT d, INT k);

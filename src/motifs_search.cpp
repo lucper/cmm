@@ -1,6 +1,6 @@
 #include "motifs_search.hpp"
 
-#define FLUSH_THRESHOLD 100000000
+#define M 100000000
 
 /* Sorts a vector of 64-bit words by chunks of 16 bits from left to right. */
 static void radix_sort_64(std::vector<uint64_t>& data, std::vector<uint64_t>& buffer)
@@ -65,7 +65,7 @@ static std::vector<std::vector<INT>> all_H_combinations(INT ell, INT d)
     return all_H;
 }
 
-void update_topK(std::priority_queue<motif_pair_record, std::vector<motif_pair_record>, std::greater<motif_pair_record>>& topK, INT k,
+static void update_topK(std::priority_queue<motif_pair_record, std::vector<motif_pair_record>, std::greater<motif_pair_record>>& topK, INT k,
                  const std::vector<uint64_t>& all_pairs,
                  const rank_table_t& index_u, const std::vector<INT>& H_u,
                  const rank_table_t& index_v, const std::vector<INT>& H_v)
@@ -96,6 +96,43 @@ void update_topK(std::priority_queue<motif_pair_record, std::vector<motif_pair_r
         if (topK.size() >= k) topK.pop();
         topK.push({{rankX, rankY}, curr_count, X, Y});
     }
+}
+
+std::vector<INT> prefix_freq_vector(const std::vector<std::string>& V,
+                                    const std::vector<std::tuple<INT, INT>>& E,
+                                    const rank_table_t& rank_table, INT ell, INT max_rank)
+{
+    std::vector<INT> freqs(max_rank + 1);
+
+    for (int e = 0; e < E.size(); e++) {
+        auto [u, v] = E[e];
+
+        // unique ranks from u
+        std::vector<INT> ranks_u; // turn into uint64_t?
+        for (int i = 0; i < V[u].length() - ell + 1; i++) {
+            INT r = rank_table.get_rank_of_substr(i, u);
+            ranks_u.push_back(r); // cast to uint64_t
+        }
+        std::sort(ranks_u.begin(), ranks_u.end()); // radix sort ranks_u
+        auto ranks_u_end = std::unique(ranks_u.begin(), ranks_u.end());
+
+        for (int i = 0; i < ranks_u.size(); i++)
+            freqs[ranks_u[i]]++;
+
+        // unique ranks from v
+        std::vector<INT> ranks_v; // turn into uint64_t?
+        for (int i = 0; i < V[v].length() - ell + 1; i++) {
+            INT r = rank_table.get_rank_of_substr(i, v);
+            ranks_v.push_back(r); // cast to uint64_t
+        }
+        std::sort(ranks_v.begin(), ranks_v.end()); // radix sort ranks_v
+        auto ranks_v_end = std::unique(ranks_v.begin(), ranks_v.end());
+
+        for (int i = 0; i < ranks_v.size(); i++)
+            freqs[ranks_v[i]]++;
+    }
+
+    return freqs;
 }
 
 std::vector<motif_pair_record>
@@ -156,7 +193,7 @@ main_algo(const std::vector<std::string>& V, const std::vector<std::tuple<INT, I
                     for (auto it_v = ranks_v.begin(); it_v != ranks_v_end; it_v++)
                         all_pairs.push_back(((uint64_t) (*it_u) << 32) | (uint64_t) (*it_v)); // Pack rank pair in one word
 
-                if (all_pairs.size() > FLUSH_THRESHOLD) {
+                if (all_pairs.size() > M) {
                     radix_sort_64(all_pairs, radix_buffer);
                     update_topK(topK, k, all_pairs, index_u, H_u, index_v, H_v);
                     all_pairs.clear();
