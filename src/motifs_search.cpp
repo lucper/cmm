@@ -66,9 +66,9 @@ static std::vector<std::vector<INT>> all_H_combinations(INT ell, INT d)
 }
 
 static void update_topK(std::priority_queue<motif_pair_record, std::vector<motif_pair_record>, std::greater<motif_pair_record>>& topK, INT k,
-                 const std::vector<uint64_t>& all_pairs,
-                 const rank_table_t& index_u, const std::vector<INT>& H_u,
-                 const rank_table_t& index_v, const std::vector<INT>& H_v)
+                        const std::vector<uint64_t>& all_pairs,
+                        const rank_table_t& index_u, const std::vector<INT>& H_u,
+                        const rank_table_t& index_v, const std::vector<INT>& H_v)
 {
     uint64_t curr = all_pairs[0];
     INT curr_count = 0;
@@ -192,12 +192,6 @@ main_algo(const std::vector<std::string>& V, const std::vector<std::tuple<INT, I
                 for (auto it_u = ranks_u.begin(); it_u != ranks_u_end; it_u++)
                     for (auto it_v = ranks_v.begin(); it_v != ranks_v_end; it_v++)
                         all_pairs.push_back(((uint64_t) (*it_u) << 32) | (uint64_t) (*it_v)); // Pack rank pair in one word
-
-                if (all_pairs.size() > M) {
-                    radix_sort_64(all_pairs, radix_buffer);
-                    update_topK(topK, k, all_pairs, index_u, H_u, index_v, H_v);
-                    all_pairs.clear();
-                }
 
                 ranks_u.clear();
                 ranks_v.clear();
