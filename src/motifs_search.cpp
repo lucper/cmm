@@ -98,6 +98,16 @@ static void update_topK(std::priority_queue<motif_pair_record, std::vector<motif
     }
 }
 
+static std::vector<INT>::iterator unique_ranks(std::vector<INT>& ranks,
+                                               const rank_table_t& rank_table,
+                                               const std::string& seq, INT seq_id, INT ell)
+{
+    for (int i = 0; i < seq.length() - ell + 1; i++)
+        ranks.push_back(rank_table.get_rank_of_substr(i, seq_id));
+    std::sort(ranks.begin(), ranks.end());
+    return std::unique(ranks.begin(), ranks.end());
+}
+
 std::vector<INT> prefix_freq_vector(const std::vector<std::string>& V,
                                     const std::vector<std::tuple<INT, INT>>& E,
                                     const rank_table_t& rank_table, INT ell, INT max_rank)
@@ -109,27 +119,15 @@ std::vector<INT> prefix_freq_vector(const std::vector<std::string>& V,
 
         // unique ranks from u
         std::vector<INT> ranks_u; // turn into uint64_t?
-        for (int i = 0; i < V[u].length() - ell + 1; i++) {
-            INT r = rank_table.get_rank_of_substr(i, u);
-            ranks_u.push_back(r); // cast to uint64_t
-        }
-        std::sort(ranks_u.begin(), ranks_u.end()); // radix sort ranks_u
-        auto ranks_u_end = std::unique(ranks_u.begin(), ranks_u.end());
-
-        for (int i = 0; i < ranks_u.size(); i++)
-            freqs[ranks_u[i]]++;
+        auto ranks_u_end = unique_ranks(ranks_u, rank_table, V[u], u, ell);
+        for (auto it = ranks_u.begin(); it != ranks_u_end; it++)
+            freqs[*it]++;
 
         // unique ranks from v
         std::vector<INT> ranks_v; // turn into uint64_t?
-        for (int i = 0; i < V[v].length() - ell + 1; i++) {
-            INT r = rank_table.get_rank_of_substr(i, v);
-            ranks_v.push_back(r); // cast to uint64_t
-        }
-        std::sort(ranks_v.begin(), ranks_v.end()); // radix sort ranks_v
-        auto ranks_v_end = std::unique(ranks_v.begin(), ranks_v.end());
-
-        for (int i = 0; i < ranks_v.size(); i++)
-            freqs[ranks_v[i]]++;
+        auto ranks_v_end = unique_ranks(ranks_v, rank_table, V[v], v, ell);
+        for (auto it = ranks_v.begin(); it != ranks_v_end; it++)
+            freqs[*it]++;
     }
 
     return freqs;
@@ -175,19 +173,8 @@ main_algo(const std::vector<std::string>& V, const std::vector<std::tuple<INT, I
                 if (e % update_every == 0 || e + 1 == total)
                     print_progress(e + 1, total);
 
-                for (int i = 0; i < u_len; i++) {
-                    INT r = index_u.get_rank_of_substr(i, u);
-                    ranks_u.push_back(r);
-                }
-                std::sort(ranks_u.begin(), ranks_u.end());
-                auto ranks_u_end = std::unique(ranks_u.begin(), ranks_u.end());
-
-                for (int i = 0; i < v_len; i++) {
-                    INT r = index_v.get_rank_of_substr(i, v);
-                    ranks_v.push_back(r);
-                }
-                std::sort(ranks_v.begin(), ranks_v.end());
-                auto ranks_v_end = std::unique(ranks_v.begin(), ranks_v.end());
+                auto ranks_u_end = unique_ranks(ranks_u, index_u, V[u], u, ell);
+                auto ranks_v_end = unique_ranks(ranks_v, index_v, V[v], v, ell);
 
                 for (auto it_u = ranks_u.begin(); it_u != ranks_u_end; it_u++)
                     for (auto it_v = ranks_v.begin(); it_v != ranks_v_end; it_v++)
