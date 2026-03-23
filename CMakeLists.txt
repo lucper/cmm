@@ -17,17 +17,23 @@ include(FetchContent)
 FetchContent_Declare(
     libsais
     GIT_REPOSITORY https://github.com/IlyaGrebnov/libsais.git
-    GIT_TAG master
+    GIT_TAG        master
 )
-
 FetchContent_MakeAvailable(libsais)
+
+FetchContent_Declare(
+    gtl
+    GIT_REPOSITORY https://github.com/greg7mdp/gtl.git
+    GIT_TAG        v1.2.0
+)
+FetchContent_MakeAvailable(gtl)
 
 add_library(bpm_core
     src/motifs_search.cpp
     src/rank_table.cpp
     src/data_import.cpp
 )
-target_link_libraries(bpm_core PUBLIC libsais)
+target_link_libraries(bpm_core PUBLIC libsais gtl)
 target_compile_options(bpm_core PRIVATE -g -fno-omit-frame-pointer) # profiling
 
 add_executable(bpm src/main.cpp)
