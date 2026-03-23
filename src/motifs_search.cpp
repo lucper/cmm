@@ -1,5 +1,7 @@
 #include "motifs_search.hpp"
 
+#define NUM_STRIPS 4
+
 /* Sorts a vector of 64-bit words by chunks of 16 bits from left to right. */
 static void radix_sort_64(std::vector<uint64_t>& data, std::vector<uint64_t>& buffer)
 {
@@ -111,6 +113,7 @@ main_algo(const std::vector<std::string>& V, const std::vector<std::tuple<INT, I
           INT ell, INT d, INT k)
 {
     if (k <= 0) throw std::invalid_argument("k must be positive");
+    if (ell < 1) throw std::invalid_argument("ell must be positive");
 
     std::priority_queue<motif_pair_record_t, std::vector<motif_pair_record_t>, std::greater<motif_pair_record_t>> topK;
 
@@ -129,40 +132,49 @@ main_algo(const std::vector<std::string>& V, const std::vector<std::tuple<INT, I
     auto all_H = all_H_combinations(ell, d);
 
     for (const auto& H_u : all_H) {
-        index_u.sort_by_prefix(H_u);
+        INT max_rank_u = index_u.sort_by_prefix(H_u);
         for (const auto& H_v : all_H) {
             index_v.sort_by_prefix(H_v);
 
-            for (int e = 0; e < total; e++) {
-                auto [u, v] = E[e];
+            INT strip_size = (max_rank_u + NUM_STRIPS - 1) / NUM_STRIPS;
 
-                if (e % update_every == 0 || e + 1 == total)
-                    print_progress(e + 1, total);
-
-                INT u_len = V[u].length() - ell + 1;
-                INT v_len = V[v].length() - ell + 1;
-
-                if (ranks_u.capacity() < u_len) ranks_u.reserve(u_len);
-                if (ranks_v.capacity() < v_len) ranks_v.reserve(v_len);
-
-                auto ranks_u_end = unique_ranks(ranks_u, index_u, V[u], u, ell);
-                auto ranks_v_end = unique_ranks(ranks_v, index_v, V[v], v, ell);
-
-                for (auto it_u = ranks_u.begin(); it_u != ranks_u_end; it_u++)
-                    for (auto it_v = ranks_v.begin(); it_v != ranks_v_end; it_v++) {
-                        uint64_t packed_pair = ((uint64_t) (*it_u) << 32) | (uint64_t) (*it_v);
-                        all_pairs.push_back(packed_pair);
-                     }
-
-                ranks_u.clear();
-                ranks_v.clear();
-            }
-
-            if (!all_pairs.empty()) {
-                radix_sort_64(all_pairs, radix_buffer);
-                update_topK(topK, k, all_pairs, index_u, H_u, index_v, H_v);
+            for (int s = 0; s < NUM_STRIPS; s++) {
+                INT start_u = s * strip_size;
+                INT end_u = std::min(start_u + strip_size, max_rank_u);
                 all_pairs.clear();
+
+                for (int e = 0; e < total; e++) {
+                    auto [u, v] = E[e];
+
+                    if (e % update_every == 0 || e + 1 == total)
+                        print_progress(e + 1, total);
+
+                    INT u_len = V[u].length() - ell + 1;
+                    INT v_len = V[v].length() - ell + 1;
+
+                    if (ranks_u.capacity() < u_len) ranks_u.reserve(u_len);
+                    if (ranks_v.capacity() < v_len) ranks_v.reserve(v_len);
+
+                    auto ranks_u_end = unique_ranks(ranks_u, index_u, V[u], u, ell);
+                    auto ranks_v_end = unique_ranks(ranks_v, index_v, V[v], v, ell);
+
+                    for (auto it_u = ranks_u.begin(); it_u != ranks_u_end; it_u++)
+                        if (*it_u >= start_u && *it_u < end_u)
+                            for (auto it_v = ranks_v.begin(); it_v != ranks_v_end; it_v++) {
+                                uint64_t packed_pair = ((uint64_t) (*it_u) << 32) | (uint64_t) (*it_v);
+                                all_pairs.push_back(packed_pair);
+                            }
+
+                    ranks_u.clear();
+                    ranks_v.clear();
+                }
+
+                if (!all_pairs.empty()) {
+                    radix_sort_64(all_pairs, radix_buffer);
+                    update_topK(topK, k, all_pairs, index_u, H_u, index_v, H_v);
+                }
             }
+
         }
     }
 
