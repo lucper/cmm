@@ -1,4 +1,4 @@
-#include "motifs_search.hpp"
+include "motifs_search.hpp"
 
 static std::string apply_mask(std::string_view motif, const std::vector<INT>& H, char wildcard = '*')
 {
@@ -53,11 +53,13 @@ main_algo(const std::vector<std::string>& V, const std::vector<std::tuple<INT, I
     int total = E.size();
     int update_every = 1 + total / 200; // ~200 updates max
 
-    auto all_H = all_H_combinations(ell, d);
-
-    gtl::flat_hash_map<uint64_t, INT, identity_hash_t> all_pairs;
+    // Starting new motif pair count under H_u and H_v.
+    std::vector<uint64_t> all_pairs; // Can't estimate capacity here? This can grow a lot.
+    std::vector<uint64_t> radix_buffer;
     std::vector<INT> ranks_u;
     std::vector<INT> ranks_v;
+
+    auto all_H = all_H_combinations(ell, d);
 
     for (const auto& H_u : all_H) {
         index_u.sort_by_prefix(H_u);
@@ -82,24 +84,18 @@ main_algo(const std::vector<std::string>& V, const std::vector<std::tuple<INT, I
                 for (auto it_u = ranks_u.begin(); it_u != ranks_u_end; it_u++)
                     for (auto it_v = ranks_v.begin(); it_v != ranks_v_end; it_v++) {
                         uint64_t packed_pair = ((uint64_t) (*it_u) << 32) | (uint64_t) (*it_v);
-                        all_pairs[packed_pair]++;
+                        all_pairs.push_back(packed_pair);
                      }
 
                 ranks_u.clear();
                 ranks_v.clear();
             }
 
-            // Update top K.
-            for (auto const& [packed_pair, count] : all_pairs)
-                if (topK.size() < k || count > topK.top().edge_count) {
-                    uint32_t rankX = (uint32_t) (packed_pair >> 32);
-                    uint32_t rankY = (uint32_t) (packed_pair & 0xFFFFFFFF);
-                    std::string X = apply_mask(index_u.get_substr_with_rank(rankX), H_u);
-                    std::string Y = apply_mask(index_v.get_substr_with_rank(rankY), H_v);
-                    if (topK.size() >= k) topK.pop();
-                    topK.push({rankX, rankY, X, Y, count});
-                }
-            all_pairs.clear();
+            if (!all_pairs.empty()) {
+                radix_sort_64(all_pairs, radix_buffer);
+                update_topK(topK, k, all_pairs, index_u, H_u, index_v, H_v);
+                all_pairs.clear();
+            }
         }
     }
 
