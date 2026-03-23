@@ -92,19 +92,17 @@ main_algo(const std::vector<std::string>& V, const std::vector<std::tuple<INT, I
                 ranks_v.clear();
             }
 
-            if (!all_pairs.empty()) {
-                // Update top K.
-                for (auto const& [packed_pair, count] : all_pairs)
-                    if (topK.size() < k || count > topK.top().edge_count) {
-                        uint32_t rankX = (uint32_t) (packed_pair >> 32);
-                        uint32_t rankY = (uint32_t) (packed_pair & 0xFFFFFFFF);
-                        std::string X = apply_mask(index_u.get_substr_with_rank(rankX), H_u);
-                        std::string Y = apply_mask(index_v.get_substr_with_rank(rankY), H_v);
-                        if (topK.size() >= k) topK.pop();
-                        topK.push({rankX, rankY, X, Y, count});
-                    }
-                all_pairs.clear();
-            }
+            // Update top K.
+            for (auto const& [packed_pair, count] : all_pairs)
+                if (topK.size() < k || count > topK.top().edge_count) {
+                    uint32_t rankX = (uint32_t) (packed_pair >> 32);
+                    uint32_t rankY = (uint32_t) (packed_pair & 0xFFFFFFFF);
+                    std::string X = apply_mask(index_u.get_substr_with_rank(rankX), H_u);
+                    std::string Y = apply_mask(index_v.get_substr_with_rank(rankY), H_v);
+                    if (topK.size() >= k) topK.pop();
+                    topK.push({rankX, rankY, X, Y, count});
+                }
+            all_pairs.clear();
         }
     }
 
