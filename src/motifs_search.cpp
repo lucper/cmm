@@ -65,7 +65,7 @@ main_algo(const std::vector<std::string>& V, const std::vector<std::tuple<INT, I
             INT max_rank_v = index_v.sort_by_prefix(H_v);
 
             INT max_estimate = std::max(max_rank_u, max_rank_v);
-            //if (all_pairs.capacity() < max_estimate) all_pairs.reserve(max_estimate);
+            if (all_pairs.capacity() < max_estimate) all_pairs.reserve(max_estimate);
 
             for (int e = 0; e < total; e++) {
                 auto [u, v] = E[e];
