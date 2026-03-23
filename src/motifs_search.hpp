@@ -2,18 +2,12 @@
 #define H_MOTIF_SEARCH
 
 #include <vector>
-#include <unordered_map>
 #include <tuple>
 #include <queue>
 #include <algorithm>
-#include <gtl/phmap.hpp>
 #include "utils.hpp"
 #include "rank_table.hpp"
 #include "esa.hpp"
-
-struct identity_hash_t {
-    size_t operator()(uint64_t x) const { return static_cast<size_t>(x); }
-};
 
 struct motif_pair_record_t {
     INT rankX, rankY;
