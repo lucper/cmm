@@ -150,28 +150,27 @@ main_algo(const std::vector<std::string>& V, const std::vector<std::tuple<INT, I
 
     auto all_H = all_H_combinations(ell, d);
 
+    std::vector<uint64_t> all_pairs; // Can't estimate capacity here? This can grow a lot.
+    std::vector<uint64_t> radix_buffer;
+    std::vector<INT> ranks_u;
+    std::vector<INT> ranks_v;
+
     for (const auto& H_u : all_H) {
         index_u.sort_by_prefix(H_u);
         for (const auto& H_v : all_H) {
             index_v.sort_by_prefix(H_v);
 
-            // Starting new motif pair count under H_u and H_v.
-            std::vector<uint64_t> all_pairs; // Can't estimate capacity here? This can grow a lot.
-            std::vector<uint64_t> radix_buffer;
-            std::vector<INT> ranks_u;
-            std::vector<INT> ranks_v;
-
             for (int e = 0; e < total; e++) {
                 auto [u, v] = E[e];
+
+                if (e % update_every == 0 || e + 1 == total)
+                    print_progress(e + 1, total);
 
                 INT u_len = V[u].length() - ell + 1;
                 INT v_len = V[v].length() - ell + 1;
 
                 if (u_len > ranks_u.capacity()) ranks_u.reserve(u_len);
                 if (v_len > ranks_v.capacity()) ranks_v.reserve(v_len);
-
-                if (e % update_every == 0 || e + 1 == total)
-                    print_progress(e + 1, total);
 
                 auto ranks_u_end = unique_ranks(ranks_u, index_u, V[u], u, ell);
                 auto ranks_v_end = unique_ranks(ranks_v, index_v, V[v], v, ell);
@@ -187,6 +186,7 @@ main_algo(const std::vector<std::string>& V, const std::vector<std::tuple<INT, I
             if (!all_pairs.empty()) {
                 radix_sort_64(all_pairs, radix_buffer);
                 update_topK(topK, k, all_pairs, index_u, H_u, index_v, H_v);
+                all_pairs.clear();
             }
         }
     }
