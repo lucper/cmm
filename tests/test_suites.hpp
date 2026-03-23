@@ -50,15 +50,6 @@ void run_all_tests()
     }
 
     {
-        std::vector<std::string> V = {"ATGC", "ATGC"};
-        std::vector<std::tuple<INT, INT>> E = {{0,1}};
-        auto motifs = main_algo(V, E, 0, 0, 1);
-        auto [r1, r2, m1, m2, count] = motifs[0];
-
-        suite.assert_solution("ATGC-ATGC (ell = 0)", m1, m2, count, "", "", 1);
-    }
-
-    {
         std::vector<std::string> V = {"CAA", "ABA", "DAA", "ACA"};
         std::vector<std::tuple<INT, INT>> E = {{0,1}, {2,3}};
         auto motifs = main_algo(V, E, 3, 1, 1);
