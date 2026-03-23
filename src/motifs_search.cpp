@@ -1,4 +1,4 @@
-#include "motifs_search.hpp"
+include "motifs_search.hpp"
 
 #define M 100000000
 
@@ -150,18 +150,18 @@ main_algo(const std::vector<std::string>& V, const std::vector<std::tuple<INT, I
     int total = E.size();
     int update_every = 1 + total / 200; // ~200 updates max
 
+    // Starting new motif pair count under H_u and H_v.
+    std::vector<uint64_t> all_pairs; // Can't estimate capacity here? This can grow a lot.
+    std::vector<uint64_t> radix_buffer;
+    std::vector<INT> ranks_u;
+    std::vector<INT> ranks_v;
+
     auto all_H = all_H_combinations(ell, d);
 
     for (const auto& H_u : all_H) {
         index_u.sort_by_prefix(H_u);
         for (const auto& H_v : all_H) {
             index_v.sort_by_prefix(H_v);
-
-            // Starting new motif pair count under H_u and H_v.
-            std::vector<uint64_t> all_pairs; // Can't estimate capacity here? This can grow a lot.
-            std::vector<uint64_t> radix_buffer;
-            std::vector<INT> ranks_u;
-            std::vector<INT> ranks_v;
 
             for (int e = 0; e < total; e++) {
                 auto [u, v] = E[e];
@@ -200,6 +200,7 @@ main_algo(const std::vector<std::string>& V, const std::vector<std::tuple<INT, I
             if (!all_pairs.empty()) {
                 radix_sort_64(all_pairs, radix_buffer);
                 update_topK(topK, k, all_pairs, index_u, H_u, index_v, H_v);
+                all_pairs.clear();
             }
         }
     }
