@@ -21,19 +21,12 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(libsais)
 
-FetchContent_Declare(
-    gtl
-    GIT_REPOSITORY https://github.com/greg7mdp/gtl.git
-    GIT_TAG        v1.2.0
-)
-FetchContent_MakeAvailable(gtl)
-
 add_library(bpm_core
     src/motifs_search.cpp
     src/rank_table.cpp
     src/data_import.cpp
 )
-target_link_libraries(bpm_core PUBLIC libsais gtl)
+target_link_libraries(bpm_core PUBLIC libsais)
 target_compile_options(bpm_core PRIVATE -g -fno-omit-frame-pointer) # profiling
 
 add_executable(bpm src/main.cpp)
