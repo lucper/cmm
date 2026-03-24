@@ -2,41 +2,6 @@
 
 #define NUM_STRIPS 4
 
-/* Sorts a vector of 64-bit words by chunks of 16 bits from left to right. */
-static void radix_sort_64(std::vector<uint64_t>& data, std::vector<uint64_t>& buffer)
-{
-    if (data.empty()) return;
-
-    if (buffer.size() < data.size()) buffer.resize(data.size());
-
-    const INT bins = 1 << 16; // 2^16 bins
-    const INT passes = 4;     // 64-bit keys
-
-    uint64_t *src = data.data();
-    uint64_t *dst = buffer.data();
-
-    for (int p = 0; p < passes; p++) {
-        INT counts[bins] = {0};
-        INT shift = p * 16;
-
-        // '(src[i] >> shift) & 0xFFFF' extracts the leftmost 16 bits.
-        // By shifting, at each pass we sort based on a 16-bit chunk.
-        for (int i = 0; i < data.size(); i++)
-            counts[(src[i] >> shift) & 0xFFFF]++;
-        for (int i = 0, pos = 0; i < bins; i++) {
-            INT count = counts[i];
-            counts[i] = pos;
-            pos += count;
-        }
-        for (int i = 0; i < data.size(); i++)
-            dst[counts[(src[i] >> shift) & 0xFFFF]++] = src[i];
-        std::swap(src, dst);
-    }
-    // Just to make sure
-    if (src != data.data())
-        std::copy(buffer.begin(), buffer.end(), data.begin());
-}
-
 static std::string apply_mask(std::string_view motif, const std::vector<INT>& H, char wildcard = '*')
 {
     std::string masked_motif(motif);
@@ -170,7 +135,7 @@ main_algo(const std::vector<std::string>& V, const std::vector<std::tuple<INT, I
                 }
 
                 if (!all_pairs.empty()) {
-                    radix_sort_64(all_pairs, radix_buffer);
+                    radix_sort<uint64_t>(all_pairs, radix_buffer);
                     update_topK(topK, k, all_pairs, index_u, H_u, index_v, H_v);
                 }
             }
