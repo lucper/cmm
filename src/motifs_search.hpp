@@ -2,51 +2,26 @@
 #define H_MOTIF_SEARCH
 
 #include <vector>
-#include <unordered_map>
 #include <tuple>
 #include <queue>
 #include <algorithm>
 #include "utils.hpp"
 #include "rank_table.hpp"
 #include "esa.hpp"
+#include "radix_sort.hpp"
 
-struct motif_pair_id {
+struct motif_pair_record_t {
     INT rankX, rankY;
-
-    bool operator<(const motif_pair_id& other) const {
-        return std::tie(rankX, rankY) < std::tie(other.rankX, other.rankY);
-    }
-
-    bool operator==(const motif_pair_id& other) const {
-        return rankX == other.rankX && rankY == other.rankY;
-    }
-
-};
-
-/* Hash function for unordered_map of motif_pair_id counts. */
-template<>
-struct std::hash<motif_pair_id>
-{
-    std::size_t operator()(const motif_pair_id &f) const
-    {
-        size_t seed = std::hash<INT>{}(f.rankX);
-        seed ^= std::hash<INT>{}(f.rankY) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
-        return seed;
-    }
-};
-
-struct motif_pair_record {
-    motif_pair_id ranks;
     std::string X, Y;
-    INT edge_count, kX, kY, kXY;
+    INT edge_count;
 
     // For min-heap.
-    bool operator>(const motif_pair_record& other) const {
+    bool operator>(const motif_pair_record_t& other) const {
         return edge_count > other.edge_count;
     }
 };
 
-std::vector<motif_pair_record>
+std::vector<motif_pair_record_t>
 main_algo(const std::vector<std::string>& V, const std::vector<std::tuple<INT, INT>>& E,
           INT ell, INT d, INT k);
 

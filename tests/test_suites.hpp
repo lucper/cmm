@@ -16,8 +16,8 @@ struct test_suite {
     int failed = 0;
 
     void assert_solution(const std::string& name,
-                        const std::string& X, const std::string& Y, INT actual_count,
-                        const std::string& target1, const std::string& target2, INT expected_count)
+                         const std::string& m1, const std::string& m2, INT actual_count,
+                         const std::string& target1, const std::string& target2, INT expected_count)
     {
         if (X == target1 && Y == target2 && actual_count == expected_count) {
             std::printf("[%sPASS%s] %s: Found {%s, %s, %ld}\n", GREEN, RESET, name.c_str(), X.c_str(), Y.c_str(), actual_count);
@@ -44,25 +44,16 @@ void run_all_tests()
         std::vector<std::string> V = {"ATGC", "ATGC"};
         std::vector<std::tuple<INT, INT>> E = {{0,1}};
         auto motifs = main_algo(V, E, 4, 0, 1);
-        auto motif_pair = motifs[0];
+        auto [r1, r2, m1, m2, count] = motifs[0];
 
         suite.assert_solution("ATGC-ATGC (ell = 4)", motif_pair.X, motif_pair.Y, motif_pair.edge_count, "ATGC", "ATGC", 1);
-    }
-
-    {
-        std::vector<std::string> V = {"ATGC", "ATGC"};
-        std::vector<std::tuple<INT, INT>> E = {{0,1}};
-        auto motifs = main_algo(V, E, 0, 0, 1);
-        auto motif_pair = motifs[0];
-
-        suite.assert_solution("ATGC-ATGC (ell = 0)", motif_pair.X, motif_pair.Y, motif_pair.edge_count, "", "", 1);
     }
 
     {
         std::vector<std::string> V = {"CAA", "ABA", "DAA", "ACA"};
         std::vector<std::tuple<INT, INT>> E = {{0,1}, {2,3}};
         auto motifs = main_algo(V, E, 3, 1, 1);
-        auto motif_pair = motifs[0];
+        auto [r1, r2, m1, m2, count] = motifs[0];
 
         suite.assert_solution("CAA-ABA;DAA-ACA (ell = 3; d = 1)", motif_pair.X, motif_pair.Y, motif_pair.edge_count, "*AA", "A*A", 2);
     }
@@ -71,7 +62,7 @@ void run_all_tests()
         std::vector<std::string> V = {"QCAA", "RABA", "TDAA", "PACA"};
         std::vector<std::tuple<INT, INT>> E = {{0,1}, {2,3}};
         auto motifs = main_algo(V, E, 4, 2, 1);
-        auto motif_pair = motifs[0];
+        auto [r1, r2, m1, m2, count] = motifs[0];
 
         suite.assert_solution("QCAA-RABA;TDAA-PACA (ell = 4; d = 2)", motif_pair.X, motif_pair.Y, motif_pair.edge_count, "**AA", "*A*A", 2);
     }
@@ -80,7 +71,7 @@ void run_all_tests()
         std::vector<std::string> V = {"QCAAR", "RABAZ", "TDAAY", "PACAX"};
         std::vector<std::tuple<INT, INT>> E = {{0,1}, {2,3}};
         auto motifs = main_algo(V, E, 5, 3, 1);
-        auto motif_pair = motifs[0];
+        auto [r1, r2, m1, m2, count] = motifs[0];
 
         suite.assert_solution("QCAAR-RABAZ;TDAAY-PACAX (ell = 5; d = 3)", motif_pair.X, motif_pair.Y, motif_pair.edge_count, "**AA*", "*A*A*", 2);
     }

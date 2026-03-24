@@ -66,8 +66,8 @@ int main(int argc, char* argv[]) {
 
     auto motifs = main_algo(gi.node_labels, gi.edges, ell, d, k);
 
-    for (auto &motif : motifs)
-        std::cout << "(" << motif.X << ", " << motif.Y << ", " << motif.edge_count << ")" << "\n";
+    for (auto &[r1, r2, s1, s2, count] : motifs)
+        std::cout << "(" << s1 << ", " << s2 << ", " << count << ")" << "\n";
 
     return 0;
 }

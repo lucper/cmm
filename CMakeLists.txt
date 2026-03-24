@@ -17,9 +17,8 @@ include(FetchContent)
 FetchContent_Declare(
     libsais
     GIT_REPOSITORY https://github.com/IlyaGrebnov/libsais.git
-    GIT_TAG master
+    GIT_TAG        master
 )
-
 FetchContent_MakeAvailable(libsais)
 
 add_library(bpm_core
