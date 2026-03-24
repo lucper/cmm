@@ -8,6 +8,7 @@
 #include "utils.hpp"
 #include "rank_table.hpp"
 #include "esa.hpp"
+#include "radix_sort.hpp"
 
 struct motif_pair_record_t {
     INT rankX, rankY;
