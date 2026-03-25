@@ -66,7 +66,7 @@ size_t rank_table_t::sort_by_prefix(const std::vector<uint16_t>& H)
 
         for(size_t i = 0; i < sSA.size(); i++)
             packed_ranks_sSA[i] = (static_cast<uint64_t>(R1[sSA[i]]) << 32) | static_cast<uint64_t>(R2[sSA[i] + h_start]);
-        radix_sort<uint64_t, uint32_t>(packed_ranks_sSA, packed_ranks_sSA_buffer, &sSA, &sSA_buffer);
+        radix_sort<uint32_t>(packed_ranks_sSA, packed_ranks_sSA_buffer, &sSA, &sSA_buffer);
 
         size_t max_rank_R3 = 0;
         R3[sSA[0]] = 0;

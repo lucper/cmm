@@ -135,7 +135,7 @@ main_algo(const std::vector<std::string>& V, const std::vector<std::tuple<size_t
                 }
 
                 if (!all_pairs.empty()) {
-                    radix_sort<uint64_t>(all_pairs, radix_buffer);
+                    radix_sort(all_pairs, radix_buffer);
                     update_topK(topK, k, all_pairs, index_u, H_u, index_v, H_v);
                 }
             }

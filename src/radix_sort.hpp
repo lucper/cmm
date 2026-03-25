@@ -5,22 +5,22 @@
  * vector of "payloads" (satellite data). Note that keys should be
  * a vector of uint32_t or uint64_t.
  */
-template <typename KeyType = uint64_t, typename PayloadType = int>
-void radix_sort(std::vector<KeyType>& keys, 
-                std::vector<KeyType>& key_buffer,
+template <typename PayloadType = int>
+void radix_sort(std::vector<uint64_t>& keys,
+                std::vector<uint64_t>& keys_buffer,
                 std::vector<PayloadType>* payload = nullptr,
                 std::vector<PayloadType>* payload_buffer = nullptr)
 {
     if (keys.empty()) return;
 
-    if (key_buffer.size() < keys.size()) key_buffer.resize(keys.size());
+    if (keys_buffer.size() < keys.size()) keys_buffer.resize(keys.size());
 
     const int bits_per_pass = 16;
     const int bins = 1 << bits_per_pass;
-    const int num_passes = (sizeof(KeyType) * 8) / bits_per_pass;
+    const int num_passes = (sizeof(uint64_t) * 8) / bits_per_pass;
 
-    KeyType* src_key = keys.data();
-    KeyType* dst_key = key_buffer.data();
+    uint64_t* src_key = keys.data();
+    uint64_t* dst_key = keys_buffer.data();
     PayloadType* src_pay = (payload) ? payload->data() : nullptr;
     PayloadType* dst_pay = (payload_buffer) ? payload_buffer->data() : nullptr;
 
@@ -52,7 +52,7 @@ void radix_sort(std::vector<KeyType>& keys,
     }
 
     if (src_key != keys.data()) {
-        std::copy(key_buffer.begin(), key_buffer.end(), keys.begin());
+        std::copy(keys_buffer.begin(), keys_buffer.end(), keys.begin());
         if (payload && payload_buffer)
             std::copy(payload_buffer->begin(), payload_buffer->end(), payload->begin());
     }
