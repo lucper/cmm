@@ -2,7 +2,7 @@
 
 #define NUM_STRIPS 4
 
-static std::string apply_mask(std::string_view motif, const std::vector<uint32_t>& H, char wildcard = '*')
+static std::string apply_mask(std::string_view motif, const std::vector<uint16_t>& H, char wildcard = '*')
 {
     std::string masked_motif(motif);
     for (auto pos : H)
@@ -11,7 +11,7 @@ static std::string apply_mask(std::string_view motif, const std::vector<uint32_t
     return masked_motif;
 }
 
-static std::vector<std::vector<uint32_t>> all_H_combinations(size_t ell, size_t d)
+static std::vector<std::vector<uint16_t>> all_H_combinations(size_t ell, size_t d)
 {
     if (d == 0) return {{}};
 
@@ -74,7 +74,7 @@ static std::vector<uint32_t>::iterator unique_ranks(std::vector<uint32_t>& ranks
 }
 
 std::vector<motif_pair_record_t>
-main_algo(const std::vector<std::string>& V, const std::vector<std::tuple<uint32_t, uint32_t>>& E,
+main_algo(const std::vector<std::string>& V, const std::vector<std::tuple<size_t, size_t>>& E,
           size_t ell, size_t d, size_t k)
 {
     if (k <= 0) throw std::invalid_argument("k must be positive");
@@ -114,8 +114,8 @@ main_algo(const std::vector<std::string>& V, const std::vector<std::tuple<uint32
                     if (e % update_every == 0 || e + 1 == total)
                         print_progress(e + 1, total);
 
-                    INT u_len = V[u].length() - ell + 1;
-                    INT v_len = V[v].length() - ell + 1;
+                    size_t u_len = V[u].length() - ell + 1;
+                    size_t v_len = V[v].length() - ell + 1;
 
                     if (ranks_u.capacity() < u_len) ranks_u.reserve(u_len);
                     if (ranks_v.capacity() < v_len) ranks_v.reserve(v_len);
