@@ -35,7 +35,7 @@ int main(int argc, char* argv[]) {
     std::string path_to_labels(argv[1]);
     std::string path_to_edges(argv[2]);
 
-    INT ell = 0;
+    size_t ell = 0;
     try {
         ell = std::stoi(argv[3]);
         if (ell <= 0) throw std::invalid_argument("ell must be positive");
@@ -44,7 +44,7 @@ int main(int argc, char* argv[]) {
         return EXIT_FAILURE;
     }
 
-    INT d = 0;
+    size_t d = 0;
     try {
         d = std::stoi(argv[4]);
         if (d < 0 || d > ell) throw std::invalid_argument("d must be in interval [0,ell]");
@@ -53,7 +53,7 @@ int main(int argc, char* argv[]) {
         return EXIT_FAILURE;
     }
 
-    INT k = 0;
+    size_t k = 0;
     try {
         k = std::stoi(argv[5]);
         if (k <= 0) throw std::invalid_argument("k must be positive");
