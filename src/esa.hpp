@@ -2,12 +2,10 @@
 #define H_ESA
 
 #ifdef _USE_32
-#define INT int32_t
 #include <libsais.h>
 #endif
 
 #ifdef _USE_64
-#define INT int64_t
 #include <libsais64.h>
 #endif
 
@@ -16,22 +14,30 @@
 #define SEP '$'
 
 struct esa_t {
-    INT N;
-    INT *SA, *LCP, *ISA;
-    unsigned char *S;
-    std::vector<INT> S_offset;
+    #ifdef _USE_32
+    int32_t *SA;
+    #endif
+
+    #ifdef _USE_64
+    int64_t *SA;
+    #endif
+
+    uint32_t *LCP, *ISA;
+    int32_t N;
+    uint8_t *S;
+    std::vector<uint32_t> S_offset;
 
     esa_t(const std::vector<std::string>& seqs) {
         // Construct concatenated string S.
         N = 0;
         for (const auto& seq : seqs)
             N += seq.length() + 1;
-        S = (unsigned char *) malloc((N + 1) * sizeof(unsigned char));
+        S = (uint8_t *) malloc((N + 1) * sizeof(uint8_t));
         if (!S) {
             std::fprintf(stderr, "Could not allocate memory for concatenated string.\n");
             exit(EXIT_FAILURE);
         }
-        INT offset = 0;
+        size_t offset = 0;
         for (const auto& seq: seqs) {
             memcpy(S + offset, seq.data(), seq.length());
             offset += seq.length();
@@ -42,36 +48,42 @@ struct esa_t {
         // Store offsets of each individual string from the concatenated string.
         S_offset.resize(seqs.size() + 1); // Add 1 for pos of empty string after last string.
         S_offset[0] = 0;
-        for (int i = 1; i < seqs.size() + 1; i++)
+        for (size_t i = 1; i < seqs.size() + 1; i++)
             S_offset[i] = S_offset[i-1] + seqs[i-1].length() + 1;
-        
-        SA = (INT *) malloc(N * sizeof(INT));
+
+        #ifdef _USE_32
+        SA = (int32_t *) malloc(N * sizeof(int32_t));
         if (!SA) {
             std::fprintf(stderr, "Could not allocate memory for suffix array.\n");
             exit(EXIT_FAILURE);
         }
-        #ifdef _USE_64
-        if (libsais64(S, SA, N, 0, NULL) != 0) {
-            std::fprintf(stderr, "Could not construct suffix array.\n");
-            exit(EXIT_FAILURE);
-        }
-        #endif
-        #ifdef _USE_32
         if (libsais(S, SA, N, 0, NULL) != 0) {
             std::fprintf(stderr, "Could not construct suffix array.\n");
             exit(EXIT_FAILURE);
         }
         #endif
+
+        #ifdef _USE_64
+        SA = (int64_t *) malloc(N * sizeof(int64_t));
+        if (!SA) {
+            std::fprintf(stderr, "Could not allocate memory for suffix array.\n");
+            exit(EXIT_FAILURE);
+        }
+        if (libsais64(S, SA, N, 0, NULL) != 0) {
+            std::fprintf(stderr, "Could not construct suffix array.\n");
+            exit(EXIT_FAILURE);
+        }
+        #endif
         
-        ISA = (INT *) malloc(N * sizeof(INT));
+        ISA = (uint32_t *) malloc(N * sizeof(uint32_t));
         if (!ISA) {
             std::fprintf(stderr, "Could not construct suffix array.\n");
             exit(EXIT_FAILURE);
         }
-        for (int i = 0; i < N; i++)
+        for (size_t i = 0; i < N; i++)
             ISA[SA[i]] = i;
         
-        LCP = (INT *) malloc(N * sizeof(INT));
+        LCP = (uint32_t *) malloc(N * sizeof(uint32_t));
         LCP[0] = 0;
         for (int i = 0, j = 0; i < N; i++)
             if (ISA[i] != 0) {
@@ -81,12 +93,12 @@ struct esa_t {
                     j++;
                 LCP[ISA[i]] = j;
             }
+        free(ISA);
     }
 
     ~esa_t() {
         free(S);
         free(SA);
-        free(ISA);
         free(LCP);
     }
 };
