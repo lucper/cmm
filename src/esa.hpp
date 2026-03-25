@@ -16,14 +16,15 @@
 struct esa_t {
     #ifdef _USE_32
     int32_t *SA;
+    int32_t N;
     #endif
 
     #ifdef _USE_64
     int64_t *SA;
+    int64_t N;
     #endif
 
     uint32_t *LCP, *ISA;
-    int32_t N;
     uint8_t *S;
     std::vector<uint32_t> S_offset;
 
