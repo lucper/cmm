@@ -11,16 +11,16 @@ static std::string apply_mask(std::string_view motif, const std::vector<uint32_t
     return masked_motif;
 }
 
-static std::vector<std::vector<uint32_t>> all_H_combinations(uint32_t ell, uint32_t d)
+static std::vector<std::vector<uint32_t>> all_H_combinations(size_t ell, size_t d)
 {
     if (d == 0) return {{}};
 
-    std::vector<std::vector<uint32_t>> all_H;
-    std::vector<uint32_t> mask(ell, 0);
+    std::vector<std::vector<uint16_t>> all_H;
+    std::vector<uint16_t> mask(ell, 0);
     std::fill(mask.end() - d, mask.end(), 1); // start with the lexicographically first
 
     do {
-        std::vector<uint32_t> H;
+        std::vector<uint16_t> H;
         for (size_t i = 0; i < ell; i++) {
             if (mask[i]) H.push_back(i);
         }
@@ -30,20 +30,20 @@ static std::vector<std::vector<uint32_t>> all_H_combinations(uint32_t ell, uint3
     return all_H;
 }
 
-static void update_topK(std::priority_queue<motif_pair_record_t, std::vector<motif_pair_record_t>, std::greater<motif_pair_record_t>>& topK, INT k,
+static void update_topK(std::priority_queue<motif_pair_record_t, std::vector<motif_pair_record_t>, std::greater<motif_pair_record_t>>& topK, size_t k,
                         const std::vector<uint64_t>& all_pairs,
                         const rank_table_t& index_u, const std::vector<uint16_t>& H_u,
                         const rank_table_t& index_v, const std::vector<uint16_t>& H_v)
 {
     uint64_t curr = all_pairs[0];
-    uint32_t curr_count = 0;
+    size_t curr_count = 0;
     for (uint64_t packed_pair : all_pairs)
         if (packed_pair == curr) curr_count++;
         else {
             // Update
             if (topK.size() < k || curr_count > topK.top().edge_count) {
-                uint32_t rankX = (curr >> 32);
-                uint32_t rankY = (curr & 0xFFFFFFFF);
+                size_t rankX = static_cast<size_t>(curr >> 32);
+                size_t rankY = static_cast<size_t>(curr & 0xFFFFFFFF);
                 std::string X = apply_mask(index_u.get_substr_with_rank(rankX), H_u);
                 std::string Y = apply_mask(index_v.get_substr_with_rank(rankY), H_v);
                 if (topK.size() >= k) topK.pop();
@@ -54,8 +54,8 @@ static void update_topK(std::priority_queue<motif_pair_record_t, std::vector<mot
         }
     // Last group
     if (topK.size() < k || curr_count > topK.top().edge_count) {
-        uint32_t rankX = (curr >> 32);
-        uint32_t rankY = (curr & 0xFFFFFFFF);
+        size_t rankX = static_cast<size_t>(curr >> 32);
+        size_t rankY = static_cast<size_t>(curr & 0xFFFFFFFF);
         std::string X = apply_mask(index_u.get_substr_with_rank(rankX), H_u);
         std::string Y = apply_mask(index_v.get_substr_with_rank(rankY), H_v);
         if (topK.size() >= k) topK.pop();
@@ -64,8 +64,8 @@ static void update_topK(std::priority_queue<motif_pair_record_t, std::vector<mot
 }
 
 static std::vector<uint32_t>::iterator unique_ranks(std::vector<uint32_t>& ranks,
-                                               const rank_table_t& rank_table,
-                                               const std::string& seq, uint32_t seq_id, uint32_t ell)
+                                                    const rank_table_t& rank_table,
+                                                    const std::string& seq, size_t seq_id, size_t ell)
 {
     for (size_t i = 0; i < seq.length() - ell + 1; i++)
         ranks.push_back(rank_table.get_rank_of_substr(i, seq_id));
@@ -75,7 +75,7 @@ static std::vector<uint32_t>::iterator unique_ranks(std::vector<uint32_t>& ranks
 
 std::vector<motif_pair_record_t>
 main_algo(const std::vector<std::string>& V, const std::vector<std::tuple<uint32_t, uint32_t>>& E,
-          uint32_t ell, uint32_t d, uint32_t k)
+          size_t ell, size_t d, size_t k)
 {
     if (k <= 0) throw std::invalid_argument("k must be positive");
     if (ell < 1) throw std::invalid_argument("ell must be positive");
@@ -86,8 +86,8 @@ main_algo(const std::vector<std::string>& V, const std::vector<std::tuple<uint32
     rank_table_t index_u(ell, ESA);
     rank_table_t index_v(ell, ESA);
 
-    uint32_t total = E.size();
-    int update_every = 1 + total / 200; // ~200 updates max
+    size_t total = E.size();
+    size_t update_every = 1 + total / 200; // ~200 updates max
 
     std::vector<uint64_t> all_pairs;
     std::vector<uint64_t> radix_buffer;
@@ -97,7 +97,7 @@ main_algo(const std::vector<std::string>& V, const std::vector<std::tuple<uint32
     auto all_H = all_H_combinations(ell, d);
 
     for (const auto& H_u : all_H) {
-        uint32_t max_rank_u = index_u.sort_by_prefix(H_u);
+        size_t max_rank_u = index_u.sort_by_prefix(H_u);
         for (const auto& H_v : all_H) {
             index_v.sort_by_prefix(H_v);
 
