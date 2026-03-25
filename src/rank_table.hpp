@@ -60,7 +60,7 @@ private:
     std::vector<INT> sSA_buffer;
     std::vector<INT> count_buffer;
 
-    void radix_pass_over_sSA(INT max_rank, const std::vector<INT>& rank_buffer, INT offset);
+    inline void radix_pass_over_sSA(INT max_rank, const std::vector<INT>& rank_buffer, INT offset);
 };
 
 #endif

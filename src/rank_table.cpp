@@ -83,7 +83,7 @@ INT rank_table_t::sort_by_prefix(const std::vector<INT>& H)
     return max_rank_R1;
 }
 
-void rank_table_t::radix_pass_over_sSA(INT max_rank, const std::vector<INT>& key, INT offset)
+inline void rank_table_t::radix_pass_over_sSA(INT max_rank, const std::vector<INT>& key, INT offset)
 {
     std::fill(count_buffer.begin(), count_buffer.begin() + max_rank + 1, 0);
     for (int i = 0; i < sSA.size(); i++) count_buffer[key[sSA[i] + offset]]++;
