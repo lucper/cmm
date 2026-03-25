@@ -5,7 +5,7 @@
  * vector of "payloads" (satellite data). Note that keys should be
  * a vector of uint32_t or uint64_t.
  */
-template <typename KeyType, typename PayloadType = uint32_t>
+template <typename KeyType = uint64_t, typename PayloadType = int>
 void radix_sort(std::vector<KeyType>& keys, 
                 std::vector<KeyType>& key_buffer,
                 std::vector<PayloadType>* payload = nullptr,
@@ -26,15 +26,15 @@ void radix_sort(std::vector<KeyType>& keys,
 
     size_t counts[bins];
 
-    for (int p = 0; p < num_passes; p++) {
+    for (size_t p = 0; p < num_passes; p++) {
         std::fill(counts, counts + bins, 0);
-        int shift = p * bits_per_pass;
+        size_t shift = p * bits_per_pass;
 
         for (size_t i = 0; i < keys.size(); i++)
             counts[(src_key[i] >> shift) & 0xFFFF]++;
 
         size_t pos = 0;
-        for (int i = 0; i < bins; i++) {
+        for (size_t i = 0; i < bins; i++) {
             size_t c = counts[i];
             counts[i] = pos;
             pos += c;
