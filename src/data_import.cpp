@@ -21,7 +21,7 @@ split_semicolon_2cols(const std::string &line) {
     return { line.substr(0, pos), line.substr(pos + 1) };
 }
 
-static inline INT parse_int_strict(const std::string &s) {
+static inline size_t parse_int_strict(const std::string &s) {
     // no whitespace allowed; if you want to allow it, trim first.
     if (s.empty()) throw std::runtime_error("Empty integer field");
     std::size_t idx = 0;
@@ -33,11 +33,11 @@ static inline INT parse_int_strict(const std::string &s) {
     }
     if (idx != s.size())
         throw std::runtime_error("Garbage after integer: '" + s + "'");
-    return (INT)v;
+    return (size_t)v;
 }
 
 struct GraphInput {
-    std::vector<std::tuple<INT, INT>> edges; // (u,v)
+    std::vector<std::tuple<size_t, size_t>> edges; // (u,v)
     std::vector<std::string> node_labels;    // index -> label/sequence
 };
 
@@ -59,8 +59,8 @@ GraphInput read_graph_files(const std::string &edge_path,
         bool first = true;
 
         // We may see IDs out of order, so store temporarily in a vector sized by max id.
-        std::vector<std::pair<INT, std::string>> tmp;
-        INT max_id = -1;
+        std::vector<std::pair<size_t, std::string>> tmp;
+        size_t max_id = -1;
 
         while (std::getline(in, line)) {
             trim_right_cr(line);
@@ -68,7 +68,7 @@ GraphInput read_graph_files(const std::string &edge_path,
             if (first) { first = false; continue; } // skip header
 
             auto [a, b] = split_semicolon_2cols(line);
-            INT id = parse_int_strict(a);
+            size_t id = parse_int_strict(a);
             id -= 1;
             if (id < 0) throw std::runtime_error("Negative node id after base conversion");
 
@@ -79,7 +79,7 @@ GraphInput read_graph_files(const std::string &edge_path,
         out.node_labels.assign((std::size_t)(max_id + 1), std::string{});
 
         for (auto &p : tmp) {
-            INT id = p.first;
+            size_t id = p.first;
             if (!out.node_labels[(std::size_t)id].empty())
                 throw std::runtime_error("Duplicate node label for id " + std::to_string(id));
             out.node_labels[(std::size_t)id] = std::move(p.second);
@@ -106,8 +106,8 @@ GraphInput read_graph_files(const std::string &edge_path,
             if (first) { first = false; continue; } // skip header
 
             auto [a, b] = split_semicolon_2cols(line);
-            INT u = parse_int_strict(a);
-            INT v = parse_int_strict(b);
+            size_t u = parse_int_strict(a);
+            size_t v = parse_int_strict(b);
             { u -= 1; v -= 1; }
 
             if (u < 0 || v < 0)
