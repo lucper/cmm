@@ -45,7 +45,7 @@ private:
     const unsigned char *S;
     const std::vector<uint32_t>& S_offset;
     const int64_t *SA;
-    const int64_t *LCP;
+    const uint32_t *LCP;
     size_t N;
 
     size_t ell;
