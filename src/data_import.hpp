@@ -6,7 +6,7 @@
 #define BPM_DATAIMPORT_H
 
 struct GraphInput {
-    std::vector<std::tuple<INT, INT>> edges; // (u,v) endpoints (0-based after import)
+    std::vector<std::tuple<size_t, size_t>> edges; // (u,v) endpoints (0-based after import)
     std::vector<std::string> node_labels;    // node_id -> label/sequence
 };
 

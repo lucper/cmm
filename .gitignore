@@ -1,6 +1,11 @@
 build/
 data/generated
+data/figures
+logs/
 *.data
 *.csv
 *.perf-folded
 *.svg
+.DS_Store
+.idea/
+benchmark/FlameGraph/
