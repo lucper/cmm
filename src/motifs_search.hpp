@@ -2,23 +2,18 @@
 #define H_MOTIF_SEARCH
 
 #include <vector>
-#include <unordered_map>
 #include <tuple>
 #include <queue>
 #include <algorithm>
-#include <gtl/phmap.hpp>
 #include "utils.hpp"
 #include "rank_table.hpp"
 #include "esa.hpp"
-
-struct identity_hash_t {
-    size_t operator()(uint64_t x) const { return static_cast<size_t>(x); }
-};
+#include "radix_sort.hpp"
 
 struct motif_pair_record_t {
-    INT rankX, rankY;
+    size_t rankX, rankY;
     std::string X, Y;
-    INT edge_count;
+    size_t edge_count;
 
     // For min-heap.
     bool operator>(const motif_pair_record_t& other) const {
@@ -27,7 +22,7 @@ struct motif_pair_record_t {
 };
 
 std::vector<motif_pair_record_t>
-main_algo(const std::vector<std::string>& V, const std::vector<std::tuple<INT, INT>>& E,
-          INT ell, INT d, INT k);
+main_algo(const std::vector<std::string>& V, const std::vector<std::tuple<size_t, size_t>>& E,
+          size_t ell, size_t d, size_t k);
 
 #endif

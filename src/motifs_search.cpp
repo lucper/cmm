@@ -1,25 +1,27 @@
 #include "motifs_search.hpp"
 
-static std::string apply_mask(std::string_view motif, const std::vector<INT>& H, char wildcard = '*')
+#define NUM_STRIPS 4
+
+static std::string apply_mask(std::string_view motif, const std::vector<uint16_t>& H, char wildcard = '*')
 {
     std::string masked_motif(motif);
-    for (INT pos : H)
+    for (auto pos : H)
         if (pos >= 0 && pos < masked_motif.length())
             masked_motif[pos] = wildcard;
     return masked_motif;
 }
 
-static std::vector<std::vector<INT>> all_H_combinations(INT ell, INT d)
+static std::vector<std::vector<uint16_t>> all_H_combinations(size_t ell, size_t d)
 {
     if (d == 0) return {{}};
 
-    std::vector<std::vector<INT>> all_H;
-    std::vector<INT> mask(ell, 0);
+    std::vector<std::vector<uint16_t>> all_H;
+    std::vector<uint16_t> mask(ell, 0);
     std::fill(mask.end() - d, mask.end(), 1); // start with the lexicographically first
 
     do {
-        std::vector<INT> H;
-        for (int i = 0; i < ell; i++) {
+        std::vector<uint16_t> H;
+        for (size_t i = 0; i < ell; i++) {
             if (mask[i]) H.push_back(i);
         }
         all_H.push_back(H);
@@ -28,21 +30,55 @@ static std::vector<std::vector<INT>> all_H_combinations(INT ell, INT d)
     return all_H;
 }
 
-static std::vector<INT>::iterator unique_ranks(std::vector<INT>& ranks,
-                                               const rank_table_t& rank_table,
-                                               const std::string& seq, INT seq_id, INT ell)
+static void update_topK(std::priority_queue<motif_pair_record_t, std::vector<motif_pair_record_t>, std::greater<motif_pair_record_t>>& topK, size_t k,
+                        const std::vector<uint64_t>& all_pairs,
+                        const rank_table_t& index_u, const std::vector<uint16_t>& H_u,
+                        const rank_table_t& index_v, const std::vector<uint16_t>& H_v)
 {
-    for (int i = 0; i < seq.length() - ell + 1; i++)
+    uint64_t curr = all_pairs[0];
+    size_t curr_count = 0;
+    for (uint64_t packed_pair : all_pairs)
+        if (packed_pair == curr) curr_count++;
+        else {
+            // Update
+            if (topK.size() < k || curr_count > topK.top().edge_count) {
+                size_t rankX = static_cast<size_t>(curr >> 32);
+                size_t rankY = static_cast<size_t>(curr & 0xFFFFFFFF);
+                std::string X = apply_mask(index_u.get_substr_with_rank(rankX), H_u);
+                std::string Y = apply_mask(index_v.get_substr_with_rank(rankY), H_v);
+                if (topK.size() >= k) topK.pop();
+                topK.push({rankX, rankY, X, Y, curr_count});
+            }
+            curr = packed_pair;
+            curr_count = 1;
+        }
+    // Last group
+    if (topK.size() < k || curr_count > topK.top().edge_count) {
+        size_t rankX = static_cast<size_t>(curr >> 32);
+        size_t rankY = static_cast<size_t>(curr & 0xFFFFFFFF);
+        std::string X = apply_mask(index_u.get_substr_with_rank(rankX), H_u);
+        std::string Y = apply_mask(index_v.get_substr_with_rank(rankY), H_v);
+        if (topK.size() >= k) topK.pop();
+        topK.push({rankX, rankY, X, Y, curr_count});
+    }
+}
+
+static std::vector<uint32_t>::iterator unique_ranks(std::vector<uint32_t>& ranks,
+                                                    const rank_table_t& rank_table,
+                                                    const std::string& seq, size_t seq_id, size_t ell)
+{
+    for (size_t i = 0; i < seq.length() - ell + 1; i++)
         ranks.push_back(rank_table.get_rank_of_substr(i, seq_id));
     std::sort(ranks.begin(), ranks.end());
     return std::unique(ranks.begin(), ranks.end());
 }
 
 std::vector<motif_pair_record_t>
-main_algo(const std::vector<std::string>& V, const std::vector<std::tuple<INT, INT>>& E,
-          INT ell, INT d, INT k)
+main_algo(const std::vector<std::string>& V, const std::vector<std::tuple<size_t, size_t>>& E,
+          size_t ell, size_t d, size_t k)
 {
     if (k <= 0) throw std::invalid_argument("k must be positive");
+    if (ell < 1) throw std::invalid_argument("ell must be positive");
 
     std::priority_queue<motif_pair_record_t, std::vector<motif_pair_record_t>, std::greater<motif_pair_record_t>> topK;
 
@@ -50,56 +86,60 @@ main_algo(const std::vector<std::string>& V, const std::vector<std::tuple<INT, I
     rank_table_t index_u(ell, ESA);
     rank_table_t index_v(ell, ESA);
 
-    int total = E.size();
-    int update_every = 1 + total / 200; // ~200 updates max
+    size_t total = E.size();
+    size_t update_every = 1 + total / 200; // ~200 updates max
+
+    std::vector<uint64_t> all_pairs;
+    std::vector<uint64_t> radix_buffer;
+    std::vector<uint32_t> ranks_u;
+    std::vector<uint32_t> ranks_v;
 
     auto all_H = all_H_combinations(ell, d);
 
-    gtl::flat_hash_map<uint64_t, INT, identity_hash_t> all_pairs;
-    std::vector<INT> ranks_u;
-    std::vector<INT> ranks_v;
-
     for (const auto& H_u : all_H) {
-        index_u.sort_by_prefix(H_u);
+        size_t max_rank_u = index_u.sort_by_prefix(H_u);
         for (const auto& H_v : all_H) {
             index_v.sort_by_prefix(H_v);
 
-            for (int e = 0; e < total; e++) {
-                auto [u, v] = E[e];
+            size_t strip_size = (max_rank_u + NUM_STRIPS - 1) / NUM_STRIPS;
 
-                if (e % update_every == 0 || e + 1 == total)
-                    print_progress(e + 1, total);
+            for (size_t s = 0; s < NUM_STRIPS; s++) {
+                size_t start_u = s * strip_size;
+                size_t end_u = std::min(start_u + strip_size, max_rank_u);
+                all_pairs.clear();
 
-                INT u_len = V[u].length() - ell + 1;
-                INT v_len = V[v].length() - ell + 1;
+                for (size_t e = 0; e < total; e++) {
+                    auto [u, v] = E[e];
 
-                if (ranks_u.capacity() < u_len) ranks_u.reserve(u_len);
-                if (ranks_v.capacity() < v_len) ranks_v.reserve(v_len);
+                    if (e % update_every == 0 || e + 1 == total)
+                        print_progress(e + 1, total);
 
-                auto ranks_u_end = unique_ranks(ranks_u, index_u, V[u], u, ell);
-                auto ranks_v_end = unique_ranks(ranks_v, index_v, V[v], v, ell);
+                    size_t u_len = V[u].length() - ell + 1;
+                    size_t v_len = V[v].length() - ell + 1;
 
-                for (auto it_u = ranks_u.begin(); it_u != ranks_u_end; it_u++)
-                    for (auto it_v = ranks_v.begin(); it_v != ranks_v_end; it_v++) {
-                        uint64_t packed_pair = ((uint64_t) (*it_u) << 32) | (uint64_t) (*it_v);
-                        all_pairs[packed_pair]++;
-                     }
+                    if (ranks_u.capacity() < u_len) ranks_u.reserve(u_len);
+                    if (ranks_v.capacity() < v_len) ranks_v.reserve(v_len);
 
-                ranks_u.clear();
-                ranks_v.clear();
+                    auto ranks_u_end = unique_ranks(ranks_u, index_u, V[u], u, ell);
+                    auto ranks_v_end = unique_ranks(ranks_v, index_v, V[v], v, ell);
+
+                    for (auto it_u = ranks_u.begin(); it_u != ranks_u_end; it_u++)
+                        if (*it_u >= start_u && *it_u < end_u)
+                            for (auto it_v = ranks_v.begin(); it_v != ranks_v_end; it_v++) {
+                                uint64_t packed_pair = (static_cast<uint64_t>(*it_u) << 32) | static_cast<uint64_t>(*it_v);
+                                all_pairs.push_back(packed_pair);
+                            }
+
+                    ranks_u.clear();
+                    ranks_v.clear();
+                }
+
+                if (!all_pairs.empty()) {
+                    radix_sort(all_pairs, radix_buffer);
+                    update_topK(topK, k, all_pairs, index_u, H_u, index_v, H_v);
+                }
             }
 
-            // Update top K.
-            for (auto const& [packed_pair, count] : all_pairs)
-                if (topK.size() < k || count > topK.top().edge_count) {
-                    uint32_t rankX = (uint32_t) (packed_pair >> 32);
-                    uint32_t rankY = (uint32_t) (packed_pair & 0xFFFFFFFF);
-                    std::string X = apply_mask(index_u.get_substr_with_rank(rankX), H_u);
-                    std::string Y = apply_mask(index_v.get_substr_with_rank(rankY), H_v);
-                    if (topK.size() >= k) topK.pop();
-                    topK.push({rankX, rankY, X, Y, count});
-                }
-            all_pairs.clear();
         }
     }
 

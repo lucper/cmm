@@ -16,8 +16,8 @@ struct test_suite {
     int failed = 0;
 
     void assert_solution(const std::string& name,
-                        const std::string& m1, const std::string& m2, INT actual_count,
-                        const std::string& target1, const std::string& target2, INT expected_count)
+                         const std::string& m1, const std::string& m2, size_t actual_count,
+                         const std::string& target1, const std::string& target2, size_t expected_count)
     {
         if (m1 == target1 && m2 == target2 && actual_count == expected_count) {
             std::printf("[%sPASS%s] %s: Found {%s, %s, %ld}\n", GREEN, RESET, name.c_str(), m1.c_str(), m2.c_str(), actual_count);
@@ -42,7 +42,7 @@ void run_all_tests()
 
     {
         std::vector<std::string> V = {"ATGC", "ATGC"};
-        std::vector<std::tuple<INT, INT>> E = {{0,1}};
+        std::vector<std::tuple<size_t, size_t>> E = {{0,1}};
         auto motifs = main_algo(V, E, 4, 0, 1);
         auto [r1, r2, m1, m2, count] = motifs[0];
 
@@ -50,17 +50,8 @@ void run_all_tests()
     }
 
     {
-        std::vector<std::string> V = {"ATGC", "ATGC"};
-        std::vector<std::tuple<INT, INT>> E = {{0,1}};
-        auto motifs = main_algo(V, E, 0, 0, 1);
-        auto [r1, r2, m1, m2, count] = motifs[0];
-
-        suite.assert_solution("ATGC-ATGC (ell = 0)", m1, m2, count, "", "", 1);
-    }
-
-    {
         std::vector<std::string> V = {"CAA", "ABA", "DAA", "ACA"};
-        std::vector<std::tuple<INT, INT>> E = {{0,1}, {2,3}};
+        std::vector<std::tuple<size_t, size_t>> E = {{0,1}, {2,3}};
         auto motifs = main_algo(V, E, 3, 1, 1);
         auto [r1, r2, m1, m2, count] = motifs[0];
 
@@ -69,7 +60,7 @@ void run_all_tests()
 
     {
         std::vector<std::string> V = {"QCAA", "RABA", "TDAA", "PACA"};
-        std::vector<std::tuple<INT, INT>> E = {{0,1}, {2,3}};
+        std::vector<std::tuple<size_t, size_t>> E = {{0,1}, {2,3}};
         auto motifs = main_algo(V, E, 4, 2, 1);
         auto [r1, r2, m1, m2, count] = motifs[0];
 
@@ -78,14 +69,13 @@ void run_all_tests()
 
     {
         std::vector<std::string> V = {"QCAAR", "RABAZ", "TDAAY", "PACAX"};
-        std::vector<std::tuple<INT, INT>> E = {{0,1}, {2,3}};
+        std::vector<std::tuple<size_t, size_t>> E = {{0,1}, {2,3}};
         auto motifs = main_algo(V, E, 5, 3, 1);
         auto [r1, r2, m1, m2, count] = motifs[0];
 
         suite.assert_solution("QCAAR-RABAZ;TDAAY-PACAX (ell = 5; d = 3)", m1, m2, count, "**AA*", "*A*A*", 2);
     }
     
-
     suite.summary();
 }
 
