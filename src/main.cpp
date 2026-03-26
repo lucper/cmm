@@ -17,7 +17,7 @@ void print_usage(const char* prog_name) {
     std::printf("  k            Integer number of top k motifs.\n");
     std::printf("\n");
     std::printf("Example:\n");
-    std::printf("  %s data/nodes.dat data/edges.dat 10 4\n", prog_name);
+    std::printf("  %s data/nodes.dat data/edges.dat 10 4 1\n", prog_name);
 }
 
 int main(int argc, char* argv[]) {
