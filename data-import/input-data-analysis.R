@@ -1,10 +1,10 @@
 library(tidyverse)
 
-input_id <- "aj_"
+input_id <- "aj-yeast"
 
 # ── 1. Read data ──────────────────────────────────────────────
-edges  <- read_delim("edges.csv",  delim = ";", col_types = "ii")
-labels <- read_delim("labels.csv", delim = ";", col_types = "ic")
+edges  <- read_delim(glue("./data/{input_id}/edge_list.csv"),  delim = ";", col_types = "ii")
+labels <- read_delim(glue("./data/{input_id}/node_labels.csv"), delim = ";", col_types = "ic")
 
 # ── 2. Node degree distribution ──────────────────────────────
 # Each edge (left, right) contributes one degree to each endpoint.
@@ -53,14 +53,5 @@ ggplot(label_lengths, aes(x = label_length)) +
     title = "Distribution of Node Label Lengths",
     x     = "Label Length (characters)",
     y     = "Count"
-  ) +
-  theme_minimal()
-
-# Box plot (compact alternative view)
-ggplot(label_lengths, aes(y = label_length)) +
-  geom_boxplot(fill = "darkorange", alpha = 0.6) +
-  labs(
-    title = "Node Label Lengths – Box Plot",
-    y     = "Label Length (characters)"
   ) +
   theme_minimal()
