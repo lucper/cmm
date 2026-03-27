@@ -1,13 +1,4 @@
-#include <fstream>
-#include <sstream>
-#include <string>
-#include <tuple>
-#include <vector>
-#include <stdexcept>
-#include <cctype>
-#include <algorithm>
-
-#include "esa.hpp"
+#include "data_import.hpp"
 
 static inline void trim_right_cr(std::string &s) {
     if (!s.empty() && s.back() == '\r') s.pop_back();
@@ -35,11 +26,6 @@ static inline int parse_int_strict(const std::string &s) {
         throw std::runtime_error("Garbage after integer: '" + s + "'");
     return static_cast<int>(v);
 }
-
-struct GraphInput {
-    std::vector<std::tuple<size_t, size_t>> edges; // (u,v)
-    std::vector<std::string> node_labels;    // index -> label/sequence
-};
 
 // Reads:
 // - edge_list.csv: left;right (u;v per line)
@@ -100,6 +86,8 @@ GraphInput read_graph_files(const std::string &edge_path,
         std::string line;
         bool first = true;
 
+        out.adj_list.resize(out.node_labels.size());
+
         while (std::getline(in, line)) {
             trim_right_cr(line);
             if (line.empty()) continue;
@@ -116,7 +104,8 @@ GraphInput read_graph_files(const std::string &edge_path,
                 throw std::runtime_error("Edge endpoint out of range: " + std::to_string((long long)u) +
                                          "," + std::to_string((long long)v));
 
-            out.edges.emplace_back(u, v);
+            out.adj_list[u].push_back(static_cast<uint32_t>(v));
+            out.adj_list[v].push_back(static_cast<uint32_t>(u));
         }
     }
 
