@@ -55,54 +55,49 @@ main_algo(const std::vector<std::string>& V, const std::vector<std::vector<uint3
     size_t update_every = 1 + total / 200; // ~200 updates max
 
     auto all_H = all_H_combinations(ell, d);
+    std::vector<uint32_t> count(ESA.N, 0); // !!! local per thread
     std::vector<std::vector<uint32_t>> rank_to_nodes(ESA.N);
 
     for (size_t i = 0; i < all_H.size(); i++) {
         auto H_u = all_H[i];
         size_t max_rank_u = index_u.sort_by_prefix(H_u);
+
+        // precompute nodes having substrings with rank in [max_rank_u]
+        for (auto &v : rank_to_nodes) v.clear();
+        for (size_t u = 0; u < G.size(); u++) {
+            std::vector<uint32_t> ranks_u; // !!!
+            auto end = unique_ranks(ranks_u, index_u, V[u], u, ell);
+            for (auto it = ranks_u.begin(); it != end; it++)
+                rank_to_nodes[*it].push_back(u);
+        }
+
         for (size_t j = 0; j < all_H.size(); j++) {
             auto H_v = all_H[j];
             size_t max_rank_v = index_v.sort_by_prefix(H_v);
 
-            for (auto &v : rank_to_nodes) v.clear();
-            for (size_t u = 0; u < G.size(); u++) {
-                std::vector<uint32_t> ranks_u;
-                auto end = unique_ranks(ranks_u, index_u, V[u], u, ell); // optimize this
-                for (auto it = ranks_u.begin(); it != end; it++)
-                    rank_to_nodes[*it].push_back(u);
-            }
-
-            std::vector<uint32_t> count(max_rank_v + 1, 0);
-
-            /////////////////////////////////////////////////////////////
-            for (size_t rank_u = 0; rank_u <= max_rank_u; rank_u++) { // very inefficient (ensure that max_rank_u id actually the max rank used in sSA
-                DBG("Processing for rank " << rank_u);
-                DBG("-------------------------------");
-
+            for (size_t rank_u = 0; rank_u < max_rank_u + 1; rank_u++) {
                 auto nodes_with_rank_u = rank_to_nodes[rank_u];
 
                 for (auto u : nodes_with_rank_u)
                     for (auto v : G[u])
-                        if (u < v) { // arbitrary order, or divide counts by 2
-                            std::vector<uint32_t> ranks_v;
-                            auto end = unique_ranks(ranks_v, index_v, V[v], v, ell); // optimize this
+                        if (u < v) {
+                            std::vector<uint32_t> ranks_v; // !!!
+                            auto end = unique_ranks(ranks_v, index_v, V[v], v, ell);
                             for (auto it = ranks_v.begin(); it != end; it++)
                                 count[*it]++;
                         }
                 
-                for (size_t rank_v = 0; rank_v <= max_rank_v; rank_v++) {
+                for (size_t rank_v = 0; rank_v < max_rank_v + 1; rank_v++) {
                     if (count[rank_v] > 0)
                         if (topK.size() < k || count[rank_v] > topK.top().edge_count) {
                             std::string X = apply_mask(index_u.get_substr_with_rank(rank_u), H_u);
                             std::string Y = apply_mask(index_v.get_substr_with_rank(rank_v), H_v);
-                            if (topK.size() >= k) topK.pop();
-                            topK.push({rank_u, rank_v, X, Y, count[rank_v]});
+                            if (topK.size() >= k) topK.pop(); // critical
+                            topK.push({rank_u, rank_v, X, Y, count[rank_v]}); // critical
                         }
                 }
-                DBG("-------------------------------");
                 std::fill(count.begin(), count.end(), 0);
             }
-            /////////////////////////////////////////////////////////////
         }
     }
 
