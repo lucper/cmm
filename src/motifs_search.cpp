@@ -38,6 +38,20 @@ static std::vector<uint32_t>::iterator unique_ranks(std::vector<uint32_t>& ranks
     return std::unique(ranks.begin(), ranks.end());
 }
 
+template <typename F>
+static void precompute(const std::vector<std::string>& V,
+                       const rank_table_t& index, size_t ell, F callback)
+{
+    std::vector<uint32_t> buffer;
+    for (size_t u = 0; u < V.size(); u++) {
+        buffer.reserve(V[u].length());
+        auto end = unique_ranks(buffer, index, V[u], u, ell);
+        for (auto it = buffer.begin(); it != end; it++)
+            callback(u, *it);
+        buffer.clear();
+    }
+}
+
 std::vector<motif_pair_record_t>
 main_algo(const std::vector<std::string>& V, const std::vector<std::vector<uint32_t>>& G,
           size_t ell, size_t d, size_t k)
@@ -56,7 +70,9 @@ main_algo(const std::vector<std::string>& V, const std::vector<std::vector<uint3
 
     auto all_H = all_H_combinations(ell, d);
     std::vector<uint32_t> count(ESA.N, 0); // !!! local per thread
-    std::vector<std::vector<uint32_t>> rank_to_nodes(ESA.N);
+    std::vector<std::vector<uint32_t>> rank_to_nodes(ESA.N); // !!!
+    std::vector<std::vector<uint32_t>> node_to_uniq_ranks_Hv(V.size()); // !!!
+    std::vector<uint32_t> ranks_buffer; // !!!
 
     for (size_t i = 0; i < all_H.size(); i++) {
         auto H_u = all_H[i];
@@ -64,28 +80,24 @@ main_algo(const std::vector<std::string>& V, const std::vector<std::vector<uint3
 
         // precompute nodes having substrings with rank in [max_rank_u]
         for (auto &v : rank_to_nodes) v.clear();
-        for (size_t u = 0; u < G.size(); u++) {
-            std::vector<uint32_t> ranks_u; // !!!
-            auto end = unique_ranks(ranks_u, index_u, V[u], u, ell);
-            for (auto it = ranks_u.begin(); it != end; it++)
-                rank_to_nodes[*it].push_back(u);
-        }
+        precompute(V, index_u, ell, [&](size_t u, uint32_t r) { rank_to_nodes[r].push_back(u); });
 
         for (size_t j = 0; j < all_H.size(); j++) {
             auto H_v = all_H[j];
             size_t max_rank_v = index_v.sort_by_prefix(H_v);
+
+            // precompute unique ranks under index_v
+            for (auto &v : node_to_uniq_ranks_Hv) v.clear();
+            precompute(V, index_v, ell, [&](size_t u, uint32_t r) { node_to_uniq_ranks_Hv[u].push_back(r); });
 
             for (size_t rank_u = 0; rank_u < max_rank_u + 1; rank_u++) {
                 auto nodes_with_rank_u = rank_to_nodes[rank_u];
 
                 for (auto u : nodes_with_rank_u)
                     for (auto v : G[u])
-                        if (u < v) {
-                            std::vector<uint32_t> ranks_v; // !!!
-                            auto end = unique_ranks(ranks_v, index_v, V[v], v, ell);
-                            for (auto it = ranks_v.begin(); it != end; it++)
-                                count[*it]++;
-                        }
+                        if (u < v)
+                            for (auto r : node_to_uniq_ranks_Hv[v])
+                                count[r]++;
                 
                 for (size_t rank_v = 0; rank_v < max_rank_v + 1; rank_v++) {
                     if (count[rank_v] > 0)
