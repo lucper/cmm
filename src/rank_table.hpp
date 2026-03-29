@@ -42,7 +42,7 @@ public:
     size_t get_rank_of_substr(size_t i, size_t k) const;
 
 private:
-    const unsigned char *S;
+    const uint8_t *S;
     const std::vector<uint32_t>& S_offset;
     const int64_t *SA;
     const uint32_t *LCP;
