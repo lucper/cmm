@@ -39,7 +39,7 @@ static std::vector<uint32_t>::iterator unique_ranks(std::vector<uint32_t>& ranks
 }
 
 template <typename F>
-static void precompute(const std::vector<std::string>& V,
+static void get_unique_ranks(const std::vector<std::string>& V,
                        const rank_table_t& index, size_t ell, F callback)
 {
     std::vector<uint32_t> buffer;
@@ -80,7 +80,7 @@ main_algo(const std::vector<std::string>& V, const std::vector<std::vector<uint3
 
         // precompute nodes having substrings with rank in [max_rank_u]
         for (auto &v : rank_to_nodes) v.clear();
-        precompute(V, index_u, ell, [&](size_t u, uint32_t r) { rank_to_nodes[r].push_back(u); });
+        get_unique_ranks(V, index_u, ell, [&](size_t u, uint32_t r) { rank_to_nodes[r].push_back(u); });
 
         for (size_t j = 0; j < all_H.size(); j++) {
             auto H_v = all_H[j];
@@ -88,7 +88,7 @@ main_algo(const std::vector<std::string>& V, const std::vector<std::vector<uint3
 
             // precompute unique ranks under index_v
             for (auto &v : node_to_uniq_ranks_Hv) v.clear();
-            precompute(V, index_v, ell, [&](size_t u, uint32_t r) { node_to_uniq_ranks_Hv[u].push_back(r); });
+            get_unique_ranks(V, index_v, ell, [&](size_t u, uint32_t r) { node_to_uniq_ranks_Hv[u].push_back(r); });
 
             for (size_t rank_u = 0; rank_u < max_rank_u + 1; rank_u++) {
                 auto nodes_with_rank_u = rank_to_nodes[rank_u];
