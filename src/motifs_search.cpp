@@ -40,7 +40,7 @@ static std::vector<uint32_t>::iterator unique_ranks(std::vector<uint32_t>& ranks
 
 template <typename F>
 static void get_unique_ranks(const std::vector<std::string>& V,
-                       const rank_table_t& index, size_t ell, F callback)
+                             const rank_table_t& index, size_t ell, F callback)
 {
     std::vector<uint32_t> buffer;
     for (size_t u = 0; u < V.size(); u++) {
@@ -93,12 +93,14 @@ main_algo(const std::vector<std::string>& V, const std::vector<std::vector<uint3
             for (size_t rank_u = 0; rank_u < max_rank_u + 1; rank_u++) {
                 auto nodes_with_rank_u = rank_to_nodes[rank_u];
 
+                if (nodes_with_rank_u.empty()) continue;
+
                 for (auto u : nodes_with_rank_u)
                     for (auto v : G[u])
                         if (u < v)
                             for (auto r : node_to_uniq_ranks_Hv[v])
                                 count[r]++;
-                
+
                 for (size_t rank_v = 0; rank_v < max_rank_v + 1; rank_v++) {
                     if (count[rank_v] > 0)
                         if (topK.size() < k || count[rank_v] > topK.top().edge_count) {
