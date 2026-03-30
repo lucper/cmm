@@ -35,8 +35,10 @@ static inline int parse_int_strict(const std::string &s) {
 GraphInput read_graph_files(const std::string &edge_path,
                             const std::string &labels_path) {
     GraphInput out;
+    // Map to translate File ID -> Internal ID (0, 1, 2...)
+    std::unordered_map<int, uint32_t> id_map;
+    uint32_t next_internal_id = 0;
 
-    // ---- read labels first (so we know number of nodes) ----
     {
         std::ifstream in(labels_path);
         if (!in) throw std::runtime_error("Cannot open node_labels file: " + labels_path);
@@ -44,39 +46,26 @@ GraphInput read_graph_files(const std::string &edge_path,
         std::string line;
         bool first = true;
 
-        // We may see IDs out of order, so store temporarily in a vector sized by max id.
-        std::vector<std::pair<int, std::string>> tmp;
-        int max_id = -1;
-
         while (std::getline(in, line)) {
             trim_right_cr(line);
             if (line.empty()) continue;
             if (first) { first = false; continue; } // skip header
 
             auto [a, b] = split_semicolon_2cols(line);
-            int id = parse_int_strict(a);
-            id -= 1;
-            if (id < 0) throw std::runtime_error("Negative node id after base conversion");
+            int original_id = parse_int_strict(a);
 
-            max_id = std::max(max_id, id);
-            tmp.push_back({id, b});
-        }
-
-        out.node_labels.assign((std::size_t)(max_id + 1), std::string{});
-
-        for (auto &p : tmp) {
-            int id = p.first;
-            if (!out.node_labels[(std::size_t)id].empty())
-                throw std::runtime_error("Duplicate node label for id " + std::to_string(id));
-            out.node_labels[(std::size_t)id] = std::move(p.second);
-        }
-
-        // Validate no missing labels
-        for (std::size_t i = 0; i < out.node_labels.size(); i++) {
-            if (out.node_labels[i].empty())
-                throw std::runtime_error("Missing label/sequence for node id " + std::to_string((long long)i));
+            // if this ID has not been seen, assign it the next available index
+            if (id_map.find(original_id) == id_map.end()) {
+                id_map[original_id] = next_internal_id++;
+                out.node_labels.push_back(std::move(b));
+            } else {
+                throw std::runtime_error("Duplicate node label for id " + std::to_string(original_id));
+            }
         }
     }
+
+    out.adj_list.resize(out.node_labels.size());
+
 
     // ---- read edges ----
     {
@@ -94,18 +83,22 @@ GraphInput read_graph_files(const std::string &edge_path,
             if (first) { first = false; continue; } // skip header
 
             auto [a, b] = split_semicolon_2cols(line);
-            int u = parse_int_strict(a);
-            int v = parse_int_strict(b);
-            { u -= 1; v -= 1; }
+            int u_orig = parse_int_strict(a);
+            int v_orig = parse_int_strict(b);
 
-            if (u < 0 || v < 0)
-                throw std::runtime_error("Negative endpoint in edge");
-            if ((std::size_t)u >= out.node_labels.size() || (std::size_t)v >= out.node_labels.size())
-                throw std::runtime_error("Edge endpoint out of range: " + std::to_string((long long)u) +
-                                         "," + std::to_string((long long)v));
+            // translate file IDs to our dense internal IDs
+            auto it_u = id_map.find(u_orig);
+            auto it_v = id_map.find(v_orig);
 
-            out.adj_list[u].push_back(static_cast<uint32_t>(v));
-            out.adj_list[v].push_back(static_cast<uint32_t>(u));
+            if (it_u == id_map.end() || it_v == id_map.end())
+                throw std::runtime_error("Edge refers to missing node ID: " +
+                                         std::to_string(u_orig) + " or " + std::to_string(v_orig));
+
+            uint32_t u_internal = it_u->second;
+            uint32_t v_internal = it_v->second;
+
+            out.adj_list[u_internal].push_back(v_internal);
+            out.adj_list[v_internal].push_back(u_internal);
         }
     }
 
