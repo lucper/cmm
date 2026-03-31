@@ -13,6 +13,8 @@ class rank_table_t {
 public:
     rank_table_t(size_t ell, const esa_t& ESA);
 
+    size_t get_ell() const;
+
     /* Assigns ranks to suffixes whose prefixes have length >= ell and wildcards in positions
      * H within the ell-length prefix. The ranks are assigned according to the lexicographical
      * order of these ell-length substrings ignoring the wildcard positions. Note that identical
