@@ -96,18 +96,15 @@ main_algo(const std::vector<std::string>& V, const std::vector<std::vector<uint3
                                 count[rank_v]++;
                             }
 
-                for (size_t rank_v = 0; rank_v < max_rank_v + 1; rank_v++) {
-                    if (count[rank_v] > 0)
-                        if (topK.size() < k || count[rank_v] > topK.top().edge_count) {
-                            std::string X = apply_mask(index_u.get_substr_with_rank(rank_u), H_u);
-                            std::string Y = apply_mask(index_v.get_substr_with_rank(rank_v), H_v);
-                            if (topK.size() >= k) topK.pop(); // critical
-                            topK.push({rank_u, rank_v, X, Y, count[rank_v]}); // critical
-                        }
+                for (auto rank_v : count_set_indices) {
+                    if (topK.size() < k || count[rank_v] > topK.top().edge_count) {
+                        std::string X = apply_mask(index_u.get_substr_with_rank(rank_u), H_u);
+                        std::string Y = apply_mask(index_v.get_substr_with_rank(rank_v), H_v);
+                        if (topK.size() >= k) topK.pop(); // critical
+                        topK.push({rank_u, rank_v, X, Y, count[rank_v]}); // critical
+                    }
+                    count[rank_v] = 0;
                 }
-
-                for (auto i : count_set_indices)
-                    count[i] = 0;
             }
         }
     }
