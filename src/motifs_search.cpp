@@ -46,9 +46,8 @@ static void get_unique_ranks(const std::vector<std::string>& V,
     }
 }
 
-std::vector<motif_pair_record_t>
-main_algo(const std::vector<std::string>& V, const std::vector<std::vector<uint32_t>>& G,
-          size_t ell, size_t d, size_t k)
+std::vector<motif_pair_record_t> main_algo(const std::vector<std::string>& V, const std::vector<std::vector<uint32_t>>& G,
+                                           size_t ell, size_t d, size_t k)
 {
     if (k <= 0) throw std::invalid_argument("k must be positive");
     if (ell < 1) throw std::invalid_argument("ell must be positive");
