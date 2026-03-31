@@ -72,7 +72,7 @@ main_algo(const std::vector<std::string>& V, const std::vector<std::vector<uint3
     std::vector<uint32_t> count(ESA.N, 0); // !!! local per thread
     std::vector<uint32_t> count_set_indices(ESA.N, 0); // !!! local per thread
     std::vector<std::vector<uint32_t>> rank_to_nodes(ESA.N); // !!!
-    std::vector<std::vector<uint32_t>> node_to_uniq_ranks_Hv(V.size()); // !!!
+    std::vector<std::vector<uint32_t>> node_to_ranks(V.size()); // !!!
 
     for (const auto &H_u : all_H) {
         size_t max_rank_u = index_u.sort_by_prefix(H_u);
@@ -85,8 +85,8 @@ main_algo(const std::vector<std::string>& V, const std::vector<std::vector<uint3
             size_t max_rank_v = index_v.sort_by_prefix(H_v);
 
             // precompute unique ranks under index_v
-            for (auto &v : node_to_uniq_ranks_Hv) v.clear();
-            get_unique_ranks(V, index_v, ell, [&](size_t u, uint32_t r) { node_to_uniq_ranks_Hv[u].push_back(r); });
+            for (auto &v : node_to_ranks) v.clear();
+            get_unique_ranks(V, index_v, ell, [&](size_t u, uint32_t r) { node_to_ranks[u].push_back(r); });
 
             for (size_t rank_u = 0; rank_u < max_rank_u + 1; rank_u++) {
                 auto nodes_with_rank_u = rank_to_nodes[rank_u];
@@ -97,7 +97,7 @@ main_algo(const std::vector<std::string>& V, const std::vector<std::vector<uint3
                 for (auto u : nodes_with_rank_u)
                     for (auto v : G[u])
                         if (u < v)
-                            for (auto rank_v : node_to_uniq_ranks_Hv[v]) {
+                            for (auto rank_v : node_to_ranks[v]) {
                                 if (count[rank_v] == 0) count_set_indices.push_back(rank_v);
                                 count[rank_v]++;
                             }
