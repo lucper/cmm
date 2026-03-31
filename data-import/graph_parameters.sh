@@ -51,6 +51,8 @@ awk -F';' '
             if (deg > max) max = deg
         }
 
+        ed = edges / ((vertex_count * (vertex_count - 1)) / 2)
+
         if (vertex_count == 0) {
             print "No valid data found."
         } else {
@@ -64,6 +66,7 @@ awk -F';' '
             printf "Min Degree:              %d\n", min
             printf "Max Degree:              %d\n", max
             printf "Avg Degree:              %.2f\n", sum_deg / vertex_count
+            printf "Edge Density:            %.2f\n", ed
             printf "==========================================\n"
         }
     }
