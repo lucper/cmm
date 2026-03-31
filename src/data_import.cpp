@@ -75,6 +75,8 @@ GraphInput read_graph_files(const std::string &edge_path,
         std::string line;
         bool first = true;
 
+        out.adj_list.resize(out.node_labels.size());
+
         while (std::getline(in, line)) {
             trim_right_cr(line);
             if (line.empty()) continue;

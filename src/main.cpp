@@ -64,7 +64,7 @@ int main(int argc, char* argv[]) {
 
     auto gi = read_graph_files(path_to_edges, path_to_labels);
 
-    auto motifs = main_algo(gi.node_labels, gi.edges, ell, d, k);
+    auto motifs = main_algo(gi.node_labels, gi.adj_list, ell, d, k);
 
     for (auto &[r1, r2, s1, s2, count] : motifs)
         std::cout << "(" << s1 << ", " << s2 << ", " << count << ")" << "\n";

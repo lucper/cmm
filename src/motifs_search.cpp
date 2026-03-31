@@ -1,7 +1,5 @@
 #include "motifs_search.hpp"
 
-#define NUM_STRIPS 4
-
 static std::string apply_mask(std::string_view motif, const std::vector<uint16_t>& H, char wildcard = '*')
 {
     std::string masked_motif(motif);
@@ -30,52 +28,26 @@ static std::vector<std::vector<uint16_t>> all_H_combinations(size_t ell, size_t 
     return all_H;
 }
 
-static void update_topK(std::priority_queue<motif_pair_record_t, std::vector<motif_pair_record_t>, std::greater<motif_pair_record_t>>& topK, size_t k,
-                        const std::vector<uint64_t>& all_pairs,
-                        const rank_table_t& index_u, const std::vector<uint16_t>& H_u,
-                        const rank_table_t& index_v, const std::vector<uint16_t>& H_v)
+template <typename F>
+static void deduplicate_ranks(const std::vector<std::string>& V,
+                             const rank_table_t& rank_table, F callback)
 {
-    uint64_t curr = all_pairs[0];
-    size_t curr_count = 0;
-    for (uint64_t packed_pair : all_pairs)
-        if (packed_pair == curr) curr_count++;
-        else {
-            // Update
-            if (topK.size() < k || curr_count > topK.top().edge_count) {
-                size_t rankX = static_cast<size_t>(curr >> 32);
-                size_t rankY = static_cast<size_t>(curr & 0xFFFFFFFF);
-                std::string X = apply_mask(index_u.get_substr_with_rank(rankX), H_u);
-                std::string Y = apply_mask(index_v.get_substr_with_rank(rankY), H_v);
-                if (topK.size() >= k) topK.pop();
-                topK.push({rankX, rankY, X, Y, curr_count});
-            }
-            curr = packed_pair;
-            curr_count = 1;
-        }
-    // Last group
-    if (topK.size() < k || curr_count > topK.top().edge_count) {
-        size_t rankX = static_cast<size_t>(curr >> 32);
-        size_t rankY = static_cast<size_t>(curr & 0xFFFFFFFF);
-        std::string X = apply_mask(index_u.get_substr_with_rank(rankX), H_u);
-        std::string Y = apply_mask(index_v.get_substr_with_rank(rankY), H_v);
-        if (topK.size() >= k) topK.pop();
-        topK.push({rankX, rankY, X, Y, curr_count});
+    std::vector<uint32_t> buffer;
+    size_t ell = rank_table.get_ell();
+    for (size_t u = 0; u < V.size(); u++) {
+        buffer.reserve(V[u].length());
+        for (size_t i = 0; i < V[u].length() - ell + 1; i++)
+            buffer.push_back(rank_table.get_rank_of_substr(i, u));
+        std::sort(buffer.begin(), buffer.end());
+        auto end = std::unique(buffer.begin(), buffer.end());
+        for (auto it = buffer.begin(); it != end; it++)
+            callback(u, *it);
+        buffer.clear();
     }
 }
 
-static std::vector<uint32_t>::iterator unique_ranks(std::vector<uint32_t>& ranks,
-                                                    const rank_table_t& rank_table,
-                                                    const std::string& seq, size_t seq_id, size_t ell)
-{
-    for (size_t i = 0; i < seq.length() - ell + 1; i++)
-        ranks.push_back(rank_table.get_rank_of_substr(i, seq_id));
-    std::sort(ranks.begin(), ranks.end());
-    return std::unique(ranks.begin(), ranks.end());
-}
-
-std::vector<motif_pair_record_t>
-main_algo(const std::vector<std::string>& V, const std::vector<std::tuple<size_t, size_t>>& E,
-          size_t ell, size_t d, size_t k)
+std::vector<motif_pair_record_t> main_algo(const std::vector<std::string>& V, const std::vector<std::vector<uint32_t>>& G,
+                                           size_t ell, size_t d, size_t k)
 {
     if (k <= 0) throw std::invalid_argument("k must be positive");
     if (ell < 1) throw std::invalid_argument("ell must be positive");
@@ -83,63 +55,56 @@ main_algo(const std::vector<std::string>& V, const std::vector<std::tuple<size_t
     std::priority_queue<motif_pair_record_t, std::vector<motif_pair_record_t>, std::greater<motif_pair_record_t>> topK;
 
     esa_t ESA(V);
-    rank_table_t index_u(ell, ESA);
-    rank_table_t index_v(ell, ESA);
+    rank_table_t rank_table_u(ell, ESA);
+    rank_table_t rank_table_v(ell, ESA);
 
-    size_t total = E.size();
+    size_t total = G.size();
     size_t update_every = 1 + total / 200; // ~200 updates max
 
-    std::vector<uint64_t> all_pairs;
-    std::vector<uint64_t> radix_buffer;
-    std::vector<uint32_t> ranks_u;
-    std::vector<uint32_t> ranks_v;
-
     auto all_H = all_H_combinations(ell, d);
+    std::vector<uint32_t> count(ESA.N, 0);
+    std::vector<uint32_t> count_set_indices(ESA.N, 0);
+    std::vector<std::vector<uint32_t>> rank_to_nodes(ESA.N);
+    std::vector<std::vector<uint32_t>> node_to_ranks(V.size());
 
-    for (const auto& H_u : all_H) {
-        size_t max_rank_u = index_u.sort_by_prefix(H_u);
-        for (const auto& H_v : all_H) {
-            index_v.sort_by_prefix(H_v);
+    for (const auto &H_u : all_H) {
+        size_t max_rank_u = rank_table_u.sort_by_prefix(H_u);
 
-            size_t strip_size = (max_rank_u + NUM_STRIPS - 1) / NUM_STRIPS;
+        // precompute nodes having substrings with rank in [max_rank_u]
+        for (auto &v : rank_to_nodes) v.clear();
+        deduplicate_ranks(V, rank_table_u, [&](size_t u, uint32_t r) { rank_to_nodes[r].push_back(u); });
 
-            for (size_t s = 0; s < NUM_STRIPS; s++) {
-                size_t start_u = s * strip_size;
-                size_t end_u = std::min(start_u + strip_size, max_rank_u);
-                all_pairs.clear();
+        for (const auto &H_v : all_H) {
+            size_t max_rank_v = rank_table_v.sort_by_prefix(H_v);
 
-                for (size_t e = 0; e < total; e++) {
-                    auto [u, v] = E[e];
+            // precompute unique ranks under rank_table_v
+            for (auto &v : node_to_ranks) v.clear();
+            deduplicate_ranks(V, rank_table_v, [&](size_t u, uint32_t r) { node_to_ranks[u].push_back(r); });
 
-                    if (e % update_every == 0 || e + 1 == total)
-                        print_progress(e + 1, total);
+            for (size_t rank_u = 0; rank_u < max_rank_u + 1; rank_u++) {
+                auto nodes_with_rank_u = rank_to_nodes[rank_u];
+                count_set_indices.clear();
 
-                    size_t u_len = V[u].length() - ell + 1;
-                    size_t v_len = V[v].length() - ell + 1;
+                if (nodes_with_rank_u.empty()) continue;
 
-                    if (ranks_u.capacity() < u_len) ranks_u.reserve(u_len);
-                    if (ranks_v.capacity() < v_len) ranks_v.reserve(v_len);
-
-                    auto ranks_u_end = unique_ranks(ranks_u, index_u, V[u], u, ell);
-                    auto ranks_v_end = unique_ranks(ranks_v, index_v, V[v], v, ell);
-
-                    for (auto it_u = ranks_u.begin(); it_u != ranks_u_end; it_u++)
-                        if (*it_u >= start_u && *it_u < end_u)
-                            for (auto it_v = ranks_v.begin(); it_v != ranks_v_end; it_v++) {
-                                uint64_t packed_pair = (static_cast<uint64_t>(*it_u) << 32) | static_cast<uint64_t>(*it_v);
-                                all_pairs.push_back(packed_pair);
+                for (auto u : nodes_with_rank_u)
+                    for (auto v : G[u])
+                        if (u < v)
+                            for (auto rank_v : node_to_ranks[v]) {
+                                if (count[rank_v] == 0) count_set_indices.push_back(rank_v);
+                                count[rank_v]++;
                             }
 
-                    ranks_u.clear();
-                    ranks_v.clear();
-                }
-
-                if (!all_pairs.empty()) {
-                    radix_sort(all_pairs, radix_buffer);
-                    update_topK(topK, k, all_pairs, index_u, H_u, index_v, H_v);
+                for (auto rank_v : count_set_indices) {
+                    if (topK.size() < k || count[rank_v] > topK.top().edge_count) {
+                        std::string X = apply_mask(rank_table_u.get_substr_with_rank(rank_u), H_u);
+                        std::string Y = apply_mask(rank_table_v.get_substr_with_rank(rank_v), H_v);
+                        if (topK.size() >= k) topK.pop(); // critical
+                        topK.push({rank_u, rank_v, X, Y, count[rank_v]}); // critical
+                    }
+                    count[rank_v] = 0;
                 }
             }
-
         }
     }
 

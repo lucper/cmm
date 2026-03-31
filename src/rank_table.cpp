@@ -22,6 +22,11 @@ rank_table_t::rank_table_t(size_t ell, const esa_t& ESA)
     packed_ranks_sSA_buffer.resize(sSA.size());
 }
 
+size_t rank_table_t::get_ell() const
+{
+    return ell;
+}
+
 size_t rank_table_t::get_rank_of_substr(size_t i, size_t k) const
 {
     size_t suff = S_offset[k] + i;

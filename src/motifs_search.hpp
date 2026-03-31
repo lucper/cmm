@@ -22,7 +22,7 @@ struct motif_pair_record_t {
 };
 
 std::vector<motif_pair_record_t>
-main_algo(const std::vector<std::string>& V, const std::vector<std::tuple<size_t, size_t>>& E,
+main_algo(const std::vector<std::string>& V, const std::vector<std::vector<uint32_t>>& G,
           size_t ell, size_t d, size_t k);
 
 #endif

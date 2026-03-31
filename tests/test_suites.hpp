@@ -42,8 +42,8 @@ void run_all_tests()
 
     {
         std::vector<std::string> V = {"ATGC", "ATGC"};
-        std::vector<std::tuple<size_t, size_t>> E = {{0,1}};
-        auto motifs = main_algo(V, E, 4, 0, 1);
+        std::vector<std::vector<uint32_t>> G = {{1}, {0}};
+        auto motifs = main_algo(V, G, 4, 0, 1);
         auto [r1, r2, m1, m2, count] = motifs[0];
 
         suite.assert_solution("ATGC-ATGC (ell = 4)", m1, m2, count, "ATGC", "ATGC", 1);
@@ -51,8 +51,8 @@ void run_all_tests()
 
     {
         std::vector<std::string> V = {"CAA", "ABA", "DAA", "ACA"};
-        std::vector<std::tuple<size_t, size_t>> E = {{0,1}, {2,3}};
-        auto motifs = main_algo(V, E, 3, 1, 1);
+        std::vector<std::vector<uint32_t>> G = {{1}, {0}, {3}, {2}};
+        auto motifs = main_algo(V, G, 3, 1, 1);
         auto [r1, r2, m1, m2, count] = motifs[0];
 
         suite.assert_solution("CAA-ABA;DAA-ACA (ell = 3; d = 1)", m1, m2, count, "*AA", "A*A", 2);
@@ -60,8 +60,8 @@ void run_all_tests()
 
     {
         std::vector<std::string> V = {"QCAA", "RABA", "TDAA", "PACA"};
-        std::vector<std::tuple<size_t, size_t>> E = {{0,1}, {2,3}};
-        auto motifs = main_algo(V, E, 4, 2, 1);
+        std::vector<std::vector<uint32_t>> G = {{1}, {0}, {3}, {2}};
+        auto motifs = main_algo(V, G, 4, 2, 1);
         auto [r1, r2, m1, m2, count] = motifs[0];
 
         suite.assert_solution("QCAA-RABA;TDAA-PACA (ell = 4; d = 2)", m1, m2, count, "**AA", "*A*A", 2);
@@ -69,8 +69,8 @@ void run_all_tests()
 
     {
         std::vector<std::string> V = {"QCAAR", "RABAZ", "TDAAY", "PACAX"};
-        std::vector<std::tuple<size_t, size_t>> E = {{0,1}, {2,3}};
-        auto motifs = main_algo(V, E, 5, 3, 1);
+        std::vector<std::vector<uint32_t>> G = {{1}, {0}, {3}, {2}};
+        auto motifs = main_algo(V, G, 5, 3, 1);
         auto [r1, r2, m1, m2, count] = motifs[0];
 
         suite.assert_solution("QCAAR-RABAZ;TDAAY-PACAX (ell = 5; d = 3)", m1, m2, count, "**AA*", "*A*A*", 2);
