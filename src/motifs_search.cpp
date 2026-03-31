@@ -74,16 +74,14 @@ main_algo(const std::vector<std::string>& V, const std::vector<std::vector<uint3
     std::vector<std::vector<uint32_t>> node_to_uniq_ranks_Hv(V.size()); // !!!
     std::vector<uint32_t> ranks_buffer; // !!!
 
-    for (size_t i = 0; i < all_H.size(); i++) {
-        auto H_u = all_H[i];
+    for (const auto &H_u : all_H) {
         size_t max_rank_u = index_u.sort_by_prefix(H_u);
 
         // precompute nodes having substrings with rank in [max_rank_u]
         for (auto &v : rank_to_nodes) v.clear();
         get_unique_ranks(V, index_u, ell, [&](size_t u, uint32_t r) { rank_to_nodes[r].push_back(u); });
 
-        for (size_t j = 0; j < all_H.size(); j++) {
-            auto H_v = all_H[j];
+        for (const auto &H_v : all_H) {
             size_t max_rank_v = index_v.sort_by_prefix(H_v);
 
             // precompute unique ranks under index_v
@@ -98,8 +96,8 @@ main_algo(const std::vector<std::string>& V, const std::vector<std::vector<uint3
                 for (auto u : nodes_with_rank_u)
                     for (auto v : G[u])
                         if (u < v)
-                            for (auto r : node_to_uniq_ranks_Hv[v])
-                                count[r]++;
+                            for (auto rank_v : node_to_uniq_ranks_Hv[v])
+                                count[rank_v]++;
 
                 for (size_t rank_v = 0; rank_v < max_rank_v + 1; rank_v++) {
                     if (count[rank_v] > 0)
