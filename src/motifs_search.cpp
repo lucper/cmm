@@ -56,8 +56,8 @@ main_algo(const std::vector<std::string>& V, const std::vector<std::vector<uint3
     std::priority_queue<motif_pair_record_t, std::vector<motif_pair_record_t>, std::greater<motif_pair_record_t>> topK;
 
     esa_t ESA(V);
-    rank_table_t index_u(ell, ESA);
-    rank_table_t index_v(ell, ESA);
+    rank_table_t rank_table_u(ell, ESA);
+    rank_table_t rank_table_v(ell, ESA);
 
     size_t total = G.size();
     size_t update_every = 1 + total / 200; // ~200 updates max
@@ -69,18 +69,18 @@ main_algo(const std::vector<std::string>& V, const std::vector<std::vector<uint3
     std::vector<std::vector<uint32_t>> node_to_ranks(V.size());
 
     for (const auto &H_u : all_H) {
-        size_t max_rank_u = index_u.sort_by_prefix(H_u);
+        size_t max_rank_u = rank_table_u.sort_by_prefix(H_u);
 
         // precompute nodes having substrings with rank in [max_rank_u]
         for (auto &v : rank_to_nodes) v.clear();
-        get_unique_ranks(V, index_u, [&](size_t u, uint32_t r) { rank_to_nodes[r].push_back(u); });
+        get_unique_ranks(V, rank_table_u, [&](size_t u, uint32_t r) { rank_to_nodes[r].push_back(u); });
 
         for (const auto &H_v : all_H) {
-            size_t max_rank_v = index_v.sort_by_prefix(H_v);
+            size_t max_rank_v = rank_table_v.sort_by_prefix(H_v);
 
-            // precompute unique ranks under index_v
+            // precompute unique ranks under rank_table_v
             for (auto &v : node_to_ranks) v.clear();
-            get_unique_ranks(V, index_v, [&](size_t u, uint32_t r) { node_to_ranks[u].push_back(r); });
+            get_unique_ranks(V, rank_table_v, [&](size_t u, uint32_t r) { node_to_ranks[u].push_back(r); });
 
             for (size_t rank_u = 0; rank_u < max_rank_u + 1; rank_u++) {
                 auto nodes_with_rank_u = rank_to_nodes[rank_u];
@@ -98,8 +98,8 @@ main_algo(const std::vector<std::string>& V, const std::vector<std::vector<uint3
 
                 for (auto rank_v : count_set_indices) {
                     if (topK.size() < k || count[rank_v] > topK.top().edge_count) {
-                        std::string X = apply_mask(index_u.get_substr_with_rank(rank_u), H_u);
-                        std::string Y = apply_mask(index_v.get_substr_with_rank(rank_v), H_v);
+                        std::string X = apply_mask(rank_table_u.get_substr_with_rank(rank_u), H_u);
+                        std::string Y = apply_mask(rank_table_v.get_substr_with_rank(rank_v), H_v);
                         if (topK.size() >= k) topK.pop(); // critical
                         topK.push({rank_u, rank_v, X, Y, count[rank_v]}); // critical
                     }
