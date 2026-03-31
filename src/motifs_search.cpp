@@ -28,24 +28,17 @@ static std::vector<std::vector<uint16_t>> all_H_combinations(size_t ell, size_t 
     return all_H;
 }
 
-static std::vector<uint32_t>::iterator unique_ranks(std::vector<uint32_t>& ranks,
-                                                    const rank_table_t& rank_table,
-                                                    const std::string& seq, size_t seq_id, size_t ell)
-{
-    for (size_t i = 0; i < seq.length() - ell + 1; i++)
-        ranks.push_back(rank_table.get_rank_of_substr(i, seq_id));
-    std::sort(ranks.begin(), ranks.end());
-    return std::unique(ranks.begin(), ranks.end());
-}
-
 template <typename F>
 static void get_unique_ranks(const std::vector<std::string>& V,
-                             const rank_table_t& index, size_t ell, F callback)
+                             const rank_table_t& rank_table, size_t ell, F callback)
 {
     std::vector<uint32_t> buffer;
     for (size_t u = 0; u < V.size(); u++) {
         buffer.reserve(V[u].length());
-        auto end = unique_ranks(buffer, index, V[u], u, ell);
+        for (size_t i = 0; i < V[u].length() - ell + 1; i++)
+            buffer.push_back(rank_table.get_rank_of_substr(i, u));
+        std::sort(buffer.begin(), buffer.end());
+        auto end = std::unique(buffer.begin(), buffer.end());
         for (auto it = buffer.begin(); it != end; it++)
             callback(u, *it);
         buffer.clear();
@@ -69,10 +62,10 @@ main_algo(const std::vector<std::string>& V, const std::vector<std::vector<uint3
     size_t update_every = 1 + total / 200; // ~200 updates max
 
     auto all_H = all_H_combinations(ell, d);
-    std::vector<uint32_t> count(ESA.N, 0); // !!! local per thread
-    std::vector<uint32_t> count_set_indices(ESA.N, 0); // !!! local per thread
-    std::vector<std::vector<uint32_t>> rank_to_nodes(ESA.N); // !!!
-    std::vector<std::vector<uint32_t>> node_to_ranks(V.size()); // !!!
+    std::vector<uint32_t> count(ESA.N, 0);
+    std::vector<uint32_t> count_set_indices(ESA.N, 0);
+    std::vector<std::vector<uint32_t>> rank_to_nodes(ESA.N);
+    std::vector<std::vector<uint32_t>> node_to_ranks(V.size());
 
     for (const auto &H_u : all_H) {
         size_t max_rank_u = index_u.sort_by_prefix(H_u);
