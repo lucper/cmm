@@ -29,7 +29,7 @@ static std::vector<std::vector<uint16_t>> all_H_combinations(size_t ell, size_t 
 }
 
 template <typename F>
-static void get_unique_ranks(const std::vector<std::string>& V,
+static void deduplicate_ranks(const std::vector<std::string>& V,
                              const rank_table_t& rank_table, F callback)
 {
     std::vector<uint32_t> buffer;
@@ -72,14 +72,14 @@ std::vector<motif_pair_record_t> main_algo(const std::vector<std::string>& V, co
 
         // precompute nodes having substrings with rank in [max_rank_u]
         for (auto &v : rank_to_nodes) v.clear();
-        get_unique_ranks(V, rank_table_u, [&](size_t u, uint32_t r) { rank_to_nodes[r].push_back(u); });
+        deduplicate_ranks(V, rank_table_u, [&](size_t u, uint32_t r) { rank_to_nodes[r].push_back(u); });
 
         for (const auto &H_v : all_H) {
             size_t max_rank_v = rank_table_v.sort_by_prefix(H_v);
 
             // precompute unique ranks under rank_table_v
             for (auto &v : node_to_ranks) v.clear();
-            get_unique_ranks(V, rank_table_v, [&](size_t u, uint32_t r) { node_to_ranks[u].push_back(r); });
+            deduplicate_ranks(V, rank_table_v, [&](size_t u, uint32_t r) { node_to_ranks[u].push_back(r); });
 
             for (size_t rank_u = 0; rank_u < max_rank_u + 1; rank_u++) {
                 auto nodes_with_rank_u = rank_to_nodes[rank_u];
