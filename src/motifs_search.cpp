@@ -54,56 +54,86 @@ std::vector<motif_pair_record_t> main_algo(const std::vector<std::string>& V, co
 
     std::priority_queue<motif_pair_record_t, std::vector<motif_pair_record_t>, std::greater<motif_pair_record_t>> topK;
 
+    // Parameters for chi2 that depend on graph topology only.
+    size_t number_of_edges = 0;
+    for (const auto& node : G) number_of_edges += node.size();
+    number_of_edges /= 2;
+    double edge_density = number_of_edges * ((G.size() * (G.size() - 1)) / 2);
+
     esa_t ESA(V);
     rank_table_t rank_table_u(ell, ESA);
     rank_table_t rank_table_v(ell, ESA);
 
-    size_t total = G.size();
-    size_t update_every = 1 + total / 200; // ~200 updates max
-
     auto all_H = all_H_combinations(ell, d);
-    std::vector<uint32_t> count(ESA.N, 0);
-    std::vector<uint32_t> count_set_indices(ESA.N, 0);
-    std::vector<std::vector<uint32_t>> rank_to_nodes(ESA.N);
-    std::vector<std::vector<uint32_t>> node_to_ranks(V.size());
+
+    // TODO: Try to reduce space here.
+    std::vector<uint32_t> intersec_nodes_count(ESA.N, 0);
+    std::vector<uint32_t> edge_count(ESA.N, 0);
+    std::vector<uint32_t> edge_count_set_indices(ESA.N, 0);
+
+    std::vector<std::vector<uint32_t>> rankX_to_nodes(ESA.N);
+    std::vector<std::vector<uint32_t>> rankY_to_nodes(ESA.N);
+    std::vector<std::vector<uint32_t>> node_to_ranksY(V.size());
 
     for (const auto &H_u : all_H) {
         size_t max_rank_u = rank_table_u.sort_by_prefix(H_u);
 
         // precompute nodes having substrings with rank in [max_rank_u]
-        for (auto &v : rank_to_nodes) v.clear();
-        deduplicate_ranks(V, rank_table_u, [&](size_t u, uint32_t r) { rank_to_nodes[r].push_back(u); });
+        for (auto &v : rankX_to_nodes) v.clear();
+        deduplicate_ranks(V, rank_table_u, [&](size_t u, uint32_t r) { rankX_to_nodes[r].push_back(u); });
 
         for (const auto &H_v : all_H) {
             size_t max_rank_v = rank_table_v.sort_by_prefix(H_v);
 
             // precompute unique ranks under rank_table_v
-            for (auto &v : node_to_ranks) v.clear();
-            deduplicate_ranks(V, rank_table_v, [&](size_t u, uint32_t r) { node_to_ranks[u].push_back(r); });
+            for (auto &v : node_to_ranksY) v.clear();
+            deduplicate_ranks(V, rank_table_v, [&](size_t u, uint32_t r) { node_to_ranksY[u].push_back(r); });
+
+            // precompute nodes having substrings with rank in [max_rank_v]
+            for (auto &v : rankY_to_nodes) v.clear();
+            deduplicate_ranks(V, rank_table_v, [&](size_t u, uint32_t r) { rankY_to_nodes[r].push_back(u); });
 
             for (size_t rank_u = 0; rank_u < max_rank_u + 1; rank_u++) {
-                auto nodes_with_rank_u = rank_to_nodes[rank_u];
-                count_set_indices.clear();
+                auto nodes_with_rank_u = rankX_to_nodes[rank_u];
+                edge_count_set_indices.clear();
 
                 if (nodes_with_rank_u.empty()) continue;
 
-                for (auto u : nodes_with_rank_u)
+                for (auto u : nodes_with_rank_u) {
+                    // intersection count
+                    for (auto r : node_to_ranksY[u]) // TODO: Is this right?
+                        intersec_nodes_count[r]++;
+
+                    // edge count
                     for (auto v : G[u])
                         if (u < v)
-                            for (auto rank_v : node_to_ranks[v]) {
-                                if (count[rank_v] == 0) count_set_indices.push_back(rank_v);
-                                count[rank_v]++;
+                            for (auto rank_v : node_to_ranksY[v]) {
+                                if (edge_count[rank_v] == 0) edge_count_set_indices.push_back(rank_v);
+                                edge_count[rank_v]++;
                             }
+                }
 
-                for (auto rank_v : count_set_indices) {
-                    if (topK.size() < k || count[rank_v] > topK.top().edge_count) {
+                for (auto rank_v : edge_count_set_indices) {
+                    size_t countXY = intersec_nodes_count[rank_v];
+                    size_t countY = rankY_to_nodes[rank_v].size();
+                    size_t countX = rankX_to_nodes[rank_u].size();
+                    size_t Emax = (countX * countY) - ((countXY * (countXY - 1))/2) - countXY;
+
+                    size_t countE = edge_count[rank_v];
+                    size_t countE_bar = edge_density * Emax;
+
+                    double chi2 = countE > countE_bar ? (std::pow(countE - countE_bar, 2) / countE_bar) : 0;
+
+                    if (topK.size() < k || countE > topK.top().countE) {
                         std::string X = apply_mask(rank_table_u.get_substr_with_rank(rank_u), H_u);
                         std::string Y = apply_mask(rank_table_v.get_substr_with_rank(rank_v), H_v);
                         if (topK.size() >= k) topK.pop(); // critical
-                        topK.push({rank_u, rank_v, X, Y, count[rank_v]}); // critical
+                        topK.push({rank_u, rank_v, X, Y, countE, countE_bar, countX, countY, countXY, chi2}); // critical
                     }
-                    count[rank_v] = 0;
+                    edge_count[rank_v] = 0;
                 }
+
+                std::fill(intersec_nodes_count.begin(), intersec_nodes_count.end(), 0);
             }
         }
     }

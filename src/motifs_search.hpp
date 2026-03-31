@@ -5,19 +5,20 @@
 #include <tuple>
 #include <queue>
 #include <algorithm>
+#include <cmath>
 #include "utils.hpp"
 #include "rank_table.hpp"
 #include "esa.hpp"
-#include "radix_sort.hpp"
 
 struct motif_pair_record_t {
     size_t rankX, rankY;
     std::string X, Y;
-    size_t edge_count;
+    size_t countE, countE_bar, countX, countY, countXY;
+    double chi2;
 
     // For min-heap.
     bool operator>(const motif_pair_record_t& other) const {
-        return edge_count > other.edge_count;
+        return countE > other.countE;
     }
 };
 
