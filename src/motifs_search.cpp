@@ -58,7 +58,10 @@ std::vector<motif_pair_record_t> main_algo(const std::vector<std::string>& V, co
     size_t number_of_edges = 0;
     for (const auto& node : G) number_of_edges += node.size();
     number_of_edges /= 2;
-    double edge_density = number_of_edges * ((G.size() * (G.size() - 1)) / 2);
+    double edge_density = number_of_edges / ((G.size() * (G.size() - 1)) / 2);
+
+    DBG("number of edges = " << number_of_edges);
+    DBG("edge density = " << edge_density);
 
     esa_t ESA(V);
     rank_table_t rank_table_u(ell, ESA);
