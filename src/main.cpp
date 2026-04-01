@@ -76,9 +76,9 @@ int main(int argc, char* argv[]) {
         return EXIT_FAILURE;
     }
 
-    std::cout << "X\tY\tE_XY\tE_XY_bar\tchi2" << "\n";
+    std::printf("X\tY\tE_XY\tE_XY_bar\tchi2\n");
     for (auto &mp : solution)
-        std::cout << mp.X << "\t" << mp.Y << "\t" << mp.countE << "\t" << mp.countE_bar << "\t" << mp.chi2 << "\n";
+        std::printf("%s\t%s\t%ld\t%.2f\t%.2f\n", mp.X.c_str(), mp.Y.c_str(), mp.countE, mp.countE_bar, mp.chi2);
 
     return 0;
 }
