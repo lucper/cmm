@@ -1,21 +1,22 @@
 PROG  = ../build/bpm
 INPUT = $(V) $(E) $(ell) $(d) $(k) $(mode)
+ID = ""
 
-all: profile.svg
+all: profile$(ID).svg
 .PHONY: all
 
 clear:
-	rm -rf *.data *.perf-folded *.svg
+	rm -rf *.data *.perf-folded *.svg *.out
 .PHONY: clear
 
-profile.svg: out.perf-folded
+profile$(ID).svg: out$(ID).perf-folded
 	./FlameGraph/flamegraph.pl $< > $@
 
-out.perf-folded: perf.data
-	perf script | ./FlameGraph/stackcollapse-perf.pl > $@
+out$(ID).perf-folded: perf$(ID).data
+	perf script -i $< | ./FlameGraph/stackcollapse-perf.pl > $@
 
-perf.data: FlameGraph
-	perf record -F 99 -g -- $(PROG) $(INPUT)
+perf$(ID).data: FlameGraph
+	perf record -F 99 -g -o $@ -- $(PROG) $(INPUT) > $(ID).out
 
 FlameGraph:
 	git clone https://github.com/brendangregg/$@.git
