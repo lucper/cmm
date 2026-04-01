@@ -17,15 +17,27 @@ struct motif_pair_record_t {
     double countE_bar;
     size_t countX, countY, countXY;
     double chi2;
-
-    // For min-heap.
-    bool operator>(const motif_pair_record_t& other) const {
-        return countE > other.countE;
-    }
 };
 
-std::vector<motif_pair_record_t>
-main_algo(const std::vector<std::string>& V, const std::vector<std::vector<uint32_t>>& G,
-          size_t ell, size_t d, size_t k);
+// Comparators for priority queue.
+// f_E
+struct compare_by_countE_t {
+    bool operator()(const motif_pair_record_t& lhs, const motif_pair_record_t& rhs) const {
+       return lhs.countE > rhs.countE;
+    }
+};
+std::vector<motif_pair_record_t> main_algo(const std::vector<std::string>& V,
+                                           const std::vector<std::vector<uint32_t>>& G,
+                                           size_t ell, size_t d, size_t k, compare_by_countE_t comp);
+
+// f_chi^2
+struct compare_by_chi2_t {
+    bool operator()(const motif_pair_record_t& lhs, const motif_pair_record_t& rhs) const {
+       return lhs.chi2 > rhs.chi2;
+    }
+};
+std::vector<motif_pair_record_t> main_algo(const std::vector<std::string>& V,
+                                           const std::vector<std::vector<uint32_t>>& G,
+                                           size_t ell, size_t d, size_t k, compare_by_chi2_t comp);
 
 #endif

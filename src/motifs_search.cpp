@@ -46,22 +46,21 @@ static void deduplicate_ranks(const std::vector<std::string>& V,
     }
 }
 
-std::vector<motif_pair_record_t> main_algo(const std::vector<std::string>& V, const std::vector<std::vector<uint32_t>>& G,
-                                           size_t ell, size_t d, size_t k)
+template <typename Comparator>
+static std::vector<motif_pair_record_t> main_algo_impl(const std::vector<std::string>& V,
+                                                       const std::vector<std::vector<uint32_t>>& G,
+                                                       size_t ell, size_t d, size_t k, Comparator comp)
 {
     if (k <= 0) throw std::invalid_argument("k must be positive");
     if (ell < 1) throw std::invalid_argument("ell must be positive");
 
-    std::priority_queue<motif_pair_record_t, std::vector<motif_pair_record_t>, std::greater<motif_pair_record_t>> topK;
+    std::priority_queue<motif_pair_record_t, std::vector<motif_pair_record_t>, Comparator> topK;
 
     // Parameters for chi2 that depend on graph topology only.
     size_t number_of_edges = 0;
     for (const auto& node : G) number_of_edges += node.size();
     number_of_edges /= 2;
     double edge_density = static_cast<double>(number_of_edges) / ((G.size() * (G.size() - 1)) / 2);
-
-    DBG("number of edges = " << number_of_edges);
-    DBG("edge density = " << edge_density);
 
     esa_t ESA(V);
     rank_table_t rank_table_u(ell, ESA);
@@ -104,7 +103,7 @@ std::vector<motif_pair_record_t> main_algo(const std::vector<std::string>& V, co
 
                 for (auto u : nodes_with_rank_u) {
                     // intersection count
-                    for (auto r : node_to_ranksY[u]) // TODO: Is this right?
+                    for (auto r : node_to_ranksY[u])
                         intersec_nodes_count[r]++;
 
                     // edge count
@@ -121,17 +120,25 @@ std::vector<motif_pair_record_t> main_algo(const std::vector<std::string>& V, co
                     size_t countY = rankY_to_nodes[rank_v].size();
                     size_t countX = rankX_to_nodes[rank_u].size();
                     size_t Emax = (countX * countY) - ((countXY * (countXY - 1))/2) - countXY;
-
                     size_t countE = edge_count[rank_v];
                     double countE_bar = edge_density * Emax;
-
                     double chi2 = countE > countE_bar ? (static_cast<double>(std::pow(countE - countE_bar, 2)) / countE_bar) : 0;
 
-                    if (topK.size() < k || countE > topK.top().countE) {
-                        std::string X = apply_mask(rank_table_u.get_substr_with_rank(rank_u), H_u);
-                        std::string Y = apply_mask(rank_table_v.get_substr_with_rank(rank_v), H_v);
+                    motif_pair_record_t candidate;
+                    candidate.countE = countE;
+                    candidate.chi2 = chi2;
+                    Comparator comp;
+                    if (topK.size() < k || comp(candidate, topK.top())) {
+                        candidate.rankX = rank_u;
+                        candidate.rankY = rank_v;
+                        candidate.X = apply_mask(rank_table_u.get_substr_with_rank(rank_u), H_u);
+                        candidate.Y = apply_mask(rank_table_v.get_substr_with_rank(rank_v), H_v);
+                        candidate.countE_bar = countE_bar;
+                        candidate.countX = countX;
+                        candidate.countY = countY;
+                        candidate.countXY = countXY;
                         if (topK.size() >= k) topK.pop(); // critical
-                        topK.push({rank_u, rank_v, X, Y, countE, countE_bar, countX, countY, countXY, chi2}); // critical
+                        topK.push(candidate); // critical
                     }
                     edge_count[rank_v] = 0;
                 }
@@ -153,4 +160,17 @@ std::vector<motif_pair_record_t> main_algo(const std::vector<std::string>& V, co
     std::reverse(solution.begin(), solution.end());
 
     return solution;
+}
+
+
+std::vector<motif_pair_record_t> main_algo(const std::vector<std::string>& V, const std::vector<std::vector<uint32_t>>& G,
+                                           size_t ell, size_t d, size_t k, compare_by_countE_t comp)
+{
+    return main_algo_impl(V, G, ell, d, k, comp);
+}
+
+std::vector<motif_pair_record_t> main_algo(const std::vector<std::string>& V, const std::vector<std::vector<uint32_t>>& G,
+                                           size_t ell, size_t d, size_t k, compare_by_chi2_t comp)
+{
+    return main_algo_impl(V, G, ell, d, k, comp);
 }
