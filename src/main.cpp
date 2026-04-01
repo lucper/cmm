@@ -7,7 +7,7 @@
 #include "data_import.hpp"
 
 void print_usage(const char* prog_name) {
-    std::printf("Usage: %s <nodes.csv> <edges.csv> <ell> <d> <k>\n", prog_name);
+    std::printf("Usage: %s <nodes.csv> <edges.csv> <ell> <d> <k> <mode>\n", prog_name);
     std::printf("\n");
     std::printf("Arguments:\n");
     std::printf("  nodes.dat    Path to text file with lines formatted as 'id;label', where id is an integer >= 0 and label is a string.\n");
@@ -15,9 +15,10 @@ void print_usage(const char* prog_name) {
     std::printf("  ell          Integer length of the motif.\n");
     std::printf("  d            Integer number in [0,ell] of wildcards in motif.\n");
     std::printf("  k            Integer number of top k motifs.\n");
+    std::printf("  mode         Sorting mode: 'E' or 'chi2'.\n");
     std::printf("\n");
     std::printf("Example:\n");
-    std::printf("  %s data/nodes.dat data/edges.dat 10 4 1\n", prog_name);
+    std::printf("  %s data/nodes.dat data/edges.dat 10 4 1 E\n", prog_name);
 }
 
 int main(int argc, char* argv[]) {
@@ -26,7 +27,7 @@ int main(int argc, char* argv[]) {
         return EXIT_SUCCESS;
     }
 
-    if (argc != 6) {
+    if (argc != 7) {
         std::fprintf(stderr, "Error: Invalid number of arguments.\n");
         print_usage(argv[0]);
         return EXIT_FAILURE;
@@ -62,11 +63,20 @@ int main(int argc, char* argv[]) {
         return EXIT_FAILURE;
     }
 
+    std::string mode = argv[6];
+    std::vector<motif_pair_record_t> solution;
     auto gi = read_graph_files(path_to_edges, path_to_labels);
 
-    auto motifs = main_algo(gi.node_labels, gi.adj_list, ell, d, k);
+    if (mode == "E")
+        solution = main_algo(gi.node_labels, gi.adj_list, ell, d, k, compare_by_countE_t{});
+    else if (mode == "chi2")
+        solution = main_algo(gi.node_labels, gi.adj_list, ell, d, k, compare_by_chi2_t{});
+    else {
+        std::fprintf(stderr, "Error: Invalid mode ('%s').\n", mode.c_str());
+        return EXIT_FAILURE;
+    }
 
-    for (auto &mp : motifs)
+    for (auto &mp : solution)
         std::cout << "(" << mp.X << ", " << mp.Y << ", " << mp.countE << ", " << mp.countE_bar << ", " << mp.chi2 << ")" << "\n";
 
     return 0;
