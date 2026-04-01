@@ -76,8 +76,9 @@ int main(int argc, char* argv[]) {
         return EXIT_FAILURE;
     }
 
+    std::cout << "X\tY\tE_XY\tE_XY_bar\tchi2" << "\n";
     for (auto &mp : solution)
-        std::cout << "(" << mp.X << ", " << mp.Y << ", " << mp.countE << ", " << mp.countE_bar << ", " << mp.chi2 << ")" << "\n";
+        std::cout << mp.X << "\t" << mp.Y << "\t" << mp.countE << "\t" << mp.countE_bar << "\t" << mp.chi2 << "\n";
 
     return 0;
 }
