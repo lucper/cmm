@@ -1,5 +1,5 @@
 PROG  = ../build/bpm
-INPUT = $(V) $(E) $(ell) $(d) $(k)
+INPUT = $(V) $(E) $(ell) $(d) $(k) $(mode)
 
 all: profile.svg
 .PHONY: all
