@@ -1,6 +1,6 @@
 PROG  = ../build/bpm
-INPUT = $(V) $(E) $(ell) $(d) $(k) $(mode)
-ID = ""
+override INPUT = $(V) $(E) $(ell) $(d) $(k) $(mode)
+ID ?= ""
 
 all: profile$(ID).svg
 .PHONY: all
