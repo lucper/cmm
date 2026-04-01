@@ -58,7 +58,7 @@ std::vector<motif_pair_record_t> main_algo(const std::vector<std::string>& V, co
     size_t number_of_edges = 0;
     for (const auto& node : G) number_of_edges += node.size();
     number_of_edges /= 2;
-    double edge_density = number_of_edges / ((G.size() * (G.size() - 1)) / 2);
+    double edge_density = static_cast<double>(number_of_edges) / ((G.size() * (G.size() - 1)) / 2);
 
     DBG("number of edges = " << number_of_edges);
     DBG("edge density = " << edge_density);
@@ -123,9 +123,9 @@ std::vector<motif_pair_record_t> main_algo(const std::vector<std::string>& V, co
                     size_t Emax = (countX * countY) - ((countXY * (countXY - 1))/2) - countXY;
 
                     size_t countE = edge_count[rank_v];
-                    size_t countE_bar = edge_density * Emax;
+                    double countE_bar = edge_density * Emax;
 
-                    double chi2 = countE > countE_bar ? (std::pow(countE - countE_bar, 2) / countE_bar) : 0;
+                    double chi2 = countE > countE_bar ? (static_cast<double>(std::pow(countE - countE_bar, 2)) / countE_bar) : 0;
 
                     if (topK.size() < k || countE > topK.top().countE) {
                         std::string X = apply_mask(rank_table_u.get_substr_with_rank(rank_u), H_u);

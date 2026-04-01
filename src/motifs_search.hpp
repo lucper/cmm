@@ -13,7 +13,9 @@
 struct motif_pair_record_t {
     size_t rankX, rankY;
     std::string X, Y;
-    size_t countE, countE_bar, countX, countY, countXY;
+    size_t countE;
+    double countE_bar;
+    size_t countX, countY, countXY;
     double chi2;
 
     // For min-heap.
