@@ -21,17 +21,19 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(libsais)
 
+find_package(OpenMP REQUIRED)
+
 add_library(bpm_core
     src/motifs_search.cpp
     src/rank_table.cpp
     src/data_import.cpp
 )
-target_link_libraries(bpm_core PUBLIC libsais)
+target_link_libraries(bpm_core PUBLIC libsais OpenMP::OpenMP_CXX)
 target_compile_options(bpm_core PRIVATE -g -fno-omit-frame-pointer) # profiling
 
 add_executable(bpm src/main.cpp)
-target_link_libraries(bpm PRIVATE bpm_core)
+target_link_libraries(bpm PRIVATE bpm_core OpenMP::OpenMP_CXX)
 target_compile_options(bpm PRIVATE -fno-omit-frame-pointer) # profiling
 
 add_executable(run_tests tests/test_main.cpp)
-target_link_libraries(run_tests PRIVATE bpm_core)
+target_link_libraries(run_tests PRIVATE bpm_core OpenMP::OpenMP_CXX)
