@@ -43,7 +43,7 @@ void run_all_tests()
     {
         std::vector<std::string> V = {"ATGC", "ATGC"};
         std::vector<std::vector<uint32_t>> G = {{1}, {0}};
-        auto motifs = main_algo(V, G, 4, 0, 1, compare_by_countE_t{});
+        auto motifs = main_algo(V, G, 4, 0, 1, compare_by_countE_t{}, 1);
         auto mp = motifs[0];
 
         suite.assert_solution("ATGC-ATGC (ell = 4)", mp.X, mp.Y, mp.countE, "ATGC", "ATGC", 1);
@@ -52,7 +52,7 @@ void run_all_tests()
     {
         std::vector<std::string> V = {"CAA", "ABA", "DAA", "ACA"};
         std::vector<std::vector<uint32_t>> G = {{1}, {0}, {3}, {2}};
-        auto motifs = main_algo(V, G, 3, 1, 1, compare_by_countE_t{});
+        auto motifs = main_algo(V, G, 3, 1, 1, compare_by_countE_t{}, 1);
         auto mp = motifs[0];
 
         suite.assert_solution("CAA-ABA;DAA-ACA (ell = 3; d = 1)", mp.X, mp.Y, mp.countE, "*AA", "A*A", 2);
@@ -61,7 +61,7 @@ void run_all_tests()
     {
         std::vector<std::string> V = {"QCAA", "RABA", "TDAA", "PACA"};
         std::vector<std::vector<uint32_t>> G = {{1}, {0}, {3}, {2}};
-        auto motifs = main_algo(V, G, 4, 2, 1, compare_by_countE_t{});
+        auto motifs = main_algo(V, G, 4, 2, 1, compare_by_countE_t{}, 1);
         auto mp = motifs[0];
 
         suite.assert_solution("QCAA-RABA;TDAA-PACA (ell = 4; d = 2)", mp.X, mp.Y, mp.countE, "**AA", "*A*A", 2);
@@ -70,7 +70,7 @@ void run_all_tests()
     {
         std::vector<std::string> V = {"QCAAR", "RABAZ", "TDAAY", "PACAX"};
         std::vector<std::vector<uint32_t>> G = {{1}, {0}, {3}, {2}};
-        auto motifs = main_algo(V, G, 5, 3, 1, compare_by_countE_t{});
+        auto motifs = main_algo(V, G, 5, 3, 1, compare_by_countE_t{}, 1);
         auto mp = motifs[0];
 
         suite.assert_solution("QCAAR-RABAZ;TDAAY-PACAX (ell = 5; d = 3)", mp.X, mp.Y, mp.countE, "**AA*", "*A*A*", 2);
