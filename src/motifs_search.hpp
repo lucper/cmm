@@ -5,6 +5,7 @@
 #include <tuple>
 #include <queue>
 #include <algorithm>
+#include <omp.h>
 #include <cmath>
 #include "utils.hpp"
 #include "rank_table.hpp"
@@ -28,7 +29,8 @@ struct compare_by_countE_t {
 };
 std::vector<motif_pair_record_t> main_algo(const std::vector<std::string>& V,
                                            const std::vector<std::vector<uint32_t>>& G,
-                                           size_t ell, size_t d, size_t k, compare_by_countE_t comp);
+                                           size_t ell, size_t d, size_t k, compare_by_countE_t comp,
+                                           size_t num_threads);
 
 // f_chi^2
 struct compare_by_chi2_t {
@@ -38,6 +40,7 @@ struct compare_by_chi2_t {
 };
 std::vector<motif_pair_record_t> main_algo(const std::vector<std::string>& V,
                                            const std::vector<std::vector<uint32_t>>& G,
-                                           size_t ell, size_t d, size_t k, compare_by_chi2_t comp);
+                                           size_t ell, size_t d, size_t k, compare_by_chi2_t comp,
+                                           size_t num_threads);
 
 #endif

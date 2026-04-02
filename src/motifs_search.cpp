@@ -49,12 +49,16 @@ static void deduplicate_ranks(const std::vector<std::string>& V,
 template <typename Comparator>
 static std::vector<motif_pair_record_t> main_algo_impl(const std::vector<std::string>& V,
                                                        const std::vector<std::vector<uint32_t>>& G,
-                                                       size_t ell, size_t d, size_t k, Comparator comp)
+                                                       size_t ell, size_t d, size_t k, Comparator comp,
+                                                       size_t num_threads)
 {
     if (k <= 0) throw std::invalid_argument("k must be positive");
     if (ell < 1) throw std::invalid_argument("ell must be positive");
 
     std::priority_queue<motif_pair_record_t, std::vector<motif_pair_record_t>, Comparator> topK;
+
+    omp_set_num_threads(num_threads);
+    std::vector<std::priority_queue<motif_pair_record_t, std::vector<motif_pair_record_t>, Comparator>> topKs(num_threads);
 
     // Parameters for chi2 that depend on graph topology only.
     size_t number_of_edges = 0;
@@ -63,10 +67,16 @@ static std::vector<motif_pair_record_t> main_algo_impl(const std::vector<std::st
     double edge_density = static_cast<double>(number_of_edges) / ((G.size() * (G.size() - 1)) / 2);
 
     esa_t ESA(V);
-    rank_table_t rank_table_u(ell, ESA);
-    rank_table_t rank_table_v(ell, ESA);
 
     auto all_H = all_H_combinations(ell, d);
+
+    #pragma omp parallel
+    {
+    size_t tid = omp_get_thread_num();
+    auto& topK_local = topKs[tid];
+
+    rank_table_t rank_table_u(ell, ESA);
+    rank_table_t rank_table_v(ell, ESA);
 
     // TODO: Try to reduce space here.
     std::vector<uint32_t> intersec_nodes_count(ESA.N, 0);
@@ -77,6 +87,7 @@ static std::vector<motif_pair_record_t> main_algo_impl(const std::vector<std::st
     std::vector<std::vector<uint32_t>> rankY_to_nodes(ESA.N);
     std::vector<std::vector<uint32_t>> node_to_ranksY(V.size());
 
+    #pragma omp for schedule(dynamic)
     for (const auto &H_u : all_H) {
         size_t max_rank_u = rank_table_u.sort_by_prefix(H_u);
 
@@ -128,7 +139,7 @@ static std::vector<motif_pair_record_t> main_algo_impl(const std::vector<std::st
                     candidate.countE = countE;
                     candidate.chi2 = chi2;
                     Comparator comp;
-                    if (topK.size() < k || comp(candidate, topK.top())) {
+                    if (topK_local.size() < k || comp(candidate, topK_local.top())) {
                         candidate.rankX = rank_u;
                         candidate.rankY = rank_v;
                         candidate.X = apply_mask(rank_table_u.get_substr_with_rank(rank_u), H_u);
@@ -137,8 +148,8 @@ static std::vector<motif_pair_record_t> main_algo_impl(const std::vector<std::st
                         candidate.countX = countX;
                         candidate.countY = countY;
                         candidate.countXY = countXY;
-                        if (topK.size() >= k) topK.pop(); // critical
-                        topK.push(candidate); // critical
+                        if (topK_local.size() >= k) topK_local.pop();
+                        topK_local.push(candidate);
                     }
                     edge_count[rank_v] = 0;
                 }
@@ -147,6 +158,15 @@ static std::vector<motif_pair_record_t> main_algo_impl(const std::vector<std::st
             }
         }
     }
+    }
+
+    for (auto& local_topK : topKs)
+        while (!local_topK.empty()) {
+            const auto& candidate = local_topK.top();
+            topK.push(candidate);
+            if (topK.size() > k) topK.pop();
+            local_topK.pop();
+        }
 
     // Get solution from priority queue.
     std::vector<motif_pair_record_t> solution;
@@ -164,13 +184,13 @@ static std::vector<motif_pair_record_t> main_algo_impl(const std::vector<std::st
 
 
 std::vector<motif_pair_record_t> main_algo(const std::vector<std::string>& V, const std::vector<std::vector<uint32_t>>& G,
-                                           size_t ell, size_t d, size_t k, compare_by_countE_t comp)
+                                           size_t ell, size_t d, size_t k, compare_by_countE_t comp, size_t num_threads)
 {
-    return main_algo_impl(V, G, ell, d, k, comp);
+    return main_algo_impl(V, G, ell, d, k, comp, num_threads);
 }
 
 std::vector<motif_pair_record_t> main_algo(const std::vector<std::string>& V, const std::vector<std::vector<uint32_t>>& G,
-                                           size_t ell, size_t d, size_t k, compare_by_chi2_t comp)
+                                           size_t ell, size_t d, size_t k, compare_by_chi2_t comp, size_t num_threads)
 {
-    return main_algo_impl(V, G, ell, d, k, comp);
+    return main_algo_impl(V, G, ell, d, k, comp, num_threads);
 }
