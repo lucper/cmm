@@ -30,19 +30,19 @@ static std::vector<std::vector<uint16_t>> all_H_combinations(size_t ell, size_t 
 
 template <typename F>
 static void deduplicate_ranks(const std::vector<std::string>& V,
-                             const rank_table_t& rank_table, F callback)
+                              const rank_table_t& rank_table,
+                              std::vector<uint32_t>& dedup_buffer,
+                              F callback)
 {
-    std::vector<uint32_t> buffer;
     size_t ell = rank_table.get_ell();
     for (size_t u = 0; u < V.size(); u++) {
-        buffer.reserve(V[u].length());
         for (size_t i = 0; i < V[u].length() - ell + 1; i++)
-            buffer.push_back(rank_table.get_rank_of_substr(i, u));
-        std::sort(buffer.begin(), buffer.end());
-        auto end = std::unique(buffer.begin(), buffer.end());
-        for (auto it = buffer.begin(); it != end; it++)
+            dedup_buffer.push_back(rank_table.get_rank_of_substr(i, u));
+        std::sort(dedup_buffer.begin(), dedup_buffer.end());
+        auto end = std::unique(dedup_buffer.begin(), dedup_buffer.end());
+        for (auto it = dedup_buffer.begin(); it != end; it++)
             callback(u, *it);
-        buffer.clear();
+        dedup_buffer.clear();
     }
 }
 
@@ -55,10 +55,7 @@ static std::vector<motif_pair_record_t> main_algo_impl(const std::vector<std::st
     if (k <= 0) throw std::invalid_argument("k must be positive");
     if (ell < 1) throw std::invalid_argument("ell must be positive");
 
-    std::priority_queue<motif_pair_record_t, std::vector<motif_pair_record_t>, Comparator> topK;
-
-    omp_set_num_threads(num_threads);
-    std::vector<std::priority_queue<motif_pair_record_t, std::vector<motif_pair_record_t>, Comparator>> topKs(num_threads);
+    std::priority_queue<motif_pair_record_t, std::vector<motif_pair_record_t>, Comparator> topK_global;
 
     // Parameters for chi2 that depend on graph topology only.
     size_t number_of_edges = 0;
@@ -70,68 +67,85 @@ static std::vector<motif_pair_record_t> main_algo_impl(const std::vector<std::st
 
     auto all_H = all_H_combinations(ell, d);
 
+    struct thread_workspace_t {
+        // TODO: Try to reduce space here.
+        std::vector<uint32_t> intersec_nodes_count;
+        std::vector<uint32_t> edge_count;
+        std::vector<uint32_t> edge_count_set_indices;
+        std::vector<std::vector<uint32_t>> rankX_to_nodes;
+        std::vector<std::vector<uint32_t>> rankY_to_nodes;
+        std::vector<std::vector<uint32_t>> node_to_ranksY;
+        std::priority_queue<motif_pair_record_t, std::vector<motif_pair_record_t>, Comparator> topK;
+        std::vector<uint32_t> dedup_buffer;
+        rank_table_t rank_table_u;
+        rank_table_t rank_table_v;
+
+        thread_workspace_t(const esa_t& ESA, size_t ell, size_t V_size)
+            : intersec_nodes_count(ESA.N, 0),
+              edge_count(ESA.N, 0), edge_count_set_indices(ESA.N, 0),
+              rankX_to_nodes(ESA.N), rankY_to_nodes(ESA.N), node_to_ranksY(V_size),
+              dedup_buffer(1024), rank_table_u(ell, ESA), rank_table_v(ell, ESA)
+        {}
+    };
+
+    omp_set_num_threads(num_threads);
+    std::vector<thread_workspace_t> workspaces;
+    workspaces.reserve(num_threads);
+    for (size_t i = 0; i < num_threads; i++)
+        workspaces.emplace_back(ESA, ell, V.size());
+
     #pragma omp parallel
     {
+    DBG("num_threads = " << omp_get_num_threads());
     size_t tid = omp_get_thread_num();
-    auto& topK_local = topKs[tid];
-
-    rank_table_t rank_table_u(ell, ESA);
-    rank_table_t rank_table_v(ell, ESA);
-
-    // TODO: Try to reduce space here.
-    std::vector<uint32_t> intersec_nodes_count(ESA.N, 0);
-    std::vector<uint32_t> edge_count(ESA.N, 0);
-    std::vector<uint32_t> edge_count_set_indices(ESA.N, 0);
-
-    std::vector<std::vector<uint32_t>> rankX_to_nodes(ESA.N);
-    std::vector<std::vector<uint32_t>> rankY_to_nodes(ESA.N);
-    std::vector<std::vector<uint32_t>> node_to_ranksY(V.size());
+    thread_workspace_t& workspace = workspaces[tid];
 
     #pragma omp for schedule(dynamic)
     for (const auto &H_u : all_H) {
-        size_t max_rank_u = rank_table_u.sort_by_prefix(H_u);
+        size_t max_rank_u = workspace.rank_table_u.sort_by_prefix(H_u);
 
         // precompute nodes having substrings with rank in [max_rank_u]
-        for (auto &v : rankX_to_nodes) v.clear();
-        deduplicate_ranks(V, rank_table_u, [&](size_t u, uint32_t r) { rankX_to_nodes[r].push_back(u); });
+        for (auto &v : workspace.rankX_to_nodes) v.clear();
+        deduplicate_ranks(V, workspace.rank_table_u, workspace.dedup_buffer, [&](size_t u, uint32_t r) { workspace.rankX_to_nodes[r].push_back(u); });
 
         for (const auto &H_v : all_H) {
-            size_t max_rank_v = rank_table_v.sort_by_prefix(H_v);
+            size_t max_rank_v = workspace.rank_table_v.sort_by_prefix(H_v);
 
             // precompute unique ranks under rank_table_v
-            for (auto &v : node_to_ranksY) v.clear();
-            deduplicate_ranks(V, rank_table_v, [&](size_t u, uint32_t r) { node_to_ranksY[u].push_back(r); });
+            for (auto &v : workspace.node_to_ranksY) v.clear();
+            deduplicate_ranks(V, workspace.rank_table_v, workspace.dedup_buffer, [&](size_t u, uint32_t r) { workspace.node_to_ranksY[u].push_back(r); });
 
             // precompute nodes having substrings with rank in [max_rank_v]
-            for (auto &v : rankY_to_nodes) v.clear();
-            deduplicate_ranks(V, rank_table_v, [&](size_t u, uint32_t r) { rankY_to_nodes[r].push_back(u); });
+            for (auto &v : workspace.rankY_to_nodes) v.clear();
+            deduplicate_ranks(V, workspace.rank_table_v, workspace.dedup_buffer, [&](size_t u, uint32_t r) { workspace.rankY_to_nodes[r].push_back(u); });
 
             for (size_t rank_u = 0; rank_u < max_rank_u + 1; rank_u++) {
-                auto nodes_with_rank_u = rankX_to_nodes[rank_u];
-                edge_count_set_indices.clear();
+                const auto& nodes_with_rank_u = workspace.rankX_to_nodes[rank_u];
+                workspace.edge_count_set_indices.clear();
 
                 if (nodes_with_rank_u.empty()) continue;
 
                 for (auto u : nodes_with_rank_u) {
                     // intersection count
-                    for (auto r : node_to_ranksY[u])
-                        intersec_nodes_count[r]++;
+                    for (auto r : workspace.node_to_ranksY[u])
+                        workspace.intersec_nodes_count[r]++;
 
                     // edge count
                     for (auto v : G[u])
                         if (u < v)
-                            for (auto rank_v : node_to_ranksY[v]) {
-                                if (edge_count[rank_v] == 0) edge_count_set_indices.push_back(rank_v);
-                                edge_count[rank_v]++;
+                            for (auto rank_v : workspace.node_to_ranksY[v]) {
+                                if (workspace.edge_count[rank_v] == 0)
+                                    workspace.edge_count_set_indices.push_back(rank_v);
+                                workspace.edge_count[rank_v]++;
                             }
                 }
 
-                for (auto rank_v : edge_count_set_indices) {
-                    size_t countXY = intersec_nodes_count[rank_v];
-                    size_t countY = rankY_to_nodes[rank_v].size();
-                    size_t countX = rankX_to_nodes[rank_u].size();
+                for (auto rank_v : workspace.edge_count_set_indices) {
+                    size_t countXY = workspace.intersec_nodes_count[rank_v];
+                    size_t countY = workspace.rankY_to_nodes[rank_v].size();
+                    size_t countX = workspace.rankX_to_nodes[rank_u].size();
                     size_t Emax = (countX * countY) - ((countXY * (countXY - 1))/2) - countXY;
-                    size_t countE = edge_count[rank_v];
+                    size_t countE = workspace.edge_count[rank_v];
                     double countE_bar = edge_density * Emax;
                     double chi2 = countE > countE_bar ? (static_cast<double>(std::pow(countE - countE_bar, 2)) / countE_bar) : 0;
 
@@ -139,42 +153,42 @@ static std::vector<motif_pair_record_t> main_algo_impl(const std::vector<std::st
                     candidate.countE = countE;
                     candidate.chi2 = chi2;
                     Comparator comp;
-                    if (topK_local.size() < k || comp(candidate, topK_local.top())) {
+                    if (workspace.topK.size() < k || comp(candidate, workspace.topK.top())) {
                         candidate.rankX = rank_u;
                         candidate.rankY = rank_v;
-                        candidate.X = apply_mask(rank_table_u.get_substr_with_rank(rank_u), H_u);
-                        candidate.Y = apply_mask(rank_table_v.get_substr_with_rank(rank_v), H_v);
+                        candidate.X = apply_mask(workspace.rank_table_u.get_substr_with_rank(rank_u), H_u);
+                        candidate.Y = apply_mask(workspace.rank_table_v.get_substr_with_rank(rank_v), H_v);
                         candidate.countE_bar = countE_bar;
                         candidate.countX = countX;
                         candidate.countY = countY;
                         candidate.countXY = countXY;
-                        if (topK_local.size() >= k) topK_local.pop();
-                        topK_local.push(candidate);
+                        if (workspace.topK.size() >= k) workspace.topK.pop();
+                        workspace.topK.push(candidate);
                     }
-                    edge_count[rank_v] = 0;
+                    workspace.edge_count[rank_v] = 0;
                 }
 
-                std::fill(intersec_nodes_count.begin(), intersec_nodes_count.end(), 0);
+                std::fill(workspace.intersec_nodes_count.begin(), workspace.intersec_nodes_count.end(), 0);
             }
         }
     }
     }
 
-    for (auto& local_topK : topKs)
-        while (!local_topK.empty()) {
-            const auto& candidate = local_topK.top();
-            topK.push(candidate);
-            if (topK.size() > k) topK.pop();
-            local_topK.pop();
+    for (auto& workspace : workspaces)
+        while (!workspace.topK.empty()) {
+            const auto& candidate = workspace.topK.top();
+            topK_global.push(candidate);
+            if (topK_global.size() > k) topK_global.pop();
+            workspace.topK.pop();
         }
 
     // Get solution from priority queue.
     std::vector<motif_pair_record_t> solution;
-    solution.reserve(topK.size());
+    solution.reserve(topK_global.size());
 
-    while (!topK.empty()) {
-        solution.push_back(topK.top());
-        topK.pop();
+    while (!topK_global.empty()) {
+        solution.push_back(topK_global.top());
+        topK_global.pop();
     }
 
     std::reverse(solution.begin(), solution.end());
