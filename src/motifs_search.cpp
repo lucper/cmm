@@ -68,35 +68,53 @@ static std::vector<motif_pair_record_t> main_algo_impl(const std::vector<std::st
     auto all_H = all_H_combinations(ell, d);
 
     struct thread_workspace_t {
-        // TODO: Try to reduce space here.
-        std::vector<uint32_t> intersec_nodes_count;
-        std::vector<uint32_t> edge_count;
-        std::vector<uint32_t> edge_count_set_indices;
-        std::vector<std::vector<uint32_t>> rankX_to_nodes;
-        std::vector<std::vector<uint32_t>> rankY_to_nodes;
-        std::vector<std::vector<uint32_t>> node_to_ranksY;
-        std::priority_queue<motif_pair_record_t, std::vector<motif_pair_record_t>, Comparator> topK;
-        std::vector<uint32_t> dedup_buffer;
-        rank_table_t rank_table_u;
-        rank_table_t rank_table_v;
+        std::vector<uint32_t> intersec_nodes_count, intersec_nodes_count_set_indices;
 
-        thread_workspace_t(const esa_t& ESA, size_t ell, size_t V_size)
-            : intersec_nodes_count(ESA.N, 0),
+        std::vector<uint32_t> edge_count, edge_count_set_indices;
+
+        std::vector<uint32_t> flat_nodes_X, rank_offsets_X, rank_active_counts_X, active_ranks_X;
+        std::vector<uint32_t> flat_nodes_Y, rank_offsets_Y, rank_active_counts_Y, active_ranks_Y;
+
+        std::vector<uint32_t> flat_ranks_Y, node_offsets_Y, node_active_counts_Y;
+
+        std::vector<uint32_t> dedup_buffer;
+
+        rank_table_t rank_table_u, rank_table_v;
+
+        std::priority_queue<motif_pair_record_t, std::vector<motif_pair_record_t>, Comparator> topK;
+
+        thread_workspace_t(const esa_t& ESA, size_t ell, size_t V_size, size_t max_seq_len)
+            : intersec_nodes_count(ESA.N, 0), intersec_nodes_count_set_indices(ESA.N),
               edge_count(ESA.N, 0), edge_count_set_indices(ESA.N, 0),
-              rankX_to_nodes(ESA.N), rankY_to_nodes(ESA.N), node_to_ranksY(V_size),
-              dedup_buffer(1024), rank_table_u(ell, ESA), rank_table_v(ell, ESA)
-        {}
+              flat_nodes_X(V_size * (ESA.N + 1)), rank_offsets_X(ESA.N + 1, 0), rank_active_counts_X(ESA.N, 0), active_ranks_X(ESA.N),
+              flat_nodes_Y(V_size * (ESA.N + 1)), rank_offsets_Y(ESA.N + 1, 0), rank_active_counts_Y(ESA.N, 0), active_ranks_Y(ESA.N),
+              flat_ranks_Y(V_size * max_seq_len), node_offsets_Y(V_size, 0), node_active_counts_Y(V_size, 0),
+              dedup_buffer(2048),
+              rank_table_u(ell, ESA), rank_table_v(ell, ESA)
+        {
+            for (size_t i = 0; i < ESA.N + 1; i++) {
+                rank_offsets_X[i] = i * V_size;
+                rank_offsets_Y[i] = i * V_size;
+            }
+
+            for (size_t i = 0; i < V_size; i++)
+                node_offsets_Y[i] = i * max_seq_len;
+        }
     };
+
+    size_t max_seq_len = 0;
+    for (const auto& v : V)
+        if (v.length() > max_seq_len)
+            max_seq_len = v.length();
 
     omp_set_num_threads(num_threads);
     std::vector<thread_workspace_t> workspaces;
     workspaces.reserve(num_threads);
     for (size_t i = 0; i < num_threads; i++)
-        workspaces.emplace_back(ESA, ell, V.size());
+        workspaces.emplace_back(ESA, ell, V.size(), max_seq_len);
 
     #pragma omp parallel
     {
-    DBG("num_threads = " << omp_get_num_threads());
     size_t tid = omp_get_thread_num();
     thread_workspace_t& workspace = workspaces[tid];
 
@@ -105,45 +123,79 @@ static std::vector<motif_pair_record_t> main_algo_impl(const std::vector<std::st
         size_t max_rank_u = workspace.rank_table_u.sort_by_prefix(H_u);
 
         // precompute nodes having substrings with rank in [max_rank_u]
-        for (auto &v : workspace.rankX_to_nodes) v.clear();
-        deduplicate_ranks(V, workspace.rank_table_u, workspace.dedup_buffer, [&](size_t u, uint32_t r) { workspace.rankX_to_nodes[r].push_back(u); });
+        for (auto &r : workspace.active_ranks_X)
+            workspace.rank_active_counts_X[r] = 0;
+        workspace.active_ranks_X.clear();
+        deduplicate_ranks(V, workspace.rank_table_u, workspace.dedup_buffer, [&](size_t u, uint32_t r) {
+                if (workspace.rank_active_counts_X[r] == 0)
+                    workspace.active_ranks_X.push_back(r);
+                size_t pos = workspace.rank_offsets_X[r] + workspace.rank_active_counts_X[r];
+                workspace.flat_nodes_X[pos] = u;
+                workspace.rank_active_counts_X[r]++;
+        });
 
         for (const auto &H_v : all_H) {
             size_t max_rank_v = workspace.rank_table_v.sort_by_prefix(H_v);
 
             // precompute unique ranks under rank_table_v
-            for (auto &v : workspace.node_to_ranksY) v.clear();
-            deduplicate_ranks(V, workspace.rank_table_v, workspace.dedup_buffer, [&](size_t u, uint32_t r) { workspace.node_to_ranksY[u].push_back(r); });
-
+            for (size_t i = 0; i < V.size(); i++)
+                workspace.node_active_counts_Y[i] = 0;
             // precompute nodes having substrings with rank in [max_rank_v]
-            for (auto &v : workspace.rankY_to_nodes) v.clear();
-            deduplicate_ranks(V, workspace.rank_table_v, workspace.dedup_buffer, [&](size_t u, uint32_t r) { workspace.rankY_to_nodes[r].push_back(u); });
+            for (auto &r : workspace.active_ranks_Y)
+                workspace.rank_active_counts_Y[r] = 0;
+            workspace.active_ranks_Y.clear();
+            deduplicate_ranks(V, workspace.rank_table_v, workspace.dedup_buffer, [&](size_t u, uint32_t r) {
+                    size_t node_pos = workspace.node_offsets_Y[u] + workspace.node_active_counts_Y[u]++;
+                    workspace.flat_ranks_Y[node_pos] = r;
+
+                    if (workspace.rank_active_counts_Y[r] == 0)
+                        workspace.active_ranks_Y.push_back(r);
+                    size_t pos = workspace.rank_offsets_Y[r] + workspace.rank_active_counts_Y[r];
+                    workspace.flat_nodes_Y[pos] = u;
+                    workspace.rank_active_counts_Y[r]++;
+            });
 
             for (size_t rank_u = 0; rank_u < max_rank_u + 1; rank_u++) {
-                const auto& nodes_with_rank_u = workspace.rankX_to_nodes[rank_u];
+                uint32_t count = workspace.rank_active_counts_X[rank_u];
+                if (count == 0) continue;
+
                 workspace.edge_count_set_indices.clear();
 
-                if (nodes_with_rank_u.empty()) continue;
+                uint32_t *nodes_with_rank_u = &workspace.flat_nodes_X[workspace.rank_offsets_X[rank_u]];
 
-                for (auto u : nodes_with_rank_u) {
+                for (size_t i = 0; i < count; i++) {
+                    uint32_t u = nodes_with_rank_u[i];
+
+                    uint32_t *ranksY_in_node_u = &workspace.flat_ranks_Y[workspace.node_offsets_Y[u]];
+                    uint32_t number_of_ranksY_in_node_u = workspace.node_active_counts_Y[u];
+
                     // intersection count
-                    for (auto r : workspace.node_to_ranksY[u])
+                    for (size_t j = 0; j < number_of_ranksY_in_node_u; j++) {
+                        uint32_t r = ranksY_in_node_u[j];
+                        if (workspace.intersec_nodes_count[r] == 0)
+                            workspace.intersec_nodes_count_set_indices.push_back(r);
                         workspace.intersec_nodes_count[r]++;
+                    }
 
                     // edge count
                     for (auto v : G[u])
-                        if (u < v)
-                            for (auto rank_v : workspace.node_to_ranksY[v]) {
+                        if (u < v) {
+                            uint32_t *ranksY_in_node_v = &workspace.flat_ranks_Y[workspace.node_offsets_Y[v]];
+                            uint32_t number_of_ranksY_in_node_v = workspace.node_active_counts_Y[v];
+
+                            for (size_t k = 0; k < number_of_ranksY_in_node_v; k++) {
+                                uint32_t rank_v = ranksY_in_node_v[k];
                                 if (workspace.edge_count[rank_v] == 0)
                                     workspace.edge_count_set_indices.push_back(rank_v);
                                 workspace.edge_count[rank_v]++;
                             }
+                        }
                 }
 
                 for (auto rank_v : workspace.edge_count_set_indices) {
                     size_t countXY = workspace.intersec_nodes_count[rank_v];
-                    size_t countY = workspace.rankY_to_nodes[rank_v].size();
-                    size_t countX = workspace.rankX_to_nodes[rank_u].size();
+                    size_t countY = workspace.rank_active_counts_Y[rank_v];
+                    size_t countX = workspace.rank_active_counts_X[rank_u];
                     size_t Emax = (countX * countY) - ((countXY * (countXY - 1))/2) - countXY;
                     size_t countE = workspace.edge_count[rank_v];
                     double countE_bar = edge_density * Emax;
@@ -168,7 +220,9 @@ static std::vector<motif_pair_record_t> main_algo_impl(const std::vector<std::st
                     workspace.edge_count[rank_v] = 0;
                 }
 
-                std::fill(workspace.intersec_nodes_count.begin(), workspace.intersec_nodes_count.end(), 0);
+                for (auto r : workspace.intersec_nodes_count_set_indices)
+                    workspace.intersec_nodes_count[r] = 0;
+                workspace.intersec_nodes_count_set_indices.clear();
             }
         }
     }
