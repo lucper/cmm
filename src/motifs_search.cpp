@@ -120,7 +120,7 @@ static std::vector<motif_pair_record_t> main_algo_impl(const std::vector<std::st
 
     #pragma omp for schedule(dynamic)
     for (const auto &H_u : all_H) {
-        size_t max_rank_u = workspace.rank_table_u.sort_by_prefix(H_u);
+        workspace.rank_table_u.sort_by_prefix(H_u);
 
         // precompute nodes having substrings with rank in [max_rank_u]
         for (auto &r : workspace.active_ranks_X)
@@ -135,7 +135,7 @@ static std::vector<motif_pair_record_t> main_algo_impl(const std::vector<std::st
         });
 
         for (const auto &H_v : all_H) {
-            size_t max_rank_v = workspace.rank_table_v.sort_by_prefix(H_v);
+            workspace.rank_table_v.sort_by_prefix(H_v);
 
             // precompute unique ranks under rank_table_v
             for (size_t i = 0; i < V.size(); i++)
@@ -155,15 +155,14 @@ static std::vector<motif_pair_record_t> main_algo_impl(const std::vector<std::st
                     workspace.rank_active_counts_Y[r]++;
             });
 
-            for (size_t rank_u = 0; rank_u < max_rank_u + 1; rank_u++) {
-                uint32_t count = workspace.rank_active_counts_X[rank_u];
-                if (count == 0) continue;
+            for (auto rank_u : workspace.active_ranks_X) {
+                uint32_t number_of_nodes_with_rank_u = workspace.rank_active_counts_X[rank_u];
 
                 workspace.edge_count_set_indices.clear();
 
                 uint32_t *nodes_with_rank_u = &workspace.flat_nodes_X[workspace.rank_offsets_X[rank_u]];
 
-                for (size_t i = 0; i < count; i++) {
+                for (size_t i = 0; i < number_of_nodes_with_rank_u; i++) {
                     uint32_t u = nodes_with_rank_u[i];
 
                     uint32_t *ranksY_in_node_u = &workspace.flat_ranks_Y[workspace.node_offsets_Y[u]];
