@@ -85,18 +85,13 @@ static std::vector<motif_pair_record_t> main_algo_impl(const std::vector<std::st
 
         thread_workspace_t(const esa_t& ESA, size_t ell, size_t V_size, size_t max_seq_len)
             : intersec_nodes_count(ESA.N, 0), intersec_nodes_count_set_indices(ESA.N),
-              edge_count(ESA.N, 0), edge_count_set_indices(ESA.N, 0),
-              flat_nodes_X(V_size * (ESA.N + 1)), rank_offsets_X(ESA.N + 1, 0), rank_active_counts_X(ESA.N, 0), active_ranks_X(ESA.N),
-              flat_nodes_Y(V_size * (ESA.N + 1)), rank_offsets_Y(ESA.N + 1, 0), rank_active_counts_Y(ESA.N, 0), active_ranks_Y(ESA.N),
+              edge_count(ESA.N, 0), edge_count_set_indices(ESA.N),
+              flat_nodes_X(ESA.N), rank_offsets_X(ESA.N + 1, 0), rank_active_counts_X(ESA.N + 1, 0), active_ranks_X(ESA.N + 1),
+              flat_nodes_Y(ESA.N), rank_offsets_Y(ESA.N + 1, 0), rank_active_counts_Y(ESA.N + 1, 0), active_ranks_Y(ESA.N + 1),
               flat_ranks_Y(V_size * max_seq_len), node_offsets_Y(V_size, 0), node_active_counts_Y(V_size, 0),
               dedup_buffer(2048),
               rank_table_u(ell, ESA), rank_table_v(ell, ESA)
         {
-            for (size_t i = 0; i < ESA.N + 1; i++) {
-                rank_offsets_X[i] = i * V_size;
-                rank_offsets_Y[i] = i * V_size;
-            }
-
             for (size_t i = 0; i < V_size; i++)
                 node_offsets_Y[i] = i * max_seq_len;
         }
@@ -122,45 +117,63 @@ static std::vector<motif_pair_record_t> main_algo_impl(const std::vector<std::st
     for (const auto &H_u : all_H) {
         workspace.rank_table_u.sort_by_prefix(H_u);
 
-        // precompute nodes having substrings with rank in [max_rank_u]
-        for (auto &r : workspace.active_ranks_X)
+        // identify active ranks
+        for (auto r : workspace.active_ranks_X)
             workspace.rank_active_counts_X[r] = 0;
         workspace.active_ranks_X.clear();
         deduplicate_ranks(V, workspace.rank_table_u, workspace.dedup_buffer, [&](size_t u, uint32_t r) {
                 if (workspace.rank_active_counts_X[r] == 0)
                     workspace.active_ranks_X.push_back(r);
-                size_t pos = workspace.rank_offsets_X[r] + workspace.rank_active_counts_X[r];
-                workspace.flat_nodes_X[pos] = u;
                 workspace.rank_active_counts_X[r]++;
+        });
+
+        // prefix sum for offsets in CSR
+        size_t curr_offset_X = 0;
+        for (auto r : workspace.active_ranks_X) {
+            workspace.rank_offsets_X[r] = curr_offset_X;
+            curr_offset_X += workspace.rank_active_counts_X[r];
+            workspace.rank_active_counts_X[r] = 0;
+        }
+
+        deduplicate_ranks(V, workspace.rank_table_u, workspace.dedup_buffer, [&](size_t u, uint32_t r) {
+                size_t pos = workspace.rank_offsets_X[r] + workspace.rank_active_counts_X[r]++;
+                workspace.flat_nodes_X[pos] = u;
         });
 
         for (const auto &H_v : all_H) {
             workspace.rank_table_v.sort_by_prefix(H_v);
 
-            // precompute unique ranks under rank_table_v
             for (size_t i = 0; i < V.size(); i++)
                 workspace.node_active_counts_Y[i] = 0;
-            // precompute nodes having substrings with rank in [max_rank_v]
-            for (auto &r : workspace.active_ranks_Y)
+            for (auto&r : workspace.active_ranks_Y)
                 workspace.rank_active_counts_Y[r] = 0;
             workspace.active_ranks_Y.clear();
+            deduplicate_ranks(V, workspace.rank_table_v, workspace.dedup_buffer, [&](size_t u, uint32_t r) {
+                    if (workspace.rank_active_counts_Y[r] == 0)
+                        workspace.active_ranks_Y.push_back(r);
+                    workspace.rank_active_counts_Y[r]++;
+            });
+
+            size_t curr_offset_Y = 0;
+            for (auto r : workspace.active_ranks_Y) {
+                workspace.rank_offsets_Y[r] = curr_offset_Y;
+                curr_offset_Y += workspace.rank_active_counts_Y[r];
+                workspace.rank_active_counts_Y[r] = 0;
+            }
+
             deduplicate_ranks(V, workspace.rank_table_v, workspace.dedup_buffer, [&](size_t u, uint32_t r) {
                     size_t node_pos = workspace.node_offsets_Y[u] + workspace.node_active_counts_Y[u]++;
                     workspace.flat_ranks_Y[node_pos] = r;
 
-                    if (workspace.rank_active_counts_Y[r] == 0)
-                        workspace.active_ranks_Y.push_back(r);
-                    size_t pos = workspace.rank_offsets_Y[r] + workspace.rank_active_counts_Y[r];
+                    size_t pos = workspace.rank_offsets_Y[r] + workspace.rank_active_counts_Y[r]++;
                     workspace.flat_nodes_Y[pos] = u;
-                    workspace.rank_active_counts_Y[r]++;
             });
 
             for (auto rank_u : workspace.active_ranks_X) {
                 uint32_t number_of_nodes_with_rank_u = workspace.rank_active_counts_X[rank_u];
+                uint32_t *nodes_with_rank_u = &workspace.flat_nodes_X[workspace.rank_offsets_X[rank_u]];
 
                 workspace.edge_count_set_indices.clear();
-
-                uint32_t *nodes_with_rank_u = &workspace.flat_nodes_X[workspace.rank_offsets_X[rank_u]];
 
                 for (size_t i = 0; i < number_of_nodes_with_rank_u; i++) {
                     uint32_t u = nodes_with_rank_u[i];
