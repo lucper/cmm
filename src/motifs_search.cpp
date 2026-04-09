@@ -62,7 +62,7 @@ static std::vector<motif_pair_record_t> main_algo_impl(const std::vector<std::st
     for (const auto& node : G) number_of_edges += node.size();
     number_of_edges /= 2;
     double edge_density = static_cast<double>(number_of_edges) / ((G.size() * (G.size() - 1)) / 2);
-    double chi2_coeff = std::pow(1.0 - edge_density,2) / edge_density;
+    double chi2_coeff = edge_density > 0 ? (std::pow(1.0 - edge_density,2) / edge_density) : 0;
     size_t max_degree = 0;
     for (const auto& v : G)
         max_degree = std::max(max_degree, v.size());
@@ -182,9 +182,8 @@ static std::vector<motif_pair_record_t> main_algo_impl(const std::vector<std::st
                 uint32_t *nodes_with_rank_u = &workspace.flat_nodes_X[workspace.rank_offsets_X[rank_u]];
 
                 // pruning
-                size_t countE_max = std::min(countX * max_countY, countX * max_degree); // a
-                double countE_bar_limit = edge_density * countE_max; // rho * b
-                double max_chi2 = countE_max > countE_bar_limit ? static_cast<double>(countE_max) * chi2_coeff : 0;
+                size_t countE_max = std::min(countX * max_countY, countX * max_degree);
+                double max_chi2 =  std::max(0.0, static_cast<double>(countE_max) * chi2_coeff);
                 motif_pair_record_t best_candidate;
                 best_candidate.chi2 = max_chi2;
                 best_candidate.countE = countE_max;
