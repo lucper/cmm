@@ -182,14 +182,12 @@ static std::vector<motif_pair_record_t> main_algo_impl(const std::vector<std::st
                 uint32_t *nodes_with_rank_u = &workspace.flat_nodes_X[workspace.rank_offsets_X[rank_u]];
 
                 // pruning
-                double countE_expected_limit = static_cast<double>(countX * max_countY);
-                double countE_limit = std::min(countE_expected_limit, static_cast<double>(countX * max_degree));
-                double f_chi2 = 0;
-                if (countE_limit > edge_density * countE_expected_limit)
-                    f_chi2 = std::pow(countE_limit - edge_density * countE_expected_limit, 2) / (edge_density * countE_expected_limit);
+                size_t countE_max = std::min(countX * max_countY, countX * max_degree); // a
+                double countE_bar_limit = edge_density * countE_max; // rho * b
+                double max_chi2 = countE_max > countE_bar_limit ? static_cast<double>(countE_max) * chi2_coeff : 0;
                 motif_pair_record_t best_candidate;
-                best_candidate.chi2 = f_chi2;
-                best_candidate.countE = static_cast<size_t>(countE_limit);
+                best_candidate.chi2 = max_chi2;
+                best_candidate.countE = countE_max;
                 if (workspace.topK.size() >= k && !comp(best_candidate, workspace.topK.top()))
                     continue;
 
