@@ -62,6 +62,10 @@ static std::vector<motif_pair_record_t> main_algo_impl(const std::vector<std::st
     for (const auto& node : G) number_of_edges += node.size();
     number_of_edges /= 2;
     double edge_density = static_cast<double>(number_of_edges) / ((G.size() * (G.size() - 1)) / 2);
+    double chi2_coeff = std::pow(1.0 - edge_density,2) / edge_density;
+    size_t max_degree = 0;
+    for (const auto& v : G)
+        max_degree = std::max(max_degree, v.size());
 
     esa_t ESA(V);
 
@@ -169,13 +173,29 @@ static std::vector<motif_pair_record_t> main_algo_impl(const std::vector<std::st
                     workspace.flat_nodes_Y[pos] = u;
             });
 
+            uint32_t max_countY = 0;
+            for (auto rank_v : workspace.active_ranks_Y)
+                max_countY = std::max(max_countY, workspace.rank_active_counts_Y[rank_v]);
+
             for (auto rank_u : workspace.active_ranks_X) {
-                uint32_t number_of_nodes_with_rank_u = workspace.rank_active_counts_X[rank_u];
+                size_t countX = workspace.rank_active_counts_X[rank_u];
                 uint32_t *nodes_with_rank_u = &workspace.flat_nodes_X[workspace.rank_offsets_X[rank_u]];
+
+                // pruning
+                double countE_expected_limit = static_cast<double>(countX * max_countY);
+                double countE_limit = std::min(countE_expected_limit, static_cast<double>(countX * max_degree));
+                double f_chi2 = 0;
+                if (countE_limit > edge_density * countE_expected_limit)
+                    f_chi2 = std::pow(countE_limit - edge_density * countE_expected_limit, 2) / (edge_density * countE_expected_limit);
+                motif_pair_record_t best_candidate;
+                best_candidate.chi2 = f_chi2;
+                best_candidate.countE = static_cast<size_t>(countE_limit);
+                if (workspace.topK.size() >= k && !comp(best_candidate, workspace.topK.top()))
+                    continue;
 
                 workspace.edge_count_set_indices.clear();
 
-                for (size_t i = 0; i < number_of_nodes_with_rank_u; i++) {
+                for (size_t i = 0; i < countX; i++) {
                     uint32_t u = nodes_with_rank_u[i];
 
                     uint32_t *ranksY_in_node_u = &workspace.flat_ranks_Y[workspace.node_offsets_Y[u]];
@@ -207,7 +227,6 @@ static std::vector<motif_pair_record_t> main_algo_impl(const std::vector<std::st
                 for (auto rank_v : workspace.edge_count_set_indices) {
                     size_t countXY = workspace.intersec_nodes_count[rank_v];
                     size_t countY = workspace.rank_active_counts_Y[rank_v];
-                    size_t countX = workspace.rank_active_counts_X[rank_u];
                     size_t Emax = (countX * countY) - ((countXY * (countXY - 1))/2) - countXY;
                     size_t countE = workspace.edge_count[rank_v];
                     double countE_bar = edge_density * Emax;
