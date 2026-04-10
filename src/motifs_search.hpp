@@ -20,6 +20,95 @@ struct motif_pair_record_t {
     double chi2;
 };
 
+template <typename Comparator>
+struct thread_workspace_t {
+    std::vector<uint32_t> intersec_nodes_count, intersec_nodes_count_set_indices;
+    std::vector<uint32_t> edge_count, edge_count_set_indices;
+    std::vector<uint32_t> flat_nodes_X, rank_offsets_X, rank_active_counts_X, active_ranks_X;
+    std::vector<uint32_t> flat_nodes_Y, rank_offsets_Y, rank_active_counts_Y, active_ranks_Y;
+    std::vector<uint32_t> flat_ranks_Y, node_offsets_Y, node_active_counts_Y;
+    rank_table_t rank_table_X, rank_table_Y;
+    std::priority_queue<motif_pair_record_t, std::vector<motif_pair_record_t>, Comparator> topK;
+
+    struct rank_occ_t { uint32_t node; uint32_t rank; };
+    std::vector<rank_occ_t> uniq_ranks_per_node_buffer;
+    std::vector<uint32_t> rank_timestamp;
+
+    thread_workspace_t(const esa_t& ESA, size_t ell, size_t V_size, size_t max_seq_len)
+        : intersec_nodes_count(ESA.N, 0), intersec_nodes_count_set_indices(ESA.N),
+          edge_count(ESA.N, 0), edge_count_set_indices(ESA.N),
+          flat_nodes_X(ESA.N), rank_offsets_X(ESA.N + 1, 0), rank_active_counts_X(ESA.N + 1, 0), active_ranks_X(ESA.N + 1),
+          flat_nodes_Y(ESA.N), rank_offsets_Y(ESA.N + 1, 0), rank_active_counts_Y(ESA.N + 1, 0), active_ranks_Y(ESA.N + 1),
+          flat_ranks_Y(V_size * max_seq_len), node_offsets_Y(V_size, 0), node_active_counts_Y(V_size, 0),
+          rank_table_X(ell, ESA), rank_table_Y(ell, ESA),
+          rank_timestamp(ESA.N + 1), uniq_ranks_per_node_buffer(ESA.N)
+    {
+        for (size_t i = 0; i < V_size; i++)
+            node_offsets_Y[i] = i * max_seq_len;
+    }
+
+    void build_csr(const std::vector<std::string>& V, const rank_table_t& rank_table)
+    {
+        size_t ell = rank_table.get_ell();
+
+        uniq_ranks_per_node_buffer.clear();
+        std::fill(rank_timestamp.begin(), rank_timestamp.end(), 0);
+
+        // TODO: Not sure if this is the best way to do it.
+        bool is_table_X = (&rank_table == &this->rank_table_X);
+        auto& active_ranks = is_table_X ? active_ranks_X : active_ranks_Y;
+        auto& rank_active_counts = is_table_X ? rank_active_counts_X : rank_active_counts_Y;
+        auto& rank_offsets = is_table_X ? rank_offsets_X : rank_offsets_Y;
+        auto& flat_nodes = is_table_X ? flat_nodes_X : flat_nodes_Y;
+
+        for (auto r : active_ranks)
+            rank_active_counts[r] = 0;
+        active_ranks.clear();
+
+        // scan strings, deduplicate, and count ranks
+        for (uint32_t u = 0; u < V.size(); u++) {
+            if (!is_table_X)
+                node_active_counts_Y[u] = 0;
+            for (size_t i = 0; i < V[u].length() - ell + 1; i++) {
+                uint32_t r = rank_table.get_rank_of_substr(i, u);
+                if (rank_timestamp[r] != u + 1) {
+                    rank_timestamp[r] = u + 1;
+                    if (rank_active_counts[r] == 0)
+                        active_ranks.push_back(r);
+                    rank_active_counts[r]++;
+                    if (!is_table_X)
+                        node_active_counts_Y[u]++;
+                    uniq_ranks_per_node_buffer.push_back({u, r});
+                }
+            }
+        }
+
+        // prefix sum and cursor setup
+        size_t rank_acc = 0;
+        for (auto r : active_ranks) {
+            rank_offsets[r] = rank_acc;
+            rank_acc += rank_active_counts[r];
+            rank_active_counts[r] = 0;
+        }
+
+        if (!is_table_X) {
+            size_t node_acc = 0;
+            for (uint32_t u = 0; u < V.size(); u++) {
+                node_offsets_Y[u] = node_acc;
+                node_acc += node_active_counts_Y[u];
+                node_active_counts_Y[u] = 0;
+            }
+        }
+
+        // placement
+        for (const auto& [node, rank] : uniq_ranks_per_node_buffer) {
+            flat_nodes[rank_offsets[rank] + rank_active_counts[rank]++] = node;
+            if (!is_table_X)
+                flat_ranks_Y[node_offsets_Y[node] + node_active_counts_Y[node]++] = rank;
+        }
+    }
+};
+
 // Comparators for priority queue.
 // f_E
 struct compare_by_countE_t {
