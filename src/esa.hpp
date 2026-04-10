@@ -9,6 +9,8 @@
 #include <libsais64.h>
 #endif
 
+#include <vector>
+#include <string>
 #include <cstring>
 
 #define SEP '$'
