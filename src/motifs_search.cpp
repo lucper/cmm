@@ -94,7 +94,7 @@ std::vector<motif_pair_record_t> main_algo(const std::vector<std::string>& V,
                 motif_pair_record_t best_candidate;
                 best_candidate.chi2 = max_chi2;
                 best_candidate.countE = countE_max;
-                if (workspace.topK.size() >= k && !comp(best_candidate, workspace.topK.top()))
+                if (workspace.topK.size() >= k && !motif_comparator(best_candidate, workspace.topK.top()))
                     continue;
 
                 workspace.edge_count_set_indices.clear();
