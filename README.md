@@ -1,4 +1,4 @@
-# Algorithms for CMM
+# CMM: Correlated Motif Mining
 
 Prepare build:
 ```bash
