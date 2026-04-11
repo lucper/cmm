@@ -28,16 +28,17 @@ static std::vector<std::vector<uint16_t>> all_H_combinations(size_t ell, size_t 
     return all_H;
 }
 
-template <typename Comparator>
-static std::vector<motif_pair_record_t> main_algo_impl(const std::vector<std::string>& V,
-                                                       const std::vector<std::vector<uint32_t>>& G,
-                                                       size_t ell, size_t d, size_t k, Comparator comp,
-                                                       size_t num_threads)
+template <typename Tag>
+std::vector<motif_pair_record_t> main_algo(const std::vector<std::string>& V,
+                                           const std::vector<std::vector<uint32_t>>& G,
+                                           size_t ell, size_t d, size_t k, size_t num_threads)
 {
     if (k <= 0) throw std::invalid_argument("k must be positive");
     if (ell < 1) throw std::invalid_argument("ell must be positive");
 
-    std::priority_queue<motif_pair_record_t, std::vector<motif_pair_record_t>, Comparator> topK_global;
+    using motif_comparator_t = motif_pair_record_comp_t<Tag>;
+
+    std::priority_queue<motif_pair_record_t, std::vector<motif_pair_record_t>, motif_comparator_t> topK_global;
 
     // Parameters for chi2 that depend on graph topology only.
     size_t number_of_edges = 0;
@@ -55,7 +56,7 @@ static std::vector<motif_pair_record_t> main_algo_impl(const std::vector<std::st
             max_seq_len = v.length();
 
     omp_set_num_threads(num_threads);
-    std::vector<thread_workspace_t<Comparator>> workspaces;
+    std::vector<thread_workspace_t<motif_comparator_t>> workspaces;
     workspaces.reserve(num_threads);
     for (size_t i = 0; i < num_threads; i++)
         workspaces.emplace_back(ESA, ell, V.size(), max_seq_len);
@@ -63,7 +64,7 @@ static std::vector<motif_pair_record_t> main_algo_impl(const std::vector<std::st
     #pragma omp parallel
     {
     size_t tid = omp_get_thread_num();
-    thread_workspace_t<Comparator>& workspace = workspaces[tid];
+    thread_workspace_t<motif_comparator_t>& workspace = workspaces[tid];
 
     #pragma omp for schedule(dynamic)
     for (const auto &H_u : all_H) {
@@ -121,7 +122,7 @@ static std::vector<motif_pair_record_t> main_algo_impl(const std::vector<std::st
                     motif_pair_record_t candidate;
                     candidate.countE = countE;
                     candidate.chi2 = chi2;
-                    Comparator comp;
+                    motif_comparator_t comp;
                     if (workspace.topK.size() < k || comp(candidate, workspace.topK.top())) {
                         candidate.rankX = rank_u;
                         candidate.rankY = rank_v;
@@ -167,14 +168,14 @@ static std::vector<motif_pair_record_t> main_algo_impl(const std::vector<std::st
     return solution;
 }
 
-std::vector<motif_pair_record_t> main_algo(const std::vector<std::string>& V, const std::vector<std::vector<uint32_t>>& G,
-                                           size_t ell, size_t d, size_t k, compare_by_countE_t comp, size_t num_threads)
-{
-    return main_algo_impl(V, G, ell, d, k, comp, num_threads);
-}
+template std::vector<motif_pair_record_t> main_algo<sort_by_countE_t>(
+    const std::vector<std::string>&,
+    const std::vector<std::vector<uint32_t>>&,
+    size_t, size_t, size_t, size_t
+);
 
-std::vector<motif_pair_record_t> main_algo(const std::vector<std::string>& V, const std::vector<std::vector<uint32_t>>& G,
-                                           size_t ell, size_t d, size_t k, compare_by_chi2_t comp, size_t num_threads)
-{
-    return main_algo_impl(V, G, ell, d, k, comp, num_threads);
-}
+template std::vector<motif_pair_record_t> main_algo<sort_by_chi2_t>(
+    const std::vector<std::string>&,
+    const std::vector<std::vector<uint32_t>>&,
+    size_t, size_t, size_t, size_t
+);

@@ -20,6 +20,19 @@ struct motif_pair_record_t {
     double chi2;
 };
 
+// tags
+struct sort_by_chi2_t {};
+struct sort_by_countE_t {};
+
+template <typename Tag>
+struct motif_pair_record_comp_t {
+    bool operator()(const motif_pair_record_t& lhs, const motif_pair_record_t& rhs) const {
+        if constexpr (std::is_same_v<Tag, sort_by_chi2_t>) return lhs.chi2 > rhs.chi2;
+        else if constexpr (std::is_same_v<Tag, sort_by_countE_t>) return lhs.countE > rhs.countE;
+        else return false;
+    }
+};
+
 template <typename Comparator>
 struct thread_workspace_t {
     std::vector<uint32_t> intersec_nodes_count, intersec_nodes_count_set_indices;
@@ -109,27 +122,9 @@ struct thread_workspace_t {
     }
 };
 
-// Comparators for priority queue.
-// f_E
-struct compare_by_countE_t {
-    bool operator()(const motif_pair_record_t& lhs, const motif_pair_record_t& rhs) const {
-       return lhs.countE > rhs.countE;
-    }
-};
+template <typename Tag>
 std::vector<motif_pair_record_t> main_algo(const std::vector<std::string>& V,
                                            const std::vector<std::vector<uint32_t>>& G,
-                                           size_t ell, size_t d, size_t k, compare_by_countE_t comp,
-                                           size_t num_threads);
-
-// f_chi^2
-struct compare_by_chi2_t {
-    bool operator()(const motif_pair_record_t& lhs, const motif_pair_record_t& rhs) const {
-       return lhs.chi2 > rhs.chi2;
-    }
-};
-std::vector<motif_pair_record_t> main_algo(const std::vector<std::string>& V,
-                                           const std::vector<std::vector<uint32_t>>& G,
-                                           size_t ell, size_t d, size_t k, compare_by_chi2_t comp,
-                                           size_t num_threads);
+                                           size_t ell, size_t d, size_t k, size_t num_threads);
 
 #endif
