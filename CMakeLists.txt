@@ -4,12 +4,12 @@ cmake_policy(SET CMP0148 NEW)
 
 project(bpm)
 
-if(DEFINED _USE_64)
-    add_compile_definitions(_USE_64)
-elseif(DEFINED _USE_32)
-    add_compile_definitions(_USE_32)
+if(DEFINED USE_64)
+    add_compile_definitions(USE_64)
+elseif(DEFINED USE_32)
+    add_compile_definitions(USE_32)
 else()
-    message(FATAL_ERROR "Set either -D_USE_32 or -D_USE_64.")
+    message(FATAL_ERROR "Set either -DUSE_32 or -DUSE_64.")
 endif()
 
 include(FetchContent)

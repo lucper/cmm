@@ -1,11 +1,11 @@
 #ifndef H_ESA
 #define H_ESA
 
-#ifdef _USE_32
+#ifdef USE_32
 #include <libsais.h>
 #endif
 
-#ifdef _USE_64
+#ifdef USE_64
 #include <libsais64.h>
 #endif
 
@@ -16,12 +16,12 @@
 #define SEP '$'
 
 struct esa_t {
-    #ifdef _USE_32
+    #ifdef USE_32
     int32_t *SA;
     int32_t N;
     #endif
 
-    #ifdef _USE_64
+    #ifdef USE_64
     int64_t *SA;
     int64_t N;
     #endif
@@ -54,7 +54,7 @@ struct esa_t {
         for (size_t i = 1; i < seqs.size() + 1; i++)
             S_offset[i] = S_offset[i-1] + seqs[i-1].length() + 1;
 
-        #ifdef _USE_32
+        #ifdef USE_32
         SA = (int32_t *) std::malloc(N * sizeof(int32_t));
         if (!SA) {
             std::fprintf(stderr, "Could not allocate memory for suffix array.\n");
@@ -66,7 +66,7 @@ struct esa_t {
         }
         #endif
 
-        #ifdef _USE_64
+        #ifdef USE_64
         SA = (int64_t *) std::malloc(N * sizeof(int64_t));
         if (!SA) {
             std::fprintf(stderr, "Could not allocate memory for suffix array.\n");
