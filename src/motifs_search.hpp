@@ -54,7 +54,7 @@ struct thread_workspace_t {
           flat_nodes_Y(ESA.N), rank_offsets_Y(ESA.N + 1), rank_active_counts_Y(ESA.N + 1), active_ranks_Y(ESA.N + 1),
           flat_ranks_Y(V_size * max_seq_len), node_offsets_Y(V_size), node_active_counts_Y(V_size),
           rank_table_X(ell, ESA), rank_table_Y(ell, ESA),
-          rank_timestamp(ESA.N + 1), uniq_ranks_per_node_buffer(ESA.N)
+          uniq_ranks_per_node_buffer(ESA.N), rank_timestamp(ESA.N + 1)
     {
         for (size_t i = 0; i < V_size; i++)
             node_offsets_Y[i] = i * max_seq_len;

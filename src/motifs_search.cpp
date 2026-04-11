@@ -4,8 +4,7 @@ static std::string apply_mask(std::string_view motif, const std::vector<uint16_t
 {
     std::string masked_motif(motif);
     for (auto pos : H)
-        if (pos >= 0 && pos < masked_motif.length())
-            masked_motif[pos] = wildcard;
+        masked_motif[pos] = wildcard;
     return masked_motif;
 }
 
@@ -37,6 +36,8 @@ std::vector<motif_pair_record_t> main_algo(const std::vector<std::string>& V,
     if (ell < 1) throw std::invalid_argument("ell must be positive");
 
     using motif_comparator_t = motif_pair_record_comp_t<Tag>;
+
+    motif_comparator_t motif_comparator;
 
     std::priority_queue<motif_pair_record_t, std::vector<motif_pair_record_t>, motif_comparator_t> topK_global;
 
@@ -122,8 +123,7 @@ std::vector<motif_pair_record_t> main_algo(const std::vector<std::string>& V,
                     motif_pair_record_t candidate;
                     candidate.countE = countE;
                     candidate.chi2 = chi2;
-                    motif_comparator_t comp;
-                    if (workspace.topK.size() < k || comp(candidate, workspace.topK.top())) {
+                    if (workspace.topK.size() < k || motif_comparator(candidate, workspace.topK.top())) {
                         candidate.rankX = rank_u;
                         candidate.rankY = rank_v;
                         candidate.X = apply_mask(workspace.rank_table_X.get_substr_with_rank(rank_u), H_u);

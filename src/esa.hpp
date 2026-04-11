@@ -83,7 +83,7 @@ struct esa_t {
             std::fprintf(stderr, "Could not construct suffix array.\n");
             exit(EXIT_FAILURE);
         }
-        for (size_t i = 0; i < N; i++)
+        for (int i = 0; i < N; i++)
             ISA[SA[i]] = i;
         
         LCP = (uint32_t *) std::malloc(N * sizeof(uint32_t));
