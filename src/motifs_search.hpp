@@ -35,11 +35,11 @@ struct thread_workspace_t {
     std::vector<uint32_t> rank_timestamp;
 
     thread_workspace_t(const esa_t& ESA, size_t ell, size_t V_size, size_t max_seq_len)
-        : intersec_nodes_count(ESA.N, 0), intersec_nodes_count_set_indices(ESA.N),
-          edge_count(ESA.N, 0), edge_count_set_indices(ESA.N),
-          flat_nodes_X(ESA.N), rank_offsets_X(ESA.N + 1, 0), rank_active_counts_X(ESA.N + 1, 0), active_ranks_X(ESA.N + 1),
-          flat_nodes_Y(ESA.N), rank_offsets_Y(ESA.N + 1, 0), rank_active_counts_Y(ESA.N + 1, 0), active_ranks_Y(ESA.N + 1),
-          flat_ranks_Y(V_size * max_seq_len), node_offsets_Y(V_size, 0), node_active_counts_Y(V_size, 0),
+        : intersec_nodes_count(ESA.N), intersec_nodes_count_set_indices(ESA.N),
+          edge_count(ESA.N), edge_count_set_indices(ESA.N),
+          flat_nodes_X(ESA.N), rank_offsets_X(ESA.N + 1), rank_active_counts_X(ESA.N + 1), active_ranks_X(ESA.N + 1),
+          flat_nodes_Y(ESA.N), rank_offsets_Y(ESA.N + 1), rank_active_counts_Y(ESA.N + 1), active_ranks_Y(ESA.N + 1),
+          flat_ranks_Y(V_size * max_seq_len), node_offsets_Y(V_size), node_active_counts_Y(V_size),
           rank_table_X(ell, ESA), rank_table_Y(ell, ESA),
           rank_timestamp(ESA.N + 1), uniq_ranks_per_node_buffer(ESA.N)
     {
