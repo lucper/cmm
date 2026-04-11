@@ -78,9 +78,9 @@ int main(int argc, char* argv[]) {
     }
 
     if (mode == "E")
-        solution = main_algo(gi.node_labels, gi.adj_list, ell, d, k, compare_by_countE_t{}, num_threads);
+        solution = main_algo<sort_by_countE_t>(gi.node_labels, gi.adj_list, ell, d, k, num_threads);
     else if (mode == "chi2")
-        solution = main_algo(gi.node_labels, gi.adj_list, ell, d, k, compare_by_chi2_t{}, num_threads);
+        solution = main_algo<sort_by_chi2_t>(gi.node_labels, gi.adj_list, ell, d, k, num_threads);
     else {
         std::fprintf(stderr, "Error: Invalid mode ('%s').\n", mode.c_str());
         return EXIT_FAILURE;

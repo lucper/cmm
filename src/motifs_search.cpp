@@ -28,34 +28,17 @@ static std::vector<std::vector<uint16_t>> all_H_combinations(size_t ell, size_t 
     return all_H;
 }
 
-template <typename F>
-static void deduplicate_ranks(const std::vector<std::string>& V,
-                              const rank_table_t& rank_table,
-                              std::vector<uint32_t>& dedup_buffer,
-                              F callback)
-{
-    size_t ell = rank_table.get_ell();
-    for (size_t u = 0; u < V.size(); u++) {
-        for (size_t i = 0; i < V[u].length() - ell + 1; i++)
-            dedup_buffer.push_back(rank_table.get_rank_of_substr(i, u));
-        std::sort(dedup_buffer.begin(), dedup_buffer.end());
-        auto end = std::unique(dedup_buffer.begin(), dedup_buffer.end());
-        for (auto it = dedup_buffer.begin(); it != end; it++)
-            callback(u, *it);
-        dedup_buffer.clear();
-    }
-}
-
-template <typename Comparator>
-static std::vector<motif_pair_record_t> main_algo_impl(const std::vector<std::string>& V,
-                                                       const std::vector<std::vector<uint32_t>>& G,
-                                                       size_t ell, size_t d, size_t k, Comparator comp,
-                                                       size_t num_threads)
+template <typename Tag>
+std::vector<motif_pair_record_t> main_algo(const std::vector<std::string>& V,
+                                           const std::vector<std::vector<uint32_t>>& G,
+                                           size_t ell, size_t d, size_t k, size_t num_threads)
 {
     if (k <= 0) throw std::invalid_argument("k must be positive");
     if (ell < 1) throw std::invalid_argument("ell must be positive");
 
-    std::priority_queue<motif_pair_record_t, std::vector<motif_pair_record_t>, Comparator> topK_global;
+    using motif_comparator_t = motif_pair_record_comp_t<Tag>;
+
+    std::priority_queue<motif_pair_record_t, std::vector<motif_pair_record_t>, motif_comparator_t> topK_global;
 
     // Parameters for chi2 that depend on graph topology only.
     size_t number_of_edges = 0;
@@ -71,43 +54,13 @@ static std::vector<motif_pair_record_t> main_algo_impl(const std::vector<std::st
 
     auto all_H = all_H_combinations(ell, d);
 
-    struct thread_workspace_t {
-        std::vector<uint32_t> intersec_nodes_count, intersec_nodes_count_set_indices;
-
-        std::vector<uint32_t> edge_count, edge_count_set_indices;
-
-        std::vector<uint32_t> flat_nodes_X, rank_offsets_X, rank_active_counts_X, active_ranks_X;
-        std::vector<uint32_t> flat_nodes_Y, rank_offsets_Y, rank_active_counts_Y, active_ranks_Y;
-
-        std::vector<uint32_t> flat_ranks_Y, node_offsets_Y, node_active_counts_Y;
-
-        std::vector<uint32_t> dedup_buffer;
-
-        rank_table_t rank_table_u, rank_table_v;
-
-        std::priority_queue<motif_pair_record_t, std::vector<motif_pair_record_t>, Comparator> topK;
-
-        thread_workspace_t(const esa_t& ESA, size_t ell, size_t V_size, size_t max_seq_len)
-            : intersec_nodes_count(ESA.N, 0), intersec_nodes_count_set_indices(ESA.N),
-              edge_count(ESA.N, 0), edge_count_set_indices(ESA.N),
-              flat_nodes_X(ESA.N), rank_offsets_X(ESA.N + 1, 0), rank_active_counts_X(ESA.N + 1, 0), active_ranks_X(ESA.N + 1),
-              flat_nodes_Y(ESA.N), rank_offsets_Y(ESA.N + 1, 0), rank_active_counts_Y(ESA.N + 1, 0), active_ranks_Y(ESA.N + 1),
-              flat_ranks_Y(V_size * max_seq_len), node_offsets_Y(V_size, 0), node_active_counts_Y(V_size, 0),
-              dedup_buffer(2048),
-              rank_table_u(ell, ESA), rank_table_v(ell, ESA)
-        {
-            for (size_t i = 0; i < V_size; i++)
-                node_offsets_Y[i] = i * max_seq_len;
-        }
-    };
-
     size_t max_seq_len = 0;
     for (const auto& v : V)
         if (v.length() > max_seq_len)
             max_seq_len = v.length();
 
     omp_set_num_threads(num_threads);
-    std::vector<thread_workspace_t> workspaces;
+    std::vector<thread_workspace_t<motif_comparator_t>> workspaces;
     workspaces.reserve(num_threads);
     for (size_t i = 0; i < num_threads; i++)
         workspaces.emplace_back(ESA, ell, V.size(), max_seq_len);
@@ -115,63 +68,16 @@ static std::vector<motif_pair_record_t> main_algo_impl(const std::vector<std::st
     #pragma omp parallel
     {
     size_t tid = omp_get_thread_num();
-    thread_workspace_t& workspace = workspaces[tid];
+    thread_workspace_t<motif_comparator_t>& workspace = workspaces[tid];
 
     #pragma omp for schedule(dynamic)
     for (const auto &H_u : all_H) {
-        workspace.rank_table_u.sort_by_prefix(H_u);
-
-        // identify active ranks
-        for (auto r : workspace.active_ranks_X)
-            workspace.rank_active_counts_X[r] = 0;
-        workspace.active_ranks_X.clear();
-        deduplicate_ranks(V, workspace.rank_table_u, workspace.dedup_buffer, [&](size_t u, uint32_t r) {
-                if (workspace.rank_active_counts_X[r] == 0)
-                    workspace.active_ranks_X.push_back(r);
-                workspace.rank_active_counts_X[r]++;
-        });
-
-        // prefix sum for offsets in CSR
-        size_t curr_offset_X = 0;
-        for (auto r : workspace.active_ranks_X) {
-            workspace.rank_offsets_X[r] = curr_offset_X;
-            curr_offset_X += workspace.rank_active_counts_X[r];
-            workspace.rank_active_counts_X[r] = 0;
-        }
-
-        deduplicate_ranks(V, workspace.rank_table_u, workspace.dedup_buffer, [&](size_t u, uint32_t r) {
-                size_t pos = workspace.rank_offsets_X[r] + workspace.rank_active_counts_X[r]++;
-                workspace.flat_nodes_X[pos] = u;
-        });
+        workspace.rank_table_X.sort_by_prefix(H_u);
+        workspace.build_csr(V, workspace.rank_table_X);
 
         for (const auto &H_v : all_H) {
-            workspace.rank_table_v.sort_by_prefix(H_v);
-
-            for (size_t i = 0; i < V.size(); i++)
-                workspace.node_active_counts_Y[i] = 0;
-            for (auto&r : workspace.active_ranks_Y)
-                workspace.rank_active_counts_Y[r] = 0;
-            workspace.active_ranks_Y.clear();
-            deduplicate_ranks(V, workspace.rank_table_v, workspace.dedup_buffer, [&](size_t u, uint32_t r) {
-                    if (workspace.rank_active_counts_Y[r] == 0)
-                        workspace.active_ranks_Y.push_back(r);
-                    workspace.rank_active_counts_Y[r]++;
-            });
-
-            size_t curr_offset_Y = 0;
-            for (auto r : workspace.active_ranks_Y) {
-                workspace.rank_offsets_Y[r] = curr_offset_Y;
-                curr_offset_Y += workspace.rank_active_counts_Y[r];
-                workspace.rank_active_counts_Y[r] = 0;
-            }
-
-            deduplicate_ranks(V, workspace.rank_table_v, workspace.dedup_buffer, [&](size_t u, uint32_t r) {
-                    size_t node_pos = workspace.node_offsets_Y[u] + workspace.node_active_counts_Y[u]++;
-                    workspace.flat_ranks_Y[node_pos] = r;
-
-                    size_t pos = workspace.rank_offsets_Y[r] + workspace.rank_active_counts_Y[r]++;
-                    workspace.flat_nodes_Y[pos] = u;
-            });
+            workspace.rank_table_Y.sort_by_prefix(H_v);
+            workspace.build_csr(V, workspace.rank_table_Y);
 
             uint32_t max_countY = 0;
             for (auto rank_v : workspace.active_ranks_Y)
@@ -232,12 +138,12 @@ static std::vector<motif_pair_record_t> main_algo_impl(const std::vector<std::st
                     motif_pair_record_t candidate;
                     candidate.countE = countE;
                     candidate.chi2 = chi2;
-                    Comparator comp;
+                    motif_comparator_t comp;
                     if (workspace.topK.size() < k || comp(candidate, workspace.topK.top())) {
                         candidate.rankX = rank_u;
                         candidate.rankY = rank_v;
-                        candidate.X = apply_mask(workspace.rank_table_u.get_substr_with_rank(rank_u), H_u);
-                        candidate.Y = apply_mask(workspace.rank_table_v.get_substr_with_rank(rank_v), H_v);
+                        candidate.X = apply_mask(workspace.rank_table_X.get_substr_with_rank(rank_u), H_u);
+                        candidate.Y = apply_mask(workspace.rank_table_Y.get_substr_with_rank(rank_v), H_v);
                         candidate.countE_bar = countE_bar;
                         candidate.countX = countX;
                         candidate.countY = countY;
@@ -278,15 +184,14 @@ static std::vector<motif_pair_record_t> main_algo_impl(const std::vector<std::st
     return solution;
 }
 
+template std::vector<motif_pair_record_t> main_algo<sort_by_countE_t>(
+    const std::vector<std::string>&,
+    const std::vector<std::vector<uint32_t>>&,
+    size_t, size_t, size_t, size_t
+);
 
-std::vector<motif_pair_record_t> main_algo(const std::vector<std::string>& V, const std::vector<std::vector<uint32_t>>& G,
-                                           size_t ell, size_t d, size_t k, compare_by_countE_t comp, size_t num_threads)
-{
-    return main_algo_impl(V, G, ell, d, k, comp, num_threads);
-}
-
-std::vector<motif_pair_record_t> main_algo(const std::vector<std::string>& V, const std::vector<std::vector<uint32_t>>& G,
-                                           size_t ell, size_t d, size_t k, compare_by_chi2_t comp, size_t num_threads)
-{
-    return main_algo_impl(V, G, ell, d, k, comp, num_threads);
-}
+template std::vector<motif_pair_record_t> main_algo<sort_by_chi2_t>(
+    const std::vector<std::string>&,
+    const std::vector<std::vector<uint32_t>>&,
+    size_t, size_t, size_t, size_t
+);
