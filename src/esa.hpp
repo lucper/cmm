@@ -35,14 +35,14 @@ struct esa_t {
         N = 0;
         for (const auto& seq : seqs)
             N += seq.length() + 1;
-        S = (uint8_t *) malloc((N + 1) * sizeof(uint8_t));
+        S = (uint8_t *) std::malloc((N + 1) * sizeof(uint8_t));
         if (!S) {
             std::fprintf(stderr, "Could not allocate memory for concatenated string.\n");
             exit(EXIT_FAILURE);
         }
         size_t offset = 0;
         for (const auto& seq: seqs) {
-            memcpy(S + offset, seq.data(), seq.length());
+            std::memcpy(S + offset, seq.data(), seq.length());
             offset += seq.length();
             S[offset++] = SEP;
         }
@@ -55,7 +55,7 @@ struct esa_t {
             S_offset[i] = S_offset[i-1] + seqs[i-1].length() + 1;
 
         #ifdef _USE_32
-        SA = (int32_t *) malloc(N * sizeof(int32_t));
+        SA = (int32_t *) std::malloc(N * sizeof(int32_t));
         if (!SA) {
             std::fprintf(stderr, "Could not allocate memory for suffix array.\n");
             exit(EXIT_FAILURE);
@@ -67,7 +67,7 @@ struct esa_t {
         #endif
 
         #ifdef _USE_64
-        SA = (int64_t *) malloc(N * sizeof(int64_t));
+        SA = (int64_t *) std::malloc(N * sizeof(int64_t));
         if (!SA) {
             std::fprintf(stderr, "Could not allocate memory for suffix array.\n");
             exit(EXIT_FAILURE);
@@ -78,7 +78,7 @@ struct esa_t {
         }
         #endif
         
-        ISA = (uint32_t *) malloc(N * sizeof(uint32_t));
+        ISA = (uint32_t *) std::malloc(N * sizeof(uint32_t));
         if (!ISA) {
             std::fprintf(stderr, "Could not construct suffix array.\n");
             exit(EXIT_FAILURE);
@@ -86,7 +86,7 @@ struct esa_t {
         for (size_t i = 0; i < N; i++)
             ISA[SA[i]] = i;
         
-        LCP = (uint32_t *) malloc(N * sizeof(uint32_t));
+        LCP = (uint32_t *) std::malloc(N * sizeof(uint32_t));
         LCP[0] = 0;
         for (int i = 0, j = 0; i < N; i++)
             if (ISA[i] != 0) {
