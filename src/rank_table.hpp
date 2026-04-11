@@ -44,13 +44,13 @@ public:
     size_t get_rank_of_substr(size_t i, size_t k) const;
 
 private:
+    size_t ell;
+    size_t N;
     const uint8_t *S;
     const std::vector<uint32_t>& S_offset;
     const int64_t *SA;
     const uint32_t *LCP;
-    size_t N;
 
-    size_t ell;
     size_t max_rank_R1;
 
     std::vector<uint32_t> sSA;
