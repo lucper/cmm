@@ -29,11 +29,18 @@ add_library(bpm_core
     src/data_import.cpp
 )
 target_link_libraries(bpm_core PUBLIC libsais OpenMP::OpenMP_CXX)
-target_compile_options(bpm_core PRIVATE -g -fno-omit-frame-pointer) # profiling
+target_compile_options(bpm_core PRIVATE
+    -Wall -Wextra
+    -fno-omit-frame-pointer
+    $<$<CONFIG:Release>:-O3 -march=native -flto>
+    $<$<CONFIG:Debug>:-g -O0 -fno-inline>
+)
 
 add_executable(bpm src/main.cpp)
 target_link_libraries(bpm PRIVATE bpm_core OpenMP::OpenMP_CXX)
-target_compile_options(bpm PRIVATE -fno-omit-frame-pointer) # profiling
+target_compile_options(bpm PRIVATE
+    $<$<CONFIG:Release>:-flto>
+)
 
 add_executable(run_tests tests/test_main.cpp)
 target_link_libraries(run_tests PRIVATE bpm_core OpenMP::OpenMP_CXX)
