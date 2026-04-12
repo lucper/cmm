@@ -51,7 +51,7 @@ awk -F';' '
             if (deg > max) max = deg
         }
 
-        ed = edges / ((vertex_count * (vertex_count - 1)) / 2)
+        ed = (1.0 * edges) / ((vertex_count * (vertex_count - 1)) / 2)
 
         if (vertex_count == 0) {
             print "No valid data found."
@@ -59,14 +59,14 @@ awk -F';' '
             printf "==========================================\n"
             printf "             Graph Statistics             \n"
             printf "==========================================\n"
-            printf "Total Vertices (V):      %d\n", vertex_count
-            printf "Total Edges (E):         %d\n", edges
-            printf "Total Sequence (N):      %d\n", total_chars
+            printf "Number of vertices (V):  %d\n", vertex_count
+            printf "Number of edges (E):     %d\n", edges
+            printf "Total string length (N): %d\n", total_chars
             printf "------------------------------------------\n"
-            printf "Min Degree:              %d\n", min
-            printf "Max Degree:              %d\n", max
-            printf "Avg Degree:              %.2f\n", sum_deg / vertex_count
-            printf "Edge Density:            %.2f\n", ed
+            printf "Min degree:              %d\n", min
+            printf "Max degree:              %d\n", max
+            printf "Avg degree:              %.2f\n", sum_deg / vertex_count
+            printf "Edge Density:            %.3f\n", ed
             printf "==========================================\n"
         }
     }

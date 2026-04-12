@@ -66,27 +66,50 @@ std::vector<motif_pair_record_t> main_algo(const std::vector<std::string>& V,
     for (size_t i = 0; i < num_threads; i++)
         workspaces.emplace_back(ESA, ell, V.size(), max_seq_len);
 
+    // Progress bar
+    using namespace indicators;
+    ProgressBar bar(
+        option::BarWidth(50),
+        option::Start("["),
+        option::Fill("#"),
+        option::Lead("#"),
+        option::Remainder(" "),
+        option::End("]"),
+        option::ForegroundColor(Color::white),
+        option::ShowPercentage(true),
+        option::ShowElapsedTime(true),
+        option::PrefixText("Mining motifs "),
+        option::Stream(std::cerr)
+    );
+    size_t total_pairs = all_H.size() * all_H.size();
+    std::atomic<size_t> pairs_completed(0);
+    size_t update_interval = std::max(static_cast<size_t>(1), total_pairs / 100);
+
+    bar.set_option(option::PostfixText("[wildcard combinations: 0/" + std::to_string(total_pairs) + "]"));
+    bar.set_progress(0);
+    std::cerr << "\r" << std::flush;
+
     #pragma omp parallel
     {
     size_t tid = omp_get_thread_num();
-    thread_workspace_t<motif_comparator_t>& workspace = workspaces[tid];
+    thread_workspace_t<motif_comparator_t>& ws = workspaces[tid];
 
     #pragma omp for schedule(dynamic)
     for (const auto &H_u : all_H) {
-        workspace.rank_table_X.sort_by_prefix(H_u);
-        workspace.build_csr(V, workspace.rank_table_X);
+        ws.rank_table_X.sort_by_prefix(H_u);
+        ws.build_csr(V, ws.rank_table_X);
 
         for (const auto &H_v : all_H) {
-            workspace.rank_table_Y.sort_by_prefix(H_v);
-            workspace.build_csr(V, workspace.rank_table_Y);
+            ws.rank_table_Y.sort_by_prefix(H_v);
+            ws.build_csr(V, ws.rank_table_Y);
 
             uint32_t max_countY = 0;
-            for (auto rank_v : workspace.active_ranks_Y)
-                max_countY = std::max(max_countY, workspace.rank_active_counts_Y[rank_v]);
+            for (auto rank_v : ws.active_ranks_Y)
+                max_countY = std::max(max_countY, ws.rank_active_counts_Y[rank_v]);
 
-            for (auto rank_u : workspace.active_ranks_X) {
-                size_t countX = workspace.rank_active_counts_X[rank_u];
-                uint32_t *nodes_with_rank_u = &workspace.flat_nodes_X[workspace.rank_offsets_X[rank_u]];
+            for (auto rank_u : ws.active_ranks_X) {
+                size_t countX = ws.rank_active_counts_X[rank_u];
+                uint32_t *nodes_with_rank_u = &ws.flat_nodes_X[ws.rank_offsets_X[rank_u]];
 
                 // pruning
                 size_t countE_max = std::min(countX * max_countY, countX * max_degree);
@@ -94,80 +117,92 @@ std::vector<motif_pair_record_t> main_algo(const std::vector<std::string>& V,
                 motif_pair_record_t best_candidate;
                 best_candidate.chi2 = max_chi2;
                 best_candidate.countE = countE_max;
-                if (workspace.topK.size() >= k && !motif_comparator(best_candidate, workspace.topK.top()))
+                if (ws.topK.size() >= k && !motif_comparator(best_candidate, ws.topK.top()))
                     continue;
 
-                workspace.edge_count_set_indices.clear();
+                ws.edge_count_set_indices.clear();
 
                 for (size_t i = 0; i < countX; i++) {
                     uint32_t u = nodes_with_rank_u[i];
 
-                    uint32_t *ranksY_in_node_u = &workspace.flat_ranks_Y[workspace.node_offsets_Y[u]];
-                    uint32_t number_of_ranksY_in_node_u = workspace.node_active_counts_Y[u];
+                    uint32_t *ranksY_in_node_u = &ws.flat_ranks_Y[ws.node_offsets_Y[u]];
+                    uint32_t number_of_ranksY_in_node_u = ws.node_active_counts_Y[u];
 
-                    // intersection count
+                    // Intersection count
                     for (size_t j = 0; j < number_of_ranksY_in_node_u; j++) {
                         uint32_t r = ranksY_in_node_u[j];
-                        if (workspace.intersec_nodes_count[r] == 0)
-                            workspace.intersec_nodes_count_set_indices.push_back(r);
-                        workspace.intersec_nodes_count[r]++;
+                        if (ws.intersec_nodes_count[r] == 0)
+                            ws.intersec_nodes_count_set_indices.push_back(r);
+                        ws.intersec_nodes_count[r]++;
                     }
 
-                    // edge count
+                    // Edge count
                     for (auto v : G[u])
                         if (u < v) {
-                            uint32_t *ranksY_in_node_v = &workspace.flat_ranks_Y[workspace.node_offsets_Y[v]];
-                            uint32_t number_of_ranksY_in_node_v = workspace.node_active_counts_Y[v];
+                            uint32_t *ranksY_in_node_v = &ws.flat_ranks_Y[ws.node_offsets_Y[v]];
+                            uint32_t number_of_ranksY_in_node_v = ws.node_active_counts_Y[v];
 
                             for (size_t k = 0; k < number_of_ranksY_in_node_v; k++) {
                                 uint32_t rank_v = ranksY_in_node_v[k];
-                                if (workspace.edge_count[rank_v] == 0)
-                                    workspace.edge_count_set_indices.push_back(rank_v);
-                                workspace.edge_count[rank_v]++;
+                                if (ws.edge_count[rank_v] == 0)
+                                    ws.edge_count_set_indices.push_back(rank_v);
+                                ws.edge_count[rank_v]++;
                             }
                         }
                 }
 
-                for (auto rank_v : workspace.edge_count_set_indices) {
-                    size_t countXY = workspace.intersec_nodes_count[rank_v];
-                    size_t countY = workspace.rank_active_counts_Y[rank_v];
+                for (auto rank_v : ws.edge_count_set_indices) {
+                    size_t countXY = ws.intersec_nodes_count[rank_v];
+                    size_t countY = ws.rank_active_counts_Y[rank_v];
                     size_t Emax = (countX * countY) - ((countXY * (countXY - 1))/2) - countXY;
-                    size_t countE = workspace.edge_count[rank_v];
+                    size_t countE = ws.edge_count[rank_v];
                     double countE_bar = edge_density * Emax;
                     double chi2 = countE > countE_bar ? (static_cast<double>(std::pow(countE - countE_bar, 2)) / countE_bar) : 0;
 
                     motif_pair_record_t candidate;
                     candidate.countE = countE;
                     candidate.chi2 = chi2;
-                    if (workspace.topK.size() < k || motif_comparator(candidate, workspace.topK.top())) {
+                    if (ws.topK.size() < k || motif_comparator(candidate, ws.topK.top())) {
                         candidate.rankX = rank_u;
                         candidate.rankY = rank_v;
-                        candidate.X = apply_mask(workspace.rank_table_X.get_substr_with_rank(rank_u), H_u);
-                        candidate.Y = apply_mask(workspace.rank_table_Y.get_substr_with_rank(rank_v), H_v);
+                        candidate.X = apply_mask(ws.rank_table_X.get_substr_with_rank(rank_u), H_u);
+                        candidate.Y = apply_mask(ws.rank_table_Y.get_substr_with_rank(rank_v), H_v);
                         candidate.countE_bar = countE_bar;
                         candidate.countX = countX;
                         candidate.countY = countY;
                         candidate.countXY = countXY;
-                        if (workspace.topK.size() >= k) workspace.topK.pop();
-                        workspace.topK.push(candidate);
+                        if (ws.topK.size() >= k) ws.topK.pop();
+                        ws.topK.push(candidate);
                     }
-                    workspace.edge_count[rank_v] = 0;
+                    ws.edge_count[rank_v] = 0;
                 }
 
-                for (auto r : workspace.intersec_nodes_count_set_indices)
-                    workspace.intersec_nodes_count[r] = 0;
-                workspace.intersec_nodes_count_set_indices.clear();
+                for (auto r : ws.intersec_nodes_count_set_indices)
+                    ws.intersec_nodes_count[r] = 0;
+                ws.intersec_nodes_count_set_indices.clear();
+            }
+
+            // Update progress bar
+            size_t current = ++pairs_completed;
+            if (current % update_interval == 0 || current == total_pairs) {
+                #pragma omp critical
+                {
+                    bar.set_option(option::PostfixText("[wildcard combinations: " + std::to_string(current) +
+                                                       "/" + std::to_string(total_pairs) + "]"));
+                    bar.set_progress((static_cast<float>(current) / total_pairs) * 100.0f);
+                    std::cerr << "\r" << std::flush;
+                }
             }
         }
     }
     }
 
-    for (auto& workspace : workspaces)
-        while (!workspace.topK.empty()) {
-            const auto& candidate = workspace.topK.top();
+    for (auto& ws : workspaces)
+        while (!ws.topK.empty()) {
+            const auto& candidate = ws.topK.top();
             topK_global.push(candidate);
             if (topK_global.size() > k) topK_global.pop();
-            workspace.topK.pop();
+            ws.topK.pop();
         }
 
     // Get solution from priority queue.
