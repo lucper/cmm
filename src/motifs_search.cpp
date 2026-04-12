@@ -64,18 +64,26 @@ std::vector<motif_pair_record_t> main_algo(const std::vector<std::string>& V,
 
     // Progress bar
     using namespace indicators;
-    BlockProgressBar bar{
-        option::BarWidth{50},
-        option::Start{"["},
-        option::End{"]"},
-        option::PrefixText{"Mining Motifs "},
-        option::ShowPercentage{true},
-        option::FontStyles{std::vector<FontStyle>{FontStyle::bold}},
-        option::Stream{std::cerr}
-    };
+    ProgressBar bar(
+        option::BarWidth(50),
+        option::Start("["),
+        option::Fill("#"),
+        option::Lead("#"),
+        option::Remainder(" "),
+        option::End("]"),
+        option::ForegroundColor(Color::white),
+        option::ShowPercentage(true),
+        option::ShowElapsedTime(true),
+        option::PrefixText("Mining motifs "),
+        option::Stream(std::cerr)
+    );
     size_t total_pairs = all_H.size() * all_H.size();
-    std::atomic<size_t> pairs_completed{0};
-    size_t update_interval = std::max(size_t(1), total_pairs / 100);
+    std::atomic<size_t> pairs_completed(0);
+    size_t update_interval = std::max(static_cast<size_t>(1), total_pairs / 100);
+
+    bar.set_option(option::PostfixText(" wildcard combinations (0/" + std::to_string(total_pairs) + ")"));
+    bar.set_progress(0);
+    std::cerr << "\r" << std::flush;
 
     #pragma omp parallel
     {
@@ -161,14 +169,17 @@ std::vector<motif_pair_record_t> main_algo(const std::vector<std::string>& V,
             // Update progress bar
             size_t current = ++pairs_completed;
             if (current % update_interval == 0 || current == total_pairs) {
-                float percentage = (static_cast<float>(current) / total_pairs) * 100.0f;
-                bar.set_progress(percentage);
+                #pragma omp critical
+                {
+                    bar.set_option(option::PostfixText(" wildcard combinations (" + std::to_string(current) +
+                                                       "/" + std::to_string(total_pairs) + ")"));
+                    bar.set_progress((static_cast<float>(current) / total_pairs) * 100.0f);
+                    std::cerr << "\r" << std::flush;
+                }
             }
         }
     }
     }
-
-    bar.mark_as_completed();
 
     for (auto& ws : workspaces)
         while (!ws.topK.empty()) {
