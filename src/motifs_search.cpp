@@ -62,6 +62,25 @@ std::vector<motif_pair_record_t> main_algo(const std::vector<std::string>& V,
     for (size_t i = 0; i < num_threads; i++)
         workspaces.emplace_back(ESA, ell, V.size(), max_seq_len);
 
+    // progress bar
+    using namespace indicators;
+    BlockProgressBar bar{
+        option::BarWidth{50},
+        option::Start{"["},
+        option::End{"]"},
+        option::ShowPercentage{true},
+        option::ShowElapsedTime{true},
+        option::ShowRemainingTime{true},
+        option::PrefixText{"Mining Motifs "},
+        option::FontStyles{std::vector<FontStyle>{FontStyle::bold}},
+        option::Stream{std::cerr}
+    };
+    size_t total_pairs = all_H.size() * all_H.size();
+    std::atomic<size_t> pairs_completed{0};
+    size_t update_interval = std::max(size_t(1), total_pairs / 100);
+
+    show_console_cursor(false);
+
     #pragma omp parallel
     {
     size_t tid = omp_get_thread_num();
@@ -142,9 +161,19 @@ std::vector<motif_pair_record_t> main_algo(const std::vector<std::string>& V,
                     workspace.intersec_nodes_count[r] = 0;
                 workspace.intersec_nodes_count_set_indices.clear();
             }
+
+            // update progress bar
+            size_t current = ++pairs_completed;
+            if (current % update_interval == 0 || current == total_pairs) {
+                float percentage = (static_cast<float>(current) / total_pairs) * 100.0f;
+                bar.set_progress(percentage);
+            }
         }
     }
     }
+
+    bar.mark_as_completed();
+    show_console_cursor(true);
 
     for (auto& workspace : workspaces)
         while (!workspace.topK.empty()) {
