@@ -40,7 +40,7 @@ size_t rank_table_t::get_rank_of_substr(size_t i, size_t k) const
 std::string_view rank_table_t::get_substr_with_rank(size_t r) const
 {
     if (r > max_rank_R1)
-        throw std::out_of_range("Invalid rank access: Rank " + std::to_string(r) +
+        throw std::out_of_range("Invalid rank access: rank " + std::to_string(r) +
                                 " is outside current valid range [0, " + std::to_string(max_rank_R1) + "].");
     return std::string_view((const char *) S + IR1[r], ell);
 }

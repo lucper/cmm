@@ -5,6 +5,7 @@
 #include <cstring>
 #include <vector>
 #include <algorithm>
+#include <stdexcept>
 #include "utils.hpp"
 #include "esa.hpp"
 #include "radix_sort.hpp"
