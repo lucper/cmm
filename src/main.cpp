@@ -66,6 +66,8 @@ int main(int argc, char* argv[]) {
 
         auto gi = read_graph_files(path_to_edges, path_to_nodes);
 
+        auto start_time = std::chrono::steady_clock::now();
+
         if (supp_func == "E")
             solution = main_algo<sort_by_countE_t>(gi.node_labels, gi.adj_list, ell, d, k, num_threads);
         else if (supp_func == "chi2")
@@ -73,10 +75,17 @@ int main(int argc, char* argv[]) {
         else
             throw std::invalid_argument("Invalid support function: " + supp_func + ".");
 
-        std::printf("X\tY\tE_XY\tE_XY_bar\tchi2\n");
+        auto now = std::chrono::steady_clock::now();
+        auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(now - start_time).count();
+        int h = elapsed / 3600;
+        int m = (elapsed % 3600) / 60;
+        int s = elapsed % 60;
+        std::fprintf(stderr, "Total elapsed time: [%dh:%dm:%ds]\n", h, m, s);
+
+        std::fprintf(stdout, "X\tY\tE_XY\tE_XY_bar\tchi2\n");
         for (auto &mp : solution)
-            std::printf("%s\t%s\t%ld\t%.2f\t%.2f\n",
-                        mp.X.c_str(), mp.Y.c_str(), mp.countE, mp.countE_bar, mp.chi2);
+            std::fprintf(stdout, "%s\t%s\t%ld\t%.2f\t%.2f\n",
+                         mp.X.c_str(), mp.Y.c_str(), mp.countE, mp.countE_bar, mp.chi2);
     } catch (const std::exception& e) {
         std::cerr << e.what() << std::endl;
         return EXIT_FAILURE;
