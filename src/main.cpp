@@ -13,15 +13,15 @@ int main(int argc, char* argv[]) {
 
     options.set_width(80);
     options.add_options()
-        ("n,nodes", "path to text file with lines formatted as 'id;label', where id is an integer >= 0 and label is a string", cxxopts::value<std::string>())
-        ("e,edges", "path to text file with lines formatted as 'u;v', where u and v are integers in nodes.dat", cxxopts::value<std::string>())
-        ("l,motif-length", "motif length", cxxopts::value<int>())
-        ("d,number-of-wildcards", "number in [0,l) of wildcards in motif", cxxopts::value<int>())
-        ("f,support-function", "support function to sort motifs ('E', 'chi2')", cxxopts::value<std::string>())
-        ("k,number-of-motifs", "number of top k motifs", cxxopts::value<int>()->default_value("1"))
-        ("t,threads", "number of threads", cxxopts::value<int>()->default_value("1"))
-        ("v,version", "print version")
-        ("h,help", "print usage");
+        ("n,nodes", "Path to text file with lines formatted as 'id;label', where id is an integer >= 0 identifying a node and label is a protein sequence. [required]", cxxopts::value<std::string>())
+        ("e,edges", "Path to text file with lines formatted as 'u;v', where u and v are node ids. [required]", cxxopts::value<std::string>())
+        ("l,motif-length", "Motif length. [required]", cxxopts::value<int>())
+        ("d,number-of-wildcards", "Number in [0,l) of wildcards in motif. [required]", cxxopts::value<int>())
+        ("f,support-function", "Support function to sort motifs ('E', 'chi2'). [required]", cxxopts::value<std::string>())
+        ("k,number-of-motifs", "Number of top k motifs.", cxxopts::value<int>()->default_value("1"))
+        ("t,threads", "Number of threads.", cxxopts::value<int>()->default_value("1"))
+        ("v,version", "Print version.")
+        ("h,help", "Print usage.");
 
     if (argc == 1) {
         std::cout << options.help() << std::endl;
