@@ -100,7 +100,7 @@ std::vector<motif_pair_record_t> main_algo(const std::vector<std::string>& V,
             ws.build_csr(V, ws.rank_table_Y);
 
             for (auto rank_u : ws.active_ranks_X) {
-                uint32_t countX = ws.rank_active_counts_X[rank_u];
+                size_t countX = ws.rank_active_counts_X[rank_u];
                 uint32_t *nodes_with_rank_u = &ws.flat_nodes_X[ws.rank_offsets_X[rank_u]];
 
                 ws.edge_count_set_indices.clear();
