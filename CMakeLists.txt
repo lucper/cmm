@@ -21,6 +21,13 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(libsais)
 
+FetchContent_Declare(
+    cxxopts
+    GIT_REPOSITORY https://github.com/jarro2783/cxxopts.git
+    GIT_TAG        master
+)
+FetchContent_MakeAvailable(cxxopts)
+
 find_package(OpenMP REQUIRED)
 
 add_library(cmm_core
@@ -28,7 +35,7 @@ add_library(cmm_core
     src/rank_table.cpp
     src/data_import.cpp
 )
-target_link_libraries(cmm_core PUBLIC libsais OpenMP::OpenMP_CXX)
+target_link_libraries(cmm_core PUBLIC cxxopts libsais OpenMP::OpenMP_CXX)
 target_compile_options(cmm_core PRIVATE
     -Wall -Wextra
     -fno-omit-frame-pointer
