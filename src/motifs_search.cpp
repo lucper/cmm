@@ -68,18 +68,14 @@ std::vector<motif_pair_record_t> main_algo(const std::vector<std::string>& V,
         option::BarWidth{50},
         option::Start{"["},
         option::End{"]"},
-        option::ShowPercentage{true},
-        option::ShowElapsedTime{true},
-        option::ShowRemainingTime{true},
         option::PrefixText{"Mining Motifs "},
+        option::ShowPercentage{true},
         option::FontStyles{std::vector<FontStyle>{FontStyle::bold}},
         option::Stream{std::cerr}
     };
     size_t total_pairs = all_H.size() * all_H.size();
     std::atomic<size_t> pairs_completed{0};
     size_t update_interval = std::max(size_t(1), total_pairs / 100);
-
-    show_console_cursor(false);
 
     #pragma omp parallel
     {
@@ -173,7 +169,6 @@ std::vector<motif_pair_record_t> main_algo(const std::vector<std::string>& V,
     }
 
     bar.mark_as_completed();
-    show_console_cursor(true);
 
     for (auto& workspace : workspaces)
         while (!workspace.topK.empty()) {

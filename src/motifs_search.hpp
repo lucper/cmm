@@ -9,7 +9,6 @@
 #include <cmath>
 #include <atomic>
 #include <indicators/block_progress_bar.hpp>
-#include <indicators/cursor_control.hpp>
 #include "utils.hpp"
 #include "rank_table.hpp"
 #include "esa.hpp"
