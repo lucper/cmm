@@ -1,5 +1,5 @@
-PROG  = ../build/bpm
-override INPUT = $(V) $(E) $(ell) $(d) $(k) $(mode) $(threads)
+PROG  = ../build/cmm
+override INPUT = -n $(V) -e $(E) -l $(ell) -d $(d) -k $(k) -f $(mode) -t $(threads)
 ID ?= ""
 
 all: profile$(ID).svg
