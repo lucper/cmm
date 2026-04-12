@@ -100,12 +100,12 @@ std::vector<motif_pair_record_t> main_algo(const std::vector<std::string>& V,
             ws.build_csr(V, ws.rank_table_Y);
 
             for (auto rank_u : ws.active_ranks_X) {
-                uint32_t number_of_nodes_with_rank_u = ws.rank_active_counts_X[rank_u];
+                uint32_t countX = ws.rank_active_counts_X[rank_u];
                 uint32_t *nodes_with_rank_u = &ws.flat_nodes_X[ws.rank_offsets_X[rank_u]];
 
                 ws.edge_count_set_indices.clear();
 
-                for (size_t i = 0; i < number_of_nodes_with_rank_u; i++) {
+                for (size_t i = 0; i < countX; i++) {
                     uint32_t u = nodes_with_rank_u[i];
 
                     uint32_t *ranksY_in_node_u = &ws.flat_ranks_Y[ws.node_offsets_Y[u]];
@@ -137,7 +137,6 @@ std::vector<motif_pair_record_t> main_algo(const std::vector<std::string>& V,
                 for (auto rank_v : ws.edge_count_set_indices) {
                     size_t countXY = ws.intersec_nodes_count[rank_v];
                     size_t countY = ws.rank_active_counts_Y[rank_v];
-                    size_t countX = ws.rank_active_counts_X[rank_u];
                     size_t Emax = (countX * countY) - ((countXY * (countXY - 1))/2) - countXY;
                     size_t countE = ws.edge_count[rank_v];
                     double countE_bar = edge_density * Emax;
