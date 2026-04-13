@@ -46,40 +46,43 @@ std::string_view rank_table_t::get_substr_with_rank(size_t r) const
 
 size_t rank_table_t::sort_by_prefix(const std::vector<uint16_t>& H)
 {
-    // TODO: Check H positions are in [ell].
+    // Positions H must be in [ell] and sorted.
 
     std::fill(R1.begin(), R1.end(), 0);
 
-    size_t d = 0;
+    size_t d = H.size();
+    size_t i = 0;
     size_t h_start = 0;
 
     do {
-        size_t h_end = d < H.size() ? H[d] : ell;
+        size_t h_end = i < d ? H[i] : ell;
         size_t frag_len = h_end - h_start;
 
         if (frag_len > 0) {
             size_t max_rank_R2 = 0;
             R2[SA[0]] = 0;
-            for (size_t i = 1; i < N; i++)
-                R2[SA[i]] = (LCP[i] < frag_len) ? ++max_rank_R2 : max_rank_R2;
+            for (size_t j = 1; j < N; j++)
+                R2[SA[j]] = LCP[j] < frag_len ? ++max_rank_R2 : max_rank_R2;
 
-            for (size_t i = 0; i < sSA.size(); i++)
-                packed_ranks_sSA[i] = (static_cast<uint64_t>(R1[sSA[i]]) << 32) | static_cast<uint64_t>(R2[sSA[i] + h_start]);
+            for (size_t j = 0; j < sSA.size(); j++)
+                packed_ranks_sSA[j] = (static_cast<uint64_t>(R1[sSA[j]]) << 32) | static_cast<uint64_t>(R2[sSA[j] + h_start]);
             radix_sort<uint32_t>(packed_ranks_sSA, packed_ranks_sSA_buffer, &sSA, &sSA_buffer);
 
             this->max_rank_R1 = 0;
             R1[sSA[0]] = 0;
-            for (size_t i = 1; i < sSA.size(); i++)
-                R1[sSA[i]] = packed_ranks_sSA[i] != packed_ranks_sSA[i-1] ?
+            for (size_t j = 1; j < sSA.size(); j++)
+                R1[sSA[j]] = packed_ranks_sSA[j] != packed_ranks_sSA[j-1] ?
                              ++this->max_rank_R1 : this->max_rank_R1;
         }
-        h_start = d < H.size() ? H[d] + 1 : ell;
-    } while (d++ < H.size());
+
+        h_start = i < d ? H[i] + 1 : ell;
+        i++;
+    } while (i < d);
 
     // Note that two suffixes sSA[i] and sSA[j] may have the same rank K in R1.
     // So IR1[K] would be set twice.
-    for (size_t i = 0; i < sSA.size(); i++)
-        IR1[R1[sSA[i]]] = sSA[i];
+    for (size_t j = 0; j < sSA.size(); j++)
+        IR1[R1[sSA[j]]] = sSA[j];
 
     return this->max_rank_R1;
 }
