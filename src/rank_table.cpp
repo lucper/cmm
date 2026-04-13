@@ -5,7 +5,6 @@ rank_table_t::rank_table_t(size_t ell, const esa_t& ESA)
 {
     R1.resize(N);
     R2.resize(N);
-    R3.resize(N);
     IR1.resize(N);
 
     // Get suffixes whose prefixes have >= ell characters without SEP.

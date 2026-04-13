@@ -60,7 +60,6 @@ private:
     std::vector<uint32_t> R1;
     std::vector<uint32_t> IR1; // inverse of R1 for fast substr retrieval
     std::vector<uint32_t> R2;
-    std::vector<uint32_t> R3;
     std::vector<uint32_t> sSA_buffer;
     std::vector<uint64_t> packed_ranks_sSA;
     std::vector<uint64_t> packed_ranks_sSA_buffer;
