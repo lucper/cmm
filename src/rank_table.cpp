@@ -49,43 +49,38 @@ size_t rank_table_t::sort_by_prefix(const std::vector<uint16_t>& H)
 {
     // TODO: Check H positions are in [ell].
 
-    size_t prefix_len = H.empty() ? ell : H[0];
-    this->max_rank_R1 = 0;
-    R1[SA[0]] = 0;
-    for (size_t i = 1; i < N; i++)
-        R1[SA[i]] = (LCP[i] < prefix_len) ? ++max_rank_R1 : max_rank_R1;
+    std::fill(R1.begin(), R1.end(), 0);
 
-    // Invariants:
-    // R1 holds the ranks of valid suffixes only (note that sSA[i]+h may not be defined).
-    // R2 holds the ranks of every suffix considering the prefix (fragment) after wildcard H[d].
-    for (size_t d = 0; d < H.size(); d++) {
-        size_t h_start = H[d] + 1;
-        size_t h_end = d + 1 < H.size() ? H[d + 1] : ell;
+    size_t d = 0;
+    size_t h_start = 0;
 
-        if (h_end - h_start <= 0) continue;                // ignore empty fragments
+    do {
+        size_t h_end = d < H.size() ? H[d] : ell;
+        size_t frag_len = h_end - h_start;
 
-        size_t max_rank_R2 = 0;
-        R2[SA[0]] = 0;
-        for (size_t i = 1; i < N; i++)
-            R2[SA[i]] = (LCP[i] < h_end - h_start) ? ++max_rank_R2 : max_rank_R2;
+        if (frag_len > 0) {
+            size_t max_rank_R2 = 0;
+            R2[SA[0]] = 0;
+            for (size_t i = 1; i < N; i++)
+                R2[SA[i]] = (LCP[i] < frag_len) ? ++max_rank_R2 : max_rank_R2;
 
-        for(size_t i = 0; i < sSA.size(); i++)
-            packed_ranks_sSA[i] = (static_cast<uint64_t>(R1[sSA[i]]) << 32) | static_cast<uint64_t>(R2[sSA[i] + h_start]);
-        radix_sort<uint32_t>(packed_ranks_sSA, packed_ranks_sSA_buffer, &sSA, &sSA_buffer);
+            for (size_t i = 0; i < sSA.size(); i++)
+                packed_ranks_sSA[i] = (static_cast<uint64_t>(R1[sSA[i]]) << 32) | static_cast<uint64_t>(R2[sSA[i] + h_start]);
+            radix_sort<uint32_t>(packed_ranks_sSA, packed_ranks_sSA_buffer, &sSA, &sSA_buffer);
 
-        size_t max_rank_R3 = 0;
-        R3[sSA[0]] = 0;
-        for (size_t i = 1; i < sSA.size(); i++)
-            R3[sSA[i]] = (R1[sSA[i]] != R1[sSA[i-1]] || R2[sSA[i] + h_start] != R2[sSA[i-1] + h_start]) ?
-                          ++max_rank_R3 : max_rank_R3;
-        max_rank_R1 = max_rank_R3;
-        std::swap(R1, R3);
-    }
+            this->max_rank_R1 = 0;
+            R1[sSA[0]] = 0;
+            for (size_t i = 1; i < sSA.size(); i++)
+                R1[sSA[i]] = packed_ranks_sSA[i] != packed_ranks_sSA[i-1] ?
+                             ++this->max_rank_R1 : this->max_rank_R1;
+        }
+        h_start = d < H.size() ? H[d] + 1 : ell;
+    } while (d++ < H.size());
 
     // Note that two suffixes sSA[i] and sSA[j] may have the same rank K in R1.
     // So IR1[K] would be set twice.
     for (size_t i = 0; i < sSA.size(); i++)
         IR1[R1[sSA[i]]] = sSA[i];
 
-    return max_rank_R1;
+    return this->max_rank_R1;
 }
