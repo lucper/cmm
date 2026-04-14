@@ -46,6 +46,7 @@ std::vector<motif_pair_record_t> main_algo(const std::vector<std::string>& V,
     for (const auto& node : G) number_of_edges += node.size();
     number_of_edges /= 2;
     double edge_density = static_cast<double>(number_of_edges) / ((G.size() * (G.size() - 1)) / 2);
+    double chi2_coeff = edge_density > 0 ? (std::pow(1.0 - edge_density,2) / edge_density) : 0;
 
     esa_t ESA(V);
 
@@ -99,9 +100,26 @@ std::vector<motif_pair_record_t> main_algo(const std::vector<std::string>& V,
             ws.rank_table_Y.sort_by_prefix(H_v);
             ws.build_csr(V, ws.rank_table_Y);
 
+            uint32_t max_countY = 0;
+            for (auto rank_v : ws.active_ranks_Y)
+                max_countY = std::max(max_countY, ws.rank_active_counts_Y[rank_v]);
+
             for (auto rank_u : ws.active_ranks_X) {
                 size_t countX = ws.rank_active_counts_X[rank_u];
                 uint32_t *nodes_with_rank_u = &ws.flat_nodes_X[ws.rank_offsets_X[rank_u]];
+
+                size_t max_degree_rank_u = 0;
+                for (size_t i = 0; i < countX; i++)
+                    max_degree_rank_u = std::max(max_degree_rank_u, G[nodes_with_rank_u[i]].size());
+
+                // pruning
+                size_t countE_max = std::min(countX * max_countY, countX * max_degree_rank_u);
+                double max_chi2 =  std::max(0.0, static_cast<double>(countE_max) * chi2_coeff);
+                motif_pair_record_t best_candidate;
+                best_candidate.chi2 = max_chi2;
+                best_candidate.countE = countE_max;
+                if (ws.topK.size() >= k && !motif_comparator(best_candidate, ws.topK.top()))
+                    continue;
 
                 ws.edge_count_set_indices.clear();
 
