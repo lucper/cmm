@@ -66,7 +66,7 @@ size_t rank_table_t::sort_by_prefix(const std::vector<uint16_t>& H)
 
             for (size_t j = 0; j < sSA.size(); j++)
                 packed_ranks_sSA[j] = (static_cast<uint64_t>(R1[sSA[j]]) << 32) | static_cast<uint64_t>(R2[sSA[j] + h_start]);
-            radix_sort<uint32_t>(packed_ranks_sSA, packed_ranks_sSA_buffer, &sSA, &sSA_buffer);
+            radix_pass_over_sSA(max_rank_R2, this->max_rank_R1);
 
             this->max_rank_R1 = 0;
             R1[sSA[0]] = 0;
@@ -85,4 +85,40 @@ size_t rank_table_t::sort_by_prefix(const std::vector<uint16_t>& H)
         IR1[R1[sSA[j]]] = sSA[j];
 
     return this->max_rank_R1;
+}
+
+void rank_table_t::radix_pass_over_sSA(uint32_t max_rank_R2, uint32_t max_rank_R1)
+{
+    if (packed_ranks_sSA.empty()) return;
+
+    uint64_t* src_key = packed_ranks_sSA.data();
+    uint64_t* dst_key = packed_ranks_sSA_buffer.data();
+    uint32_t* src_pay = sSA.data();
+    uint32_t* dst_pay = sSA_buffer.data();
+
+    uint32_t max_ranks[2] = {max_rank_R2, max_rank_R1};
+    uint32_t shifts[2] = {0, 32};
+
+    std::vector<size_t> counts;
+    for (size_t p = 0; p < 2; p++) {
+        uint32_t bins = max_ranks[p] + 1;
+        counts.assign(bins, 0);
+        for (size_t i = 0; i < packed_ranks_sSA.size(); i++)
+            counts[(src_key[i] >> shifts[p]) & 0xFFFFFFFF]++;
+        size_t pos = 0;
+        for (size_t i = 0; i < bins; i++) { size_t c = counts[i]; counts[i] = pos; pos += c; }
+        for (size_t i = 0; i < packed_ranks_sSA.size(); i++) {
+            uint32_t bucket = (src_key[i] >> shifts[p]) & 0xFFFFFFFF;
+            uint32_t target = counts[bucket]++;
+            dst_key[target] = src_key[i];
+            dst_pay[target] = src_pay[i];
+        }
+        std::swap(src_key, dst_key);
+        std::swap(src_pay, dst_pay);
+    }
+
+    if (src_key != packed_ranks_sSA.data()) {
+        std::copy(packed_ranks_sSA_buffer.begin(), packed_ranks_sSA_buffer.end(), packed_ranks_sSA.begin());
+        std::copy(sSA_buffer.begin(), sSA_buffer.end(), sSA.begin());
+    }
 }
