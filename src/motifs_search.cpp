@@ -47,9 +47,6 @@ std::vector<motif_pair_record_t> main_algo(const std::vector<std::string>& V,
     number_of_edges /= 2;
     double edge_density = static_cast<double>(number_of_edges) / ((G.size() * (G.size() - 1)) / 2);
     double chi2_coeff = edge_density > 0 ? (std::pow(1.0 - edge_density,2) / edge_density) : 0;
-    size_t max_degree = 0;
-    for (const auto& v : G)
-        max_degree = std::max(max_degree, v.size());
 
     esa_t ESA(V);
 
@@ -111,8 +108,12 @@ std::vector<motif_pair_record_t> main_algo(const std::vector<std::string>& V,
                 size_t countX = ws.rank_active_counts_X[rank_u];
                 uint32_t *nodes_with_rank_u = &ws.flat_nodes_X[ws.rank_offsets_X[rank_u]];
 
+                size_t max_degree_rank_u = 0;
+                for (size_t i = 0; i < countX; i++)
+                    max_degree_rank_u = std::max(max_degree_rank_u, G[nodes_with_rank_u[i]].size());
+
                 // pruning
-                size_t countE_max = std::min(countX * max_countY, countX * max_degree);
+                size_t countE_max = std::min(countX * max_countY, countX * max_degree_rank_u);
                 double max_chi2 =  std::max(0.0, static_cast<double>(countE_max) * chi2_coeff);
                 motif_pair_record_t best_candidate;
                 best_candidate.chi2 = max_chi2;
