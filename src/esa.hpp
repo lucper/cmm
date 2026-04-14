@@ -18,15 +18,18 @@
 struct esa_t {
     #ifdef USE_32
     int32_t *SA;
+    int32_t *PLCP;
+    int32_t *LCP;
     int32_t N;
     #endif
 
     #ifdef USE_64
     int64_t *SA;
+    int64_t *PLCP;
+    int64_t *LCP;
     int64_t N;
     #endif
 
-    uint32_t *LCP, *ISA;
     uint8_t *S;
     std::vector<uint32_t> S_offset;
 
@@ -60,10 +63,29 @@ struct esa_t {
             std::fprintf(stderr, "Could not allocate memory for suffix array.\n");
             exit(EXIT_FAILURE);
         }
-        if (libsais(S, SA, N, 0, NULL) != 0) {
+        if (libsais(S, SA, N, 0, NULL) != 0) { // alphabet size and NULL at the end??
             std::fprintf(stderr, "Could not construct suffix array.\n");
             exit(EXIT_FAILURE);
         }
+        PLCP = (int32_t *) std::malloc(N * sizeof(int32_t));
+        if (!PLCP) {
+            std::fprintf(stderr, "Could not allocate memory for permuted longest common prefix array.\n");
+            exit(EXIT_FAILURE);
+        }
+        if (libsais_plcp(S, SA, PLCP, N) != 0) {
+            std::fprintf(stderr, "Could not construct permuted longest common prefix array.\n");
+            exit(EXIT_FAILURE);
+        }
+        LCP = (int32_t *) std::malloc(N * sizeof(uint32_t));
+        if (!LCP) {
+            std::fprintf(stderr, "Could not allocate memory for longest common prefix array.\n");
+            exit(EXIT_FAILURE);
+        }
+        if (libsais_lcp(PLCP, SA, LCP, N) != 0) {
+            std::fprintf(stderr, "Could not construct longest common prefix array.\n");
+            exit(EXIT_FAILURE);
+        }
+        free(PLCP);
         #endif
 
         #ifdef USE_64
@@ -76,27 +98,26 @@ struct esa_t {
             std::fprintf(stderr, "Could not construct suffix array.\n");
             exit(EXIT_FAILURE);
         }
-        #endif
-        
-        ISA = (uint32_t *) std::malloc(N * sizeof(uint32_t));
-        if (!ISA) {
-            std::fprintf(stderr, "Could not construct suffix array.\n");
+        PLCP = (int64_t *) std::malloc(N * sizeof(int64_t));
+        if (!PLCP) {
+            std::fprintf(stderr, "Could not allocate memory for permuted longest common prefix array.\n");
             exit(EXIT_FAILURE);
         }
-        for (int i = 0; i < N; i++)
-            ISA[SA[i]] = i;
-        
-        LCP = (uint32_t *) std::malloc(N * sizeof(uint32_t));
-        LCP[0] = 0;
-        for (int i = 0, j = 0; i < N; i++)
-            if (ISA[i] != 0) {
-                if (i == 0) j = 0;
-                else j = (LCP[ISA[i - 1]] >= 2) ? LCP[ISA[i - 1]] - 1 : 0;
-                while (S[i + j] == S[SA[ISA[i] - 1] + j])
-                    j++;
-                LCP[ISA[i]] = j;
-            }
-        free(ISA);
+        if (libsais64_plcp(S, SA, PLCP, N) != 0) {
+            std::fprintf(stderr, "Could not construct permuted longest common prefix array.\n");
+            exit(EXIT_FAILURE);
+        }
+        LCP = (int64_t *) std::malloc(N * sizeof(int64_t));
+        if (!LCP) {
+            std::fprintf(stderr, "Could not allocate memory for longest common prefix array.\n");
+            exit(EXIT_FAILURE);
+        }
+        if (libsais64_lcp(PLCP, SA, LCP, N) != 0) {
+            std::fprintf(stderr, "Could not construct longest common prefix array.\n");
+            exit(EXIT_FAILURE);
+        }
+        free(PLCP);
+        #endif
     }
 
     ~esa_t() {
