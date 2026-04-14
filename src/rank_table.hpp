@@ -8,7 +8,6 @@
 #include <stdexcept>
 #include "utils.hpp"
 #include "esa.hpp"
-#include "radix_sort.hpp"
 
 class rank_table_t {
 public:
