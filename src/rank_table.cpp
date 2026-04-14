@@ -56,7 +56,7 @@ size_t rank_table_t::sort_by_prefix(const std::vector<uint16_t>& H)
 
     do {
         size_t h_end = i < d ? H[i] : ell;
-        size_t frag_len = h_end - h_start;
+        int frag_len = h_end - h_start;
 
         if (frag_len > 0) {
             size_t max_rank_R2 = 0;
