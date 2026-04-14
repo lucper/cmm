@@ -49,7 +49,7 @@ private:
     const uint8_t *S;
     const std::vector<uint32_t>& S_offset;
     const int64_t *SA;
-    const uint32_t *LCP;
+    const int64_t *LCP;
 
     size_t max_rank_R1;
 
