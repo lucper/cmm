@@ -38,7 +38,6 @@ if __name__ == '__main__':
         raise SystemExit(f'Usage: {sys.argv[0]} <ell> <d> <input_nodes_file> <input_edges_file>')
     ell, d, nodes_input, edges_input = int(sys.argv[1]), int(sys.argv[2]), sys.argv[3], sys.argv[4]
 
-
     V = defaultdict(str)
     with open(nodes_input, 'r') as fin:
         next(fin) # skip header
