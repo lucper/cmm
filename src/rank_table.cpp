@@ -77,7 +77,7 @@ size_t rank_table_t::sort_by_prefix(const std::vector<uint16_t>& H)
 
         h_start = i < d ? H[i] + 1 : ell;
         i++;
-    } while (i < d);
+    } while (i < d + 1); // d wildcards = d+1 fragments
 
     // Note that two suffixes sSA[i] and sSA[j] may have the same rank K in R1.
     // So IR1[K] would be set twice.
