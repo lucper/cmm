@@ -57,9 +57,9 @@ def generate_graph(n, m, min_label_len, max_label_len, alphabet):
 
 if __name__ == '__main__':
     if len(sys.argv) != 7:
-        raise SystemExit(f'Usage: {sys.argv[0]} <number of nodes> <number of edges> <minimum label length> <maximum label length> <output_nodes_file> <output_edges_file>')
-    n, m, min_label, max_label, nodes_output, edges_output = int(sys.argv[1]), int(sys.argv[2]), int(sys.argv[3]), int(sys.argv[4]), sys.argv[5], sys.argv[6]
-    alphabet = ['a', 't', 'g', 'c']
+        raise SystemExit(f'Usage: {sys.argv[0]} <number of nodes> <number of edges> <minimum label length> <maximum label length> <alphabet size> <output_nodes_file> <output_edges_file>')
+    n, m, min_label, max_label, alphabet_size, nodes_output, edges_output = int(sys.argv[1]), int(sys.argv[2]), int(sys.argv[3]), int(sys.argv[4]), int(sys.argv[5]), sys.argv[6], sys.argv[7]
+    alphabet = [str(i) for i in range(alphabet_size)]
 
     G = generate_graph(n, m, min_label, max_label, alphabet)
     V_ids = {v: i+1 for i, v in enumerate(G.keys())}
