@@ -42,7 +42,9 @@ void run_all_tests()
 
     {
         std::vector<std::string> V = {"ATGC", "ATGC"};
-        std::vector<std::vector<uint32_t>> G = {{1}, {0}};
+        std::vector<std::vector<std::pair<uint32_t, uint32_t>>> G = {
+            {std::pair<uint32_t, uint32_t>(1,0)}, {std::pair<uint32_t, uint32_t>(0,0)}
+        };
         auto motifs = main_algo<sort_by_countE_t>(V, G, 4, 0, 1, 1);
         auto mp = motifs[0];
 
@@ -51,7 +53,10 @@ void run_all_tests()
 
     {
         std::vector<std::string> V = {"CAA", "ABA", "DAA", "ACA"};
-        std::vector<std::vector<uint32_t>> G = {{1}, {0}, {3}, {2}};
+        std::vector<std::vector<std::pair<uint32_t, uint32_t>>> G = {
+            {std::pair<uint32_t, uint32_t>(1,0)}, {std::pair<uint32_t, uint32_t>(0,0)},
+            {std::pair<uint32_t, uint32_t>(3,1)}, {std::pair<uint32_t, uint32_t>(2,1)}
+        };
         auto motifs = main_algo<sort_by_countE_t>(V, G, 3, 1, 1, 1);
         auto mp = motifs[0];
 
@@ -60,7 +65,10 @@ void run_all_tests()
 
     {
         std::vector<std::string> V = {"QCAA", "RABA", "TDAA", "PACA"};
-        std::vector<std::vector<uint32_t>> G = {{1}, {0}, {3}, {2}};
+        std::vector<std::vector<std::pair<uint32_t, uint32_t>>> G = {
+            {std::pair<uint32_t, uint32_t>(1,0)}, {std::pair<uint32_t, uint32_t>(0,0)},
+            {std::pair<uint32_t, uint32_t>(3,1)}, {std::pair<uint32_t, uint32_t>(2,1)}
+        };
         auto motifs = main_algo<sort_by_countE_t>(V, G, 4, 2, 1, 1);
         auto mp = motifs[0];
 
@@ -69,7 +77,10 @@ void run_all_tests()
 
     {
         std::vector<std::string> V = {"QCAAR", "RABAZ", "TDAAY", "PACAX"};
-        std::vector<std::vector<uint32_t>> G = {{1}, {0}, {3}, {2}};
+        std::vector<std::vector<std::pair<uint32_t, uint32_t>>> G = {
+            {std::pair<uint32_t, uint32_t>(1,0)}, {std::pair<uint32_t, uint32_t>(0,0)},
+            {std::pair<uint32_t, uint32_t>(3,1)}, {std::pair<uint32_t, uint32_t>(2,1)}
+        };
         auto motifs = main_algo<sort_by_countE_t>(V, G, 5, 3, 1, 1);
         auto mp = motifs[0];
 
