@@ -17,19 +17,36 @@ def main_algo(G, ell, d):
     """
     if d >= ell:
         raise ValueError(f'd ({d}) must be < ell ({ell})')
+
     Hs = list(combinations(range(ell), d))
     C = defaultdict(int)
-    for H_x in Hs:
-        for H_y in Hs:
-            for v in G:
-                V = {x for i in range(len(v)-ell+1)
-                     for x in ["".join(['*' if j in H_x else v[i+j] for j in range(ell)])]}
-                for u in G[v]:
-                    if v < u:
-                        U = {y for i in range(len(u)-ell+1)
-                             for y in ["".join(['*' if j in H_y else u[i+j] for j in range(ell)])]}
-                        for x, y in product(V, U):
-                            C[x, y] += 1
+
+    edges = [(u, v) for u in G for v in G[u] if u < v]
+
+    for u, v in edges:
+        patterns_u = set()
+        patterns_v = set()
+
+        for H in Hs:
+            for i in range(len(u) - ell + 1):
+                pattern = "".join(['*' if j in H else u[i+j] for j in range(ell)])
+                patterns_u.add(pattern)
+            for i in range(len(v) - ell + 1):
+                pattern = "".join(['*' if j in H else v[i+j] for j in range(ell)])
+                patterns_v.add(pattern)
+
+        seen_in_edge = set()
+        for x in patterns_u:
+            for y in patterns_v:
+                # Use a sorted tuple to treat {x, y} and {y, x} as the same key
+                pair = tuple(sorted((x, y)))
+                if pair not in seen_in_edge:
+                    C[pair] += 1
+                    seen_in_edge.add(pair)
+
+    if not C:
+        return {}
+
     max_count = max(C.values())
     return {k: v for k, v in C.items() if v == max_count}
 
