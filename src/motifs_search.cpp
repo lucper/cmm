@@ -106,6 +106,8 @@ std::vector<motif_pair_record_t> main_algo(const std::vector<std::string>& V,
             for (auto rank_v : ws.active_ranks_Y)
                 max_countY = std::max(max_countY, ws.rank_active_counts_Y[rank_v]);
 
+            std::fill(ws.edge_timestamp.begin(), ws.edge_timestamp.end(), 0);
+
             for (auto rank_u : ws.active_ranks_X) {
                 size_t countX = ws.rank_active_counts_X[rank_u];
                 uint32_t *nodes_with_rank_u = &ws.flat_nodes_X[ws.rank_offsets_X[rank_u]];
