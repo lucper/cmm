@@ -1,10 +1,10 @@
 #!/usr/bin/python3
 
 from itertools import product, combinations
-from collections import defaultdict
+from collections import defaultdict, Counter
 import sys
 
-def main_algo(G, ell, d):
+def main_algo(G, ell, d, k):
     """Given a graph
         G = {'aba': ['abba', 'bba'],
              'bba': ['aba', 'abba'],
@@ -47,13 +47,12 @@ def main_algo(G, ell, d):
     if not C:
         return {}
 
-    max_count = max(C.values())
-    return {k: v for k, v in C.items() if v == max_count}
+    return Counter(C).most_common(k)
 
 if __name__ == '__main__':
-    if len(sys.argv) != 5:
-        raise SystemExit(f'Usage: {sys.argv[0]} <ell> <d> <input_nodes_file> <input_edges_file>')
-    ell, d, nodes_input, edges_input = int(sys.argv[1]), int(sys.argv[2]), sys.argv[3], sys.argv[4]
+    if len(sys.argv) != 6:
+        raise SystemExit(f'Usage: {sys.argv[0]} <ell> <d> <k> <input_nodes_file> <input_edges_file>')
+    ell, d, k, nodes_input, edges_input = int(sys.argv[1]), int(sys.argv[2]), int(sys.argv[3]), sys.argv[4], sys.argv[5]
 
     V = defaultdict(str)
     with open(nodes_input, 'r') as fin:
@@ -70,8 +69,8 @@ if __name__ == '__main__':
             G[V[int(u)]].append(V[int(v)])
             G[V[int(v)]].append(V[int(u)])
 
-    counts = main_algo(G, ell, d)
+    counts = main_algo(G, ell, d, k)
     print('X', 'Y', 'E')
-    for motif, count in counts.items():
+    for motif, count in counts:
         x, y = motif
         print(x, y, count)
