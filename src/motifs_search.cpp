@@ -103,21 +103,21 @@ std::vector<motif_pair_record_t> main_algo(const std::vector<std::string>& V,
             ws.build_csr(V, ws.rank_table_Y);
 
             uint32_t max_countY = 0;
-            for (auto rank_v : ws.active_ranks_Y)
-                max_countY = std::max(max_countY, ws.rank_active_counts_Y[rank_v]);
+            for (auto rank_Y : ws.active_ranks_Y)
+                max_countY = std::max(max_countY, ws.rank_active_counts_Y[rank_Y]);
 
             std::fill(ws.edge_timestamp.begin(), ws.edge_timestamp.end(), 0);
 
-            for (auto rank_u : ws.active_ranks_X) {
-                size_t countX = ws.rank_active_counts_X[rank_u];
-                uint32_t *nodes_with_rank_u = &ws.flat_nodes_X[ws.rank_offsets_X[rank_u]];
+            for (auto rank_X : ws.active_ranks_X) {
+                size_t countX = ws.rank_active_counts_X[rank_X];
+                uint32_t *nodes_with_rank_X = &ws.flat_nodes_X[ws.rank_offsets_X[rank_X]];
 
-                size_t max_degree_rank_u = 0;
+                size_t max_degree_rank_X = 0;
                 for (size_t i = 0; i < countX; i++)
-                    max_degree_rank_u = std::max(max_degree_rank_u, G[nodes_with_rank_u[i]].size());
+                    max_degree_rank_X = std::max(max_degree_rank_X, G[nodes_with_rank_X[i]].size());
 
                 // pruning
-                size_t countE_max = std::min(countX * max_countY, countX * max_degree_rank_u);
+                size_t countE_max = std::min(countX * max_countY, countX * max_degree_rank_X);
                 double max_chi2 =  std::max(0.0, static_cast<double>(countE_max) * chi2_coeff);
                 motif_pair_record_t best_candidate;
                 best_candidate.chi2 = max_chi2;
@@ -128,10 +128,10 @@ std::vector<motif_pair_record_t> main_algo(const std::vector<std::string>& V,
                 ws.edge_count_set_indices.clear();
 
                 for (size_t i = 0; i < countX; i++)
-                    ws.has_rank_u[nodes_with_rank_u[i]] = true;
+                    ws.has_rank_X[nodes_with_rank_X[i]] = true;
 
                 for (size_t i = 0; i < countX; i++) {
-                    uint32_t u = nodes_with_rank_u[i];
+                    uint32_t u = nodes_with_rank_X[i];
 
                     uint32_t *ranksY_in_node_u = &ws.flat_ranks_Y[ws.node_offsets_Y[u]];
                     uint32_t number_of_ranksY_in_node_u = ws.node_active_counts_Y[u];
@@ -146,28 +146,28 @@ std::vector<motif_pair_record_t> main_algo(const std::vector<std::string>& V,
 
                     // Edge count
                     for (auto [v, edge_id] : G[u])
-                        if (ws.edge_timestamp[edge_id] != rank_u + 1) {
-                            ws.edge_timestamp[edge_id] = rank_u + 1;
+                        if (ws.edge_timestamp[edge_id] != rank_X + 1) {
+                            ws.edge_timestamp[edge_id] = rank_X + 1;
                             uint32_t *ranksY_in_node_v = &ws.flat_ranks_Y[ws.node_offsets_Y[v]];
                             uint32_t number_of_ranksY_in_node_v = ws.node_active_counts_Y[v];
 
                             for (size_t k = 0; k < number_of_ranksY_in_node_v; k++) {
-                                uint32_t rank_v = ranksY_in_node_v[k];
-                                ws.rank_membership[rank_v] = true;
-                                if (rank_u <= rank_v || d_v != d_u) {
-                                    if (ws.edge_count[rank_v] == 0)
-                                        ws.edge_count_set_indices.push_back(rank_v);
-                                    ws.edge_count[rank_v]++;
+                                uint32_t rank_Y = ranksY_in_node_v[k];
+                                ws.rank_membership[rank_Y] = true;
+                                if (rank_X <= rank_Y || d_v != d_u) {
+                                    if (ws.edge_count[rank_Y] == 0)
+                                        ws.edge_count_set_indices.push_back(rank_Y);
+                                    ws.edge_count[rank_Y]++;
                                 }
                             }
 
-                            if (ws.has_rank_u[v])
+                            if (ws.has_rank_X[v])
                                 for (size_t k = 0; k < number_of_ranksY_in_node_u; k++) {
-                                    uint32_t rank_v = ranksY_in_node_u[k];
-                                    if ((rank_u <= rank_v || d_v != d_u) && !ws.rank_membership[rank_v]) {
-                                        if (ws.edge_count[rank_v] == 0)
-                                            ws.edge_count_set_indices.push_back(rank_v);
-                                        ws.edge_count[rank_v]++;
+                                    uint32_t rank_Y = ranksY_in_node_u[k];
+                                    if ((rank_X <= rank_Y || d_v != d_u) && !ws.rank_membership[rank_Y]) {
+                                        if (ws.edge_count[rank_Y] == 0)
+                                            ws.edge_count_set_indices.push_back(rank_Y);
+                                        ws.edge_count[rank_Y]++;
                                     }
                                 }
 
@@ -177,13 +177,13 @@ std::vector<motif_pair_record_t> main_algo(const std::vector<std::string>& V,
                 }
 
                 for (size_t i = 0; i < countX; i++)
-                    ws.has_rank_u[nodes_with_rank_u[i]] = false;
+                    ws.has_rank_X[nodes_with_rank_X[i]] = false;
 
-                for (auto rank_v : ws.edge_count_set_indices) {
-                    size_t countXY = ws.intersec_nodes_count[rank_v];
-                    size_t countY = ws.rank_active_counts_Y[rank_v];
+                for (auto rank_Y : ws.edge_count_set_indices) {
+                    size_t countXY = ws.intersec_nodes_count[rank_Y];
+                    size_t countY = ws.rank_active_counts_Y[rank_Y];
                     size_t Emax = (countX * countY) - ((countXY * (countXY - 1))/2) - countXY;
-                    size_t countE = ws.edge_count[rank_v];
+                    size_t countE = ws.edge_count[rank_Y];
                     double countE_bar = edge_density * Emax;
                     double chi2 = countE > countE_bar ? (static_cast<double>(std::pow(countE - countE_bar, 2)) / countE_bar) : 0;
 
@@ -191,10 +191,10 @@ std::vector<motif_pair_record_t> main_algo(const std::vector<std::string>& V,
                     candidate.countE = countE;
                     candidate.chi2 = chi2;
                     if (ws.topK.size() < k || motif_comparator(candidate, ws.topK.top())) {
-                        candidate.rankX = rank_u;
-                        candidate.rankY = rank_v;
-                        candidate.X = apply_mask(ws.rank_table_X.get_substr_with_rank(rank_u), H_u);
-                        candidate.Y = apply_mask(ws.rank_table_Y.get_substr_with_rank(rank_v), H_v);
+                        candidate.rankX = rank_X;
+                        candidate.rankY = rank_Y;
+                        candidate.X = apply_mask(ws.rank_table_X.get_substr_with_rank(rank_X), H_u);
+                        candidate.Y = apply_mask(ws.rank_table_Y.get_substr_with_rank(rank_Y), H_v);
                         candidate.countE_bar = countE_bar;
                         candidate.countX = countX;
                         candidate.countY = countY;
@@ -202,7 +202,7 @@ std::vector<motif_pair_record_t> main_algo(const std::vector<std::string>& V,
                         if (ws.topK.size() >= k) ws.topK.pop();
                         ws.topK.push(candidate);
                     }
-                    ws.edge_count[rank_v] = 0;
+                    ws.edge_count[rank_Y] = 0;
                 }
 
                 for (auto r : ws.intersec_nodes_count_set_indices)

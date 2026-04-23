@@ -53,7 +53,7 @@ struct thread_workspace_t {
 
     std::vector<uint32_t> edge_timestamp;
 
-    std::vector<bool> has_rank_u;
+    std::vector<bool> has_rank_X;
 
     std::vector<bool> rank_membership;
 
@@ -66,7 +66,7 @@ struct thread_workspace_t {
           rank_table_X(ell, ESA), rank_table_Y(ell, ESA),
           uniq_ranks_per_node_buffer(ESA.N), rank_timestamp(ESA.N + 1),
           edge_timestamp(E_size),
-          has_rank_u(V_size, false),
+          has_rank_X(V_size, false),
           rank_membership(ESA.N + 1, false)
     {
         for (size_t i = 0; i < V_size; i++)
