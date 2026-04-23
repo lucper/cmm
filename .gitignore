@@ -6,6 +6,7 @@ logs/
 *.csv
 *.perf-folded
 *.svg
+*.in
 .DS_Store
 .idea/
 benchmark/FlameGraph/

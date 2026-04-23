@@ -13,11 +13,12 @@
 #include <stdexcept>
 #include <cctype>
 #include <algorithm>
+#include <utility>
 #include "esa.hpp"
 #include "utils.hpp"
 
 struct GraphInput {
-    std::vector<std::vector<uint32_t>> adj_list; // (u,v) endpoints (0-based after import)
+    std::vector<std::vector<std::pair<uint32_t, uint32_t>>> adj_list; // (u,v) endpoints (0-based after import)
     std::vector<std::string> node_labels;    // node_id -> label/sequence
 };
 

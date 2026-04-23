@@ -5,6 +5,7 @@
 #include <tuple>
 #include <queue>
 #include <algorithm>
+#include <utility>
 #include <omp.h>
 #include <cmath>
 #include <atomic>
@@ -50,14 +51,23 @@ struct thread_workspace_t {
     std::vector<rank_occ_t> uniq_ranks_per_node_buffer;
     std::vector<uint32_t> rank_timestamp;
 
-    thread_workspace_t(const esa_t& ESA, size_t ell, size_t V_size, size_t max_seq_len)
+    std::vector<uint32_t> edge_timestamp;
+
+    std::vector<bool> has_rank_X;
+
+    std::vector<bool> rank_membership;
+
+    thread_workspace_t(const esa_t& ESA, size_t ell, size_t V_size, size_t E_size, size_t max_seq_len)
         : intersec_nodes_count(ESA.N), intersec_nodes_count_set_indices(ESA.N),
           edge_count(ESA.N), edge_count_set_indices(ESA.N),
           flat_nodes_X(ESA.N), rank_offsets_X(ESA.N + 1), rank_active_counts_X(ESA.N + 1), active_ranks_X(ESA.N + 1),
           flat_nodes_Y(ESA.N), rank_offsets_Y(ESA.N + 1), rank_active_counts_Y(ESA.N + 1), active_ranks_Y(ESA.N + 1),
           flat_ranks_Y(V_size * max_seq_len), node_offsets_Y(V_size), node_active_counts_Y(V_size),
           rank_table_X(ell, ESA), rank_table_Y(ell, ESA),
-          uniq_ranks_per_node_buffer(ESA.N), rank_timestamp(ESA.N + 1)
+          uniq_ranks_per_node_buffer(ESA.N), rank_timestamp(ESA.N + 1),
+          edge_timestamp(E_size),
+          has_rank_X(V_size, false),
+          rank_membership(ESA.N + 1, false)
     {
         for (size_t i = 0; i < V_size; i++)
             node_offsets_Y[i] = i * max_seq_len;
@@ -127,7 +137,7 @@ struct thread_workspace_t {
 
 template <typename Tag>
 std::vector<motif_pair_record_t> main_algo(const std::vector<std::string>& V,
-                                           const std::vector<std::vector<uint32_t>>& G,
+                                           const std::vector<std::vector<std::pair<uint32_t, uint32_t>>>& G,
                                            size_t ell, size_t d, size_t k, size_t num_threads);
 
 #endif

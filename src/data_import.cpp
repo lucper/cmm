@@ -76,6 +76,7 @@ GraphInput read_graph_files(const std::string &edge_path,
         bool first = true;
 
         out.adj_list.resize(out.node_labels.size());
+        uint32_t edge_id = 0;
 
         while (std::getline(in, line)) {
             trim_right_cr(line);
@@ -97,8 +98,9 @@ GraphInput read_graph_files(const std::string &edge_path,
             uint32_t u_internal = it_u->second;
             uint32_t v_internal = it_v->second;
 
-            out.adj_list[u_internal].push_back(v_internal);
-            out.adj_list[v_internal].push_back(u_internal);
+            out.adj_list[u_internal].emplace_back(v_internal, edge_id);
+            out.adj_list[v_internal].emplace_back(u_internal, edge_id);
+            edge_id++;
         }
     }
 

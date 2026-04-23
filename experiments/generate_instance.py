@@ -27,7 +27,7 @@ def generate_graph(n, m, min_label_len, max_label_len, alphabet):
     while len(labels) < n:
         label_len = random.randint(min_label_len, max_label_len)
         labels.add("".join(random.choices(alphabet, k=label_len)))
-    labels = list(labels)
+    labels = sorted(list(labels))
 
     # Claude, Sonnet 4.6
     # Generate a random perfect (or near-perfect) matching to ensure no isolated vertices
@@ -35,16 +35,15 @@ def generate_graph(n, m, min_label_len, max_label_len, alphabet):
     random.shuffle(shuffled)
     edges = set()
     for k in range(0, n - 1, 2):
-        u, v = shuffled[k], shuffled[k + 1]
-        if u > v:
-            u, v = v, u
+        u, v = sorted([shuffled[k], shuffled[k + 1]])
         edges.add((u, v))
     # If num_nodes is odd, the last node is still isolated — connect it to a random neighbor
     if n % 2 == 1:
-        u = shuffled[-1]
-        v = random.choice(shuffled[:-1])
-        if u > v:
-            u, v = v, u
+        u, v = sorted([shuffled[-1], random.choice(shuffled[:-1])])
+        edges.add((u, v))
+    # Fill up to m edges
+    while len(edges) < m:
+        u, v = sorted(random.sample(labels, 2))
         edges.add((u, v))
 
     G = {label: [] for label in labels}
@@ -56,10 +55,12 @@ def generate_graph(n, m, min_label_len, max_label_len, alphabet):
     return G
 
 if __name__ == '__main__':
-    if len(sys.argv) != 7:
-        raise SystemExit(f'Usage: {sys.argv[0]} <number of nodes> <number of edges> <minimum label length> <maximum label length> <output_nodes_file> <output_edges_file>')
-    n, m, min_label, max_label, nodes_output, edges_output = int(sys.argv[1]), int(sys.argv[2]), int(sys.argv[3]), int(sys.argv[4]), sys.argv[5], sys.argv[6]
-    alphabet = ['a', 't', 'g', 'c']
+    if len(sys.argv) != 9:
+        raise SystemExit(f'Usage: {sys.argv[0]} <number of nodes> <number of edges> <minimum label length> <maximum label length> <alphabet size> <seed> <output_nodes_file> <output_edges_file>')
+    n, m, min_label, max_label, alphabet_size, seed, nodes_output, edges_output = int(sys.argv[1]), int(sys.argv[2]), int(sys.argv[3]), int(sys.argv[4]), int(sys.argv[5]), int(sys.argv[6]), sys.argv[7], sys.argv[8]
+    alphabet = [str(i) for i in range(alphabet_size)]
+
+    random.seed(seed)
 
     G = generate_graph(n, m, min_label, max_label, alphabet)
     V_ids = {v: i+1 for i, v in enumerate(G.keys())}
