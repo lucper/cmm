@@ -71,6 +71,7 @@ if __name__ == '__main__':
             G[V[int(v)]].append(V[int(u)])
 
     counts = main_algo(G, ell, d)
+    print('X', 'Y', 'E')
     for motif, count in counts.items():
         x, y = motif
         print(x, y, count)
