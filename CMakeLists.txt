@@ -55,6 +55,3 @@ target_link_libraries(cmm PRIVATE cmm_core OpenMP::OpenMP_CXX)
 target_compile_options(cmm PRIVATE
     $<$<CONFIG:Release>:-flto>
 )
-
-add_executable(run_tests tests/test_main.cpp)
-target_link_libraries(run_tests PRIVATE cmm_core OpenMP::OpenMP_CXX)
