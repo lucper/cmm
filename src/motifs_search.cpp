@@ -78,7 +78,7 @@ std::vector<motif_pair_record_t> main_algo(const std::vector<std::string>& V,
         option::PrefixText("Mining motifs "),
         option::Stream(std::cerr)
     );
-    size_t total_pairs = all_H.size() * all_H.size();
+    size_t total_pairs = all_H.size() * (all_H.size() + 1) / 2;
     std::atomic<size_t> pairs_completed(0);
     size_t update_interval = std::max(static_cast<size_t>(1), total_pairs / 100);
 
