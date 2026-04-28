@@ -28,8 +28,7 @@ Other options:
 # How to run D-STAR
 
 Unzip the `DSTAR.zip` file and `cd` to the `Program` directory.
-The executables therein are 32-bit x86 binaries, so we need to install the following dependency.
-For Ubuntu/Debian systems, run:
+The executables therein are 32-bit x86 binaries, so we need to install the following dependency (for Ubuntu/Debian systems):
 ```bash
 sudo dpkg --add-architecture i386
 sudo apt-get update
