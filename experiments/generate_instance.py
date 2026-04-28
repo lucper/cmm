@@ -3,6 +3,7 @@
 from collections import defaultdict
 import random
 import sys
+import string
 
 def generate_graph(n, m, min_label_len, max_label_len, alphabet):
     ## Checks
@@ -58,7 +59,11 @@ if __name__ == '__main__':
     if len(sys.argv) != 9:
         raise SystemExit(f'Usage: {sys.argv[0]} <number of nodes> <number of edges> <minimum label length> <maximum label length> <alphabet size> <seed> <output_nodes_file> <output_edges_file>')
     n, m, min_label, max_label, alphabet_size, seed, nodes_output, edges_output = int(sys.argv[1]), int(sys.argv[2]), int(sys.argv[3]), int(sys.argv[4]), int(sys.argv[5]), int(sys.argv[6]), sys.argv[7], sys.argv[8]
-    alphabet = [str(i) for i in range(alphabet_size)]
+
+    ascii_chars = string.ascii_lowercase + string.ascii_uppercase + string.digits
+    if alphabet_size > len(ascii_chars):
+        raise SystemExit(f'alphabet size ({alphabet_size}) must be at most {len(ascii_chars)} (ASCII lowercase, uppercase, and digits)')
+    alphabet = ascii_chars[:alphabet_size]
 
     random.seed(seed)
 
