@@ -1,6 +1,6 @@
 # How to run SLIDER
 
-Inside the `SliderLight` directory, run:
+Unzip the `SliderLight.zip` file and `cd` to the `SliderLight` directory. Then, run:
 ```bash
 java -cp dist/SliderLight.jar Framework.Framework
 ```
