@@ -24,3 +24,27 @@ Other options:
 -st     allows for different scoretypes (binomial, cover, difference, p, v, weightedv, x2)
 -min    the amount of minutes to run (used only for timed methods)
 ```
+
+# How to run D-STAR
+
+Unzip the `DSTAR.zip` file and `cd` to the `Program` directory.
+The executables therein are 32-bit x86 binaries, so we need to install the following dependency.
+For Ubuntu/Debian systems, run:
+```bash
+sudo dpkg --add-architecture i386
+sudo apt-get update
+sudo apt-get install libc6-i386
+```
+Then test it:
+```bash
+chmod +x DSTAR.LinuxRedHat
+./DSTAR.LinuxRedHat
+```
+The secon command should yield:
+```text
+File not found - (null)
+File not found - SHELL=/bin/bash
+Current Usage = 16040 bytes, Max = 36056
+Total Time 0.000174 s
+```
+(The numbers may be different in your machine.)
