@@ -13,8 +13,8 @@ int main(int argc, char* argv[]) {
 
     options.set_width(80);
     options.add_options()
-        ("n,nodes", "Path to text file with lines formatted as 'id;label', where id is an integer >= 0 identifying a node and label is a protein sequence. [required]", cxxopts::value<std::string>())
-        ("e,edges", "Path to text file with lines formatted as 'u;v', where u and v are node ids. [required]", cxxopts::value<std::string>())
+        ("s,sequences", "Path to FASTA file with protein sequences. [required]", cxxopts::value<std::string>())
+        ("i,interactions", "Path to text file with lines formatted as 'u v', where u and v are sequence IDs from the FASTA file. [required]", cxxopts::value<std::string>())
         ("l,motif-length", "Motif length. [required]", cxxopts::value<int>())
         ("d,number-of-wildcards", "Number in [0,l) of wildcards in motif. [required]", cxxopts::value<int>())
         ("f,support-function", "Support function to sort motifs ('E', 'chi2'). [required]", cxxopts::value<std::string>())
@@ -41,8 +41,8 @@ int main(int argc, char* argv[]) {
             return EXIT_SUCCESS;
         }
 
-        std::string path_to_nodes = program["nodes"].as<std::string>();
-        std::string path_to_edges = program["edges"].as<std::string>();
+        std::string path_to_nodes = program["sequences"].as<std::string>();
+        std::string path_to_edges = program["interactions"].as<std::string>();
         std::string supp_func = program["support-function"].as<std::string>();
 
         int num_threads = program["threads"].as<int>();

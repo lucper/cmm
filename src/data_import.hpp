@@ -7,24 +7,20 @@
 
 #include <fstream>
 #include <sstream>
-#include <string>
-#include <vector>
 #include <unordered_map>
 #include <stdexcept>
-#include <cctype>
-#include <algorithm>
+#include <vector>
+#include <string>
 #include <utility>
-#include "esa.hpp"
+#include <cstdint>
 #include "utils.hpp"
 
-struct GraphInput {
+struct graph_input_t {
     std::vector<std::vector<std::pair<uint32_t, uint32_t>>> adj_list; // (u,v) endpoints (0-based after import)
     std::vector<std::string> node_labels;    // node_id -> label/sequence
 };
 
-// Read semicolon-separated files with header "left;right".
-// If one_based_ids=true, converts IDs from 1-based (file) to 0-based (in memory).
-GraphInput read_graph_files(const std::string &edge_path,
-                            const std::string &labels_path);
+graph_input_t read_graph_files(const std::string &edge_path,
+                               const std::string &labels_path);
 
 #endif //BPM_DATAIMPORT_H
