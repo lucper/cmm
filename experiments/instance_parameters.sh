@@ -8,23 +8,24 @@ fi
 NODE_FILE=$1
 EDGE_FILE=$2
 
-awk -F';' '
+awk '
     FILENAME == ARGV[1] {
-        if (FNR == 1) next # Skip header
-        
-        total_chars += length($2)
-        
-        exists[$1] = 1
+        if (/^>/) {
+            current_id = substr($0, 2)
+            sub(/[ \t].*/, "", current_id)  # take first token only
+            exists[current_id] = 1
+        } else if (current_id != "") {
+            total_chars += length($0)
+        }
         next
     }
 
     FILENAME == ARGV[2] {
-        if (FNR == 1) next # Skip header
-        
+        if (NF < 2) next
         count[$1]++
         count[$2]++
         edges++
-        
+
         exists[$1] = 1
         exists[$2] = 1
     }
@@ -37,7 +38,7 @@ awk -F';' '
 
         for (v in exists) {
             vertex_count++
-            deg = count[v] + 0 # +0 handles nodes with no edges
+            deg = count[v] + 0
             sum_deg += deg
 
             if (deg < min) min = deg

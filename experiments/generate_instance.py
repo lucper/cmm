@@ -71,13 +71,12 @@ if __name__ == '__main__':
     V_ids = {v: i+1 for i, v in enumerate(G.keys())}
 
     with open(nodes_output, 'w') as fout:
-        print('left;right', file=fout)
         for i, node in enumerate(G.keys()):
-            print(f'{V_ids[node]};{node}', file=fout)
+            print(f'>{V_ids[node]}', file=fout)
+            print(node, file=fout)
 
     with open(edges_output, 'w') as fout:
-        print('left;right', file=fout)
         for v in G:
             for u in G[v]:
                 if v < u:
-                    print(f'{V_ids[v]};{V_ids[u]}', file=fout)
+                    print(f'{V_ids[v]} {V_ids[u]}', file=fout)
