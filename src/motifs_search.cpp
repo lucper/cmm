@@ -185,7 +185,7 @@ std::vector<motif_pair_record_t> main_algo(const std::vector<std::string>& V,
                     size_t Emax = (countX * countY) - ((countXY * (countXY - 1))/2) - countXY;
                     size_t countE = ws.edge_count[rank_Y];
                     double countE_bar = edge_density * Emax;
-                    double chi2 = countE > countE_bar ? (static_cast<double>(std::pow(countE - countE_bar, 2)) / countE_bar) : 0;
+                    double chi2 = (countE_bar > 0 && countE > countE_bar) ? (static_cast<double>(std::pow(countE - countE_bar, 2)) / countE_bar) : 0;
 
                     motif_pair_record_t candidate;
                     candidate.countE = countE;
@@ -193,8 +193,8 @@ std::vector<motif_pair_record_t> main_algo(const std::vector<std::string>& V,
                     if (ws.topK.size() < k || motif_comparator(candidate, ws.topK.top())) {
                         candidate.rankX = rank_X;
                         candidate.rankY = rank_Y;
-                        candidate.X = apply_mask(ws.rank_table_X.get_substr_with_rank(rank_X), H_u);
-                        candidate.Y = apply_mask(ws.rank_table_Y.get_substr_with_rank(rank_Y), H_v);
+                        candidate.X = apply_mask(ws.rank_table_X.get_substr_with_rank(rank_X), H_u, 'x');
+                        candidate.Y = apply_mask(ws.rank_table_Y.get_substr_with_rank(rank_Y), H_v, 'x');
                         candidate.countE_bar = countE_bar;
                         candidate.countX = countX;
                         candidate.countY = countY;
