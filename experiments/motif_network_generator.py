@@ -12,7 +12,18 @@ Usage:
         [--seed 42] \\
         [--out-fasta out.fasta] \\
         [--out-interactions out_interactions.txt] \\
-        [--out-motifs out_motifs.txt]
+        [--out-pairs out_pairs.txt]
+
+Output motif-pairs file columns:
+    motif_X  motif_Y  f(X,Y)
+
+where f(X,Y) = (e - e')^2 / e'
+    e   = number of edges where X occurs in one endpoint and Y in the other
+    e'  = edge_density * (k_X*k_Y - C(k_XY,2) - k_XY)
+    k_X = number of nodes containing X
+    k_Y = number of nodes containing Y
+    k_XY = number of nodes containing both X and Y
+    C(k_XY,2) = k_XY*(k_XY-1)/2
 """
 
 import argparse
@@ -28,8 +39,6 @@ from itertools import combinations
 
 AA_ALPHABET = list("ACDEFGHIKLMNPQRSTVWY")
 WILDCARD = "x"          # regex-style wildcard stored in motif strings
-NUM_CANDIDATE_MOTIFS = 50
-
 
 # ---------------------------------------------------------------------------
 # I/O helpers
@@ -80,10 +89,11 @@ def write_interactions(path: str, edges: set[tuple[str, str]]) -> None:
             fh.write(f"{u} {v}\n")
 
 
-def write_motifs(path: str, motifs: list[str]) -> None:
+def write_motif_pairs(path: str, pairs: list[tuple[str, str, float]]) -> None:
+    """Write motif pairs file: motif_X  motif_Y  f(X,Y) — space-separated."""
     with open(path, "w") as fh:
-        for i, m in enumerate(motifs, 1):
-            fh.write(f"motif_{i:03d}\t{m}\n")
+        for mx, my, score in pairs:
+            fh.write(f"{mx} {my} {score:.6f}\n")
 
 
 # ---------------------------------------------------------------------------
@@ -152,6 +162,37 @@ def edge_density(edges: set[tuple[str, str]], n: int) -> float:
     return len(edges) / max_edges
 
 
+def compute_f(
+    e: int,
+    density: float,
+    hosts_x: set[str],
+    hosts_y: set[str],
+) -> float:
+    """
+    Compute f(X,Y) = (e - e')^2 / e'
+
+    where:
+        e'  = density * expected_interactions(X, Y)
+        expected_interactions(X, Y) = k_X*k_Y - C(k_XY, 2) - k_XY
+        k_X   = |hosts_X|
+        k_Y   = |hosts_Y|
+        k_XY  = |hosts_X ∩ hosts_Y|
+        C(k_XY, 2) = k_XY*(k_XY-1)/2
+
+    Returns 0.0 when e' == 0 (undefined) or when both e <= e'.
+    """
+    k_x  = len(hosts_x)
+    k_y  = len(hosts_y)
+    k_xy = len(hosts_x & hosts_y)
+
+    expected = k_x * k_y - (k_xy * (k_xy - 1) // 2) - k_xy
+    e_prime  = density * expected
+
+    if e_prime == 0.0 or e <= e_prime:
+        return 0.0
+    return (e - e_prime) ** 2 / e_prime
+
+
 # ---------------------------------------------------------------------------
 # Core pipeline
 # ---------------------------------------------------------------------------
@@ -167,7 +208,7 @@ def run(
     seed: int | None,
     out_fasta: str,
     out_interactions: str,
-    out_motifs: str,
+    out_pairs: str,
 ) -> None:
 
     # -- Reproducibility ---------------------------------------------------
@@ -198,13 +239,19 @@ def run(
             a, b = (u, v) if u <= v else (v, u)
             original_edges.add((a, b))
 
-    # -- Generate 50 random (l,d)-motifs, keep K of them ------------------
-    print(f"[3/7] Generating {NUM_CANDIDATE_MOTIFS} candidate (l={l},d={d})-motifs …")
-    candidate_motifs = [generate_random_motif(l, d) for _ in range(NUM_CANDIDATE_MOTIFS)]
-    # Deduplicate (unlikely collision but defensive)
-    candidate_motifs = list(dict.fromkeys(candidate_motifs))
+    # -- Generate exactly K random (l,d)-motifs ----------------------------
+    print(f"[3/7] Generating K={K} (l={l},d={d})-motifs …")
+    candidate_motifs: list[str] = []
+    attempts = 0
+    while len(candidate_motifs) < K:
+        attempts += 1
+        if attempts > K * 100:
+            sys.exit("ERROR: Could not generate K distinct motifs — try smaller K or larger l.")
+        m = generate_random_motif(l, d)
+        if m not in candidate_motifs:
+            candidate_motifs.append(m)
 
-    # -- Implant instances of ALL candidate motifs into sequences ----------
+    # -- Implant instances of all K motifs into sequences ------------------
     print(f"[4/7] Implanting motif instances (I ∈ [3,10] per motif) …")
     # motif_hosts[motif_idx] = set of protein IDs that contain that motif
     motif_hosts: dict[int, set[str]] = {i: set() for i in range(len(candidate_motifs))}
@@ -307,33 +354,41 @@ def run(
     else:
         print("    All motif instances verified ✓")
 
-    # -- Select K output motifs (from the used ones) -----------------------
-    unique_used_indices = list(dict.fromkeys(i for pair in used_motif_pairs for i in pair))
-    if len(unique_used_indices) < K:
-        print(
-            f"    NOTE: Only {len(unique_used_indices)} distinct motifs were used to "
-            f"reach density E; returning all of them (K={K} requested)."
+    # -- Compute f(X,Y) for each used motif pair ---------------------------
+    final_density = edge_density(final_edges, S)
+    output_pairs: list[tuple[str, str, float]] = []
+
+    for mx, my in used_motif_pairs:
+        motif_x = candidate_motifs[mx]
+        motif_y = candidate_motifs[my]
+        hosts_x = motif_hosts[mx]
+        hosts_y = motif_hosts[my]
+
+        # Count edges in final network where one endpoint has X and other has Y
+        e = sum(
+            1
+            for u, v in final_edges
+            if (u in hosts_x and v in hosts_y) or (u in hosts_y and v in hosts_x)
         )
-        output_motif_indices = unique_used_indices
-    else:
-        output_motif_indices = random.sample(unique_used_indices, K)
-    output_motifs = [candidate_motifs[i] for i in output_motif_indices]
+
+        score = compute_f(e, final_density, hosts_x, hosts_y)
+        output_pairs.append((motif_x, motif_y, score))
 
     # -- Write outputs -----------------------------------------------------
     print("[7/7] Writing outputs …")
     write_fasta(out_fasta, sequences)
     write_interactions(out_interactions, final_edges)
-    write_motifs(out_motifs, output_motifs)
+    write_motif_pairs(out_pairs, output_pairs)
 
     # -- Summary -----------------------------------------------------------
     print("\n=== Summary ===")
     print(f"  Output FASTA          : {out_fasta}  ({S} sequences)")
     print(f"  Output interactions   : {out_interactions}  ({len(final_edges)} edges)")
-    print(f"  Output motifs         : {out_motifs}  ({len(output_motifs)} motifs)")
-    print(f"  Final edge density    : {edge_density(final_edges, S):.4f}")
+    print(f"  Output motif pairs    : {out_pairs}  ({len(output_pairs)} pairs)")
+    print(f"  Final edge density    : {final_density:.4f}")
     print(f"  Motif pairs used      : {len(used_motif_pairs)}")
     print(f"  (l, d)                : ({l}, {d})")
-    print(f"  K (output motifs)     : {K}")
+    print(f"  K (motifs generated)  : {K}")
     print(f"  S (proteins)          : {S}")
     print(f"  E (density target)    : {E}")
 
@@ -351,7 +406,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--interactions",  required=True,  help="Input space-separated interaction pairs")
     parser.add_argument("--l",   type=int, required=True,  help="Motif length")
     parser.add_argument("--d",   type=int, required=True,  help="Number of wildcard positions per motif")
-    parser.add_argument("--K",   type=int, required=True,  help="Number of motifs to include in output")
+    parser.add_argument("--K",   type=int, required=True,  help="Number of (l,d)-motifs to generate and implant")
     parser.add_argument("--S",   type=int, required=True,  help="Number of sequences to sample")
     parser.add_argument("--E",   type=float, required=True,
                         help="Edge density threshold [0.0, 1.0]")
@@ -360,8 +415,8 @@ def parse_args() -> argparse.Namespace:
                         help="Output FASTA path")
     parser.add_argument("--out-interactions",  default="out_interactions.txt",
                         help="Output interactions path")
-    parser.add_argument("--out-motifs",        default="out_motifs.txt",
-                        help="Output motifs path")
+    parser.add_argument("--out-pairs",         default="out_motif_pairs.txt",
+                        help="Output motif pairs path (motif_X motif_Y f(X,Y))")
     return parser.parse_args()
 
 
@@ -389,5 +444,5 @@ if __name__ == "__main__":
         seed=args.seed,
         out_fasta=args.out_fasta,
         out_interactions=args.out_interactions,
-        out_motifs=args.out_motifs,
+        out_pairs=args.out_pairs,
     )
