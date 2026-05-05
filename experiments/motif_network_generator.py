@@ -27,7 +27,7 @@ from itertools import combinations
 # ---------------------------------------------------------------------------
 
 AA_ALPHABET = list("ACDEFGHIKLMNPQRSTVWY")
-WILDCARD = "."          # regex-style wildcard stored in motif strings
+WILDCARD = "x"          # regex-style wildcard stored in motif strings
 NUM_CANDIDATE_MOTIFS = 50
 
 
