@@ -19,7 +19,7 @@ graph_input_t read_graph_files(const std::string &edge_path,
     {
         std::ifstream fasta(labels_path);
         if (!fasta.is_open())
-            throw std::runtime_error("Cannot open labels file: " + labels_path);
+            throw std::runtime_error("Cannot open FASTA file: " + labels_path);
 
         std::string line, current_id, current_seq;
 
@@ -46,7 +46,7 @@ graph_input_t read_graph_files(const std::string &edge_path,
     {
         std::ifstream edges(edge_path);
         if (!edges.is_open())
-            throw std::runtime_error("Cannot open edge file: " + edge_path);
+            throw std::runtime_error("Cannot open interactions file: " + edge_path);
 
         uint32_t edge_id = 0;
         std::string line;
@@ -56,14 +56,14 @@ graph_input_t read_graph_files(const std::string &edge_path,
             std::istringstream iss(line);
             std::string u_label, v_label;
             if (!(iss >> u_label >> v_label))
-                throw std::runtime_error("Malformed edge line: " + line);
+                throw std::runtime_error("Malformed interaction line: " + line);
 
             auto it_u = id_to_index.find(u_label);
             auto it_v = id_to_index.find(v_label);
             if (it_u == id_to_index.end())
-                throw std::runtime_error("Unknown node in edge file: " + u_label);
+                throw std::runtime_error("Unknown node in interactions file: " + u_label);
             if (it_v == id_to_index.end())
-                throw std::runtime_error("Unknown node in edge file: " + v_label);
+                throw std::runtime_error("Unknown node in interactions file: " + v_label);
 
             uint32_t u = it_u->second;
             uint32_t v = it_v->second;
