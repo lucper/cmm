@@ -7,6 +7,11 @@ logs/
 *.perf-folded
 *.svg
 *.in
+*.out
+*.dat
+*.fa
+*.int
+*.txt
 .DS_Store
 .idea/
 benchmark/FlameGraph/
