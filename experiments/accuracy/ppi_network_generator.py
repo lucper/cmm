@@ -379,20 +379,27 @@ def parse_args() -> argparse.Namespace:
         description="Generate a synthetic protein interaction dataset with (l,d)-motifs.",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
-    parser.add_argument("--fasta",         required=True,  help="Input FASTA file of protein sequences")
-    parser.add_argument("--interactions",  required=True,  help="Input space-separated interaction pairs")
-    parser.add_argument("--l",   type=int, required=True,  help="Motif length")
-    parser.add_argument("--d",   type=int, required=True,  help="Number of wildcard positions per motif")
-    parser.add_argument("--K",   type=int, required=True,  help="Number of (l,d)-motifs to generate and implant")
-    parser.add_argument("--S",   type=int, required=True,  help="Number of sequences to sample")
-    parser.add_argument("--e",   type=float, required=True,
+    parser.add_argument("--fasta",            required=True, default=argparse.SUPPRESS,
+                        help="Input FASTA file of protein sequences")
+    parser.add_argument("--interactions",     required=True, default=argparse.SUPPRESS,
+                        help="Input space-separated interaction pairs")
+    parser.add_argument("--l",    type=int,   required=True, default=argparse.SUPPRESS,
+                        help="Motif length")
+    parser.add_argument("--d",    type=int,   required=True, default=argparse.SUPPRESS,
+                        help="Number of wildcard positions per motif")
+    parser.add_argument("--K",    type=int,   required=True, default=argparse.SUPPRESS,
+                        help="Number of (l, d)-motifs to generate and implant")
+    parser.add_argument("--S",    type=int,   required=True, default=argparse.SUPPRESS,
+                        help="Number of sequences to sample")
+    parser.add_argument("--e",    type=float, required=True, default=argparse.SUPPRESS,
                         help="Edge density threshold [0.0, 1.0]")
-    parser.add_argument("--seed", type=int, default=None,  help="Random seed for reproducibility")
-    parser.add_argument("--out-fasta",         default="out_sequences.fasta",
+    parser.add_argument("--seed", type=int,   default=None,
+                        help="Random seed for reproducibility")
+    parser.add_argument("--out-fasta",        default="out_sequences.fasta",
                         help="Output FASTA path")
-    parser.add_argument("--out-interactions",  default="out_interactions.txt",
+    parser.add_argument("--out-interactions", default="out_interactions.txt",
                         help="Output interactions path")
-    parser.add_argument("--out-pairs",         default="out_motif_pairs.txt",
+    parser.add_argument("--out-pairs",        default="out_motif_pairs.txt",
                         help="Output motif pairs path (motif_X motif_Y f(X,Y))")
     return parser.parse_args()
 

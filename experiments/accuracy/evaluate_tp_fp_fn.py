@@ -234,12 +234,12 @@ def parse_args() -> argparse.Namespace:
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
     parser.add_argument(
-        "--truth", required=True,
+        "--truth", required=True, default=argparse.SUPPRESS,
         help="Truth-set file produced by ppi_network_generator.py "
              "(3 columns: motif_X motif_Y f_score)",
     )
     parser.add_argument(
-        "--predicted", required=True,
+        "--predicted", required=True, default=argparse.SUPPRESS,
         help="Mining-algorithm output (3 columns: motif_A motif_B score)",
     )
     parser.add_argument(
