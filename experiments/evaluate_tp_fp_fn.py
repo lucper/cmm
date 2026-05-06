@@ -65,7 +65,7 @@ def load_truth(path: str) -> set[tuple[str, str]]:
                     file=sys.stderr,
                 )
                 continue
-            pairs.add(standardise(parts[0].upper(), parts[1].upper()))
+            pairs.add(standardise(parts[0], parts[1]))
     return pairs
 
 def load_predictions(path: str) -> list[tuple[str, str, str]]:
@@ -87,7 +87,7 @@ def load_predictions(path: str) -> list[tuple[str, str, str]]:
                     file=sys.stderr,
                 )
                 continue
-            rows.append((parts[0].upper(), parts[1].upper(), parts[2]))
+            rows.append((parts[0], parts[1], parts[2]))
     return rows
 
 
@@ -127,15 +127,13 @@ def evaluate(
             status = "FP"
             fp_pairs.add(key)
             seen.add(key)
-        annotated_rows.append(
-            {
-                "motif_a": motif_a,
-                "motif_b": motif_b,
-                "score":   score,
-                "key":     key,
-                "status":  status,
-            }
-        )
+        annotated_rows.append({
+            "motif_a": motif_a,
+            "motif_b": motif_b,
+            "score":   score,
+            "key":     key,
+            "status":  status,
+        })
 
     fn_pairs = truth - tp_pairs
 
