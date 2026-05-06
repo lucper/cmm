@@ -217,17 +217,29 @@ def run(
             candidate_motifs.append(m)
 
     # -- Implant instances of all K motifs into sequences ------------------
-    print(f"[4/7] Implanting motif instances (I ∈ [3,10] per motif)...")
+    minI, maxI = int(0.02 * S), int(0.1 * S)
+    print(f"[4/7] Implanting motif instances (I ∈ [{minI},{maxI}] per motif)...")
     # motif_hosts[motif_idx] = set of protein IDs that contain that motif
-    motif_hosts: dict[int, set[str]] = {i: set() for i in range(len(candidate_motifs))}
+    motif_hosts: dict[int, set[str]] = {i: set() for i in range(K)}
+
+    # guarantee that each protein gets at least one motif
+    shuffled_ids = chosen_ids[:]
+    random.shuffle(shuffled_ids)
+    for protein_pos, sid in enumerate(shuffled_ids):
+        motif_idx = protein_pos % K
+        motif_hosts[motif_idx].add(sid)
+
+    for motif_idx in range(K):
+        I = random.randint(minI, maxI)               # instances for this motif
+        current = motif_hosts[motif_idx]
+        if len(current) < I:
+            pool = sorted([sid for sid in chosen_ids if sid not in current])
+            extra = random.sample(pool, min(I - len(current), len(pool)))
+            current.update(extra)
 
     for motif_idx, motif in enumerate(candidate_motifs):
-        I = random.randint(3, 10)               # instances for this motif
-        # Shuffle IDs and pick I unique proteins
-        targets = random.sample(chosen_ids, min(I, S))
-        for sid in targets:
+        for sid in sorted(motif_hosts[motif_idx]):
             sequences[sid] = implant_motif(sequences[sid], motif)
-            motif_hosts[motif_idx].add(sid)
 
     # -- Build a "perfect" network by pairing motifs until density ≥ E ----
     print(f"[5/7] Building perfect interaction network (target density E={E})...")
