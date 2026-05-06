@@ -82,10 +82,12 @@ int main(int argc, char* argv[]) {
         int s = elapsed % 60;
         std::fprintf(stderr, "Total elapsed time: [%dh:%dm:%ds]\n", h, m, s);
 
-        std::fprintf(stdout, "X\tY\tE_XY\tE_XY_bar\tchi2\n");
-        for (auto &mp : solution)
-            std::fprintf(stdout, "%s\t%s\t%ld\t%.2f\t%.2f\n",
-                         mp.X.c_str(), mp.Y.c_str(), mp.countE, mp.countE_bar, mp.chi2);
+        if (supp_func == "E")
+            for (auto& mp : solution) std::fprintf(stdout, "%s\t%s\t%ld\n",
+                                                   mp.X.c_str(), mp.Y.c_str(), mp.countE);
+        else if (supp_func == "chi2")
+            for (auto& mp : solution) std::fprintf(stdout, "%s\t%s\t%.2f\n",
+                                                   mp.X.c_str(), mp.Y.c_str(), mp.chi2);
     } catch (const std::exception& e) {
         std::cerr << e.what() << std::endl;
         return EXIT_FAILURE;
