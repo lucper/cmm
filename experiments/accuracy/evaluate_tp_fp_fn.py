@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Compares the output of a motif-pair mining algorithm against a truth set produced
-by motif_network_generator.py and reports TP, FP, FN, Precision, Recall, and
+by ppi_network_generator.py and reports TP, FP, FN, Precision, Recall, and
 F1-score.
 
 Definitions
@@ -235,7 +235,7 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--truth", required=True,
-        help="Truth-set file produced by motif_network_generator.py "
+        help="Truth-set file produced by ppi_network_generator.py "
              "(3 columns: motif_X motif_Y f_score)",
     )
     parser.add_argument(
