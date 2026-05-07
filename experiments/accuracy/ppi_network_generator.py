@@ -183,7 +183,7 @@ def run(
         random.seed(seed)
 
     # -- Load inputs -------------------------------------------------------
-    print("[1/7] Reading inputs...")
+    print("[1/7] Reading inputs...", file=sys.stderr)
     all_seqs = read_fasta(fasta_path)
     all_edges_raw = read_interactions(interactions_path)
     all_ids = list(all_seqs.keys())
@@ -192,7 +192,7 @@ def run(
         raise SystemExit(f"FASTA contains only {len(all_ids)} sequences but S={S} was requested.")
 
     # -- Sample S sequences ------------------------------------------------
-    print(f"[2/7] Sampling S={S} sequences...")
+    print(f"[2/7] Sampling S={S} sequences...", file=sys.stderr)
     chosen_ids = random.sample(all_ids, S)
     chosen_set = set(chosen_ids)
     sequences: dict[str, str] = {sid: all_seqs[sid] for sid in chosen_ids}
@@ -205,7 +205,7 @@ def run(
             original_edges.add((a, b))
 
     # -- Generate exactly K random (l,d)-motifs ----------------------------
-    print(f"[3/7] Generating K={K} (l={l},d={d})-motifs...")
+    print(f"[3/7] Generating K={K} (l={l},d={d})-motifs...", file=sys.stderr)
     candidate_motifs: list[str] = []
     attempts = 0
     while len(candidate_motifs) < K:
@@ -218,7 +218,7 @@ def run(
 
     # -- Implant instances of all K motifs into sequences ------------------
     minI, maxI = int(0.02 * S), int(0.1 * S)
-    print(f"[4/7] Implanting motif instances (I ∈ [{minI},{maxI}] per motif)...")
+    print(f"[4/7] Implanting motif instances (I ∈ [{minI},{maxI}] per motif)...", file=sys.stderr)
     # motif_hosts[motif_idx] = set of protein IDs that contain that motif
     motif_hosts: dict[int, set[str]] = {i: set() for i in range(K)}
 
@@ -242,7 +242,7 @@ def run(
             sequences[sid] = implant_motif(sequences[sid], motif)
 
     # -- Build a "perfect" network by pairing motifs until density ≥ E ----
-    print(f"[5/7] Building perfect interaction network (target density E={E})...")
+    print(f"[5/7] Building perfect interaction network (target density E={E})...", file=sys.stderr)
     implanted_edges: set[tuple[str, str]] = set()
 
     # All possible motif pairs
@@ -266,14 +266,16 @@ def run(
         if current_density >= E:
             print(
                 f"    Density {current_density:.4f} reached after "
-                f"{len(used_motif_pairs)} motif pair(s)."
+                f"{len(used_motif_pairs)} motif pair(s).",
+                file=sys.stderr
             )
             break
     else:
         current_density = edge_density(implanted_edges, S)
         print(
             f"    WARNING: All motif pairs exhausted. "
-            f"Final density = {current_density:.4f} (target was {E})."
+            f"Final density = {current_density:.4f} (target was {E}).",
+            file=sys.stderr
         )
 
     # -- "Perfect" network: interactions ↔ motif-pair presence -------------
@@ -286,7 +288,7 @@ def run(
     # After ALL implantations are done, confirm each motif is still detectable.
     # (Earlier implants can be overwritten by later ones at overlapping sites,
     # so we re-implant any that went missing before verifying.)
-    print("[6/7] Verifying / re-implanting any overwritten motifs...")
+    print("[6/7] Verifying / re-implanting any overwritten motifs...", file=sys.stderr)
     repaired = 0
     active_motif_indices = list(set(i for pair in used_motif_pairs for i in pair))
 
@@ -325,11 +327,11 @@ def run(
     )
 
     if repaired:
-        print(f"    Re-implanted {repaired} overwritten instance(s).")
+        print(f"    Re-implanted {repaired} overwritten instance(s).", file=sys.stderr)
     if mismatches:
-        print(f"    WARNING: {mismatches} motif instance(s) still missing after repair!")
+        print(f"    WARNING: {mismatches} motif instance(s) still missing after repair!", file=sys.stderr)
     else:
-        print("    All motif instances verified ✓")
+        print("    All motif instances verified ✓", file=sys.stderr)
 
     # -- Compute f(X,Y) for each used motif pair ---------------------------
     final_density = edge_density(final_edges, S)
@@ -352,22 +354,22 @@ def run(
         output_pairs.append((motif_x, motif_y, score))
 
     # -- Write outputs -----------------------------------------------------
-    print("[7/7] Writing outputs...")
+    print("[7/7] Writing outputs...", file=sys.stderr)
     write_fasta(out_fasta, sequences)
     write_interactions(out_interactions, final_edges)
     write_motif_pairs(out_pairs, output_pairs)
 
     # -- Summary -----------------------------------------------------------
-    print("\n=== Summary ===")
-    print(f"  Output FASTA          : {out_fasta}  ({S} sequences)")
-    print(f"  Output interactions   : {out_interactions}  ({len(final_edges)} edges)")
-    print(f"  Output motif pairs    : {out_pairs}  ({len(output_pairs)} pairs)")
-    print(f"  Final edge density    : {final_density:.4f}")
-    print(f"  Motif pairs used      : {len(used_motif_pairs)}")
-    print(f"  (l, d)                : ({l}, {d})")
-    print(f"  K (motifs generated)  : {K}")
-    print(f"  S (proteins)          : {S}")
-    print(f"  E (density target)    : {E}")
+    print("\n=== Summary ===", file=sys.stderr)
+    print(f"  Output FASTA          : {out_fasta}  ({S} sequences)", file=sys.stderr)
+    print(f"  Output interactions   : {out_interactions}  ({len(final_edges)} edges)", file=sys.stderr)
+    print(f"  Output motif pairs    : {out_pairs}  ({len(output_pairs)} pairs)", file=sys.stderr)
+    print(f"  Final edge density    : {final_density:.4f}", file=sys.stderr)
+    print(f"  Motif pairs used      : {len(used_motif_pairs)}", file=sys.stderr)
+    print(f"  (l, d)                : ({l}, {d})", file=sys.stderr)
+    print(f"  K (motifs generated)  : {K}", file=sys.stderr)
+    print(f"  S (proteins)          : {S}", file=sys.stderr)
+    print(f"  E (density target)    : {E}", file=sys.stderr)
 
 
 # ---------------------------------------------------------------------------
