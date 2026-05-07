@@ -2,7 +2,6 @@
 
 import argparse
 import sys
-from pprint import pprint
 
 WILDCARD = 'x'
 
@@ -38,7 +37,7 @@ def read_interactions(path: str) -> list[tuple[str, str]]:
                 raise ValueError(f"Illegal line in {path}: {line.strip()}")
     return edges
 
-def read_truth(path: str) -> list[tuple[str, str]]:
+def read_motif_pairs(path: str) -> list[tuple[str, str]]:
     """
     Load the truth-set file (3 columns: motif_X motif_Y score).
     Returns a set of standardised (X, Y) pairs.
@@ -50,36 +49,14 @@ def read_truth(path: str) -> list[tuple[str, str]]:
             if not line or line.startswith("#"):
                 continue
             parts = line.split()
-            if len(parts) < 2:
+            if len(parts) < 3:
                 print(
-                    f"  [WARN] truth file line {lineno}: fewer than 2 columns — skipped.",
+                    f"  [WARN] truth file line {lineno}: fewer than 3 columns — skipped.",
                     file=sys.stderr,
                 )
                 continue
             pairs.append((parts[0], parts[1]) if parts[0] <= parts[1] else (parts[1], parts[0]))
     return pairs
-
-def read_predictions(path: str) -> list[tuple[str, str]]:
-    """
-    Load the mining algorithm output (3 columns: motif_A motif_B score).
-    Returns a list of (motif_A, motif_B, score_str) with motifs upper-cased.
-    Lines with fewer than 3 columns are warned and skipped.
-    """
-    rows: list[tuple[str, str, str]] = []
-    with open(path) as fh:
-        for lineno, line in enumerate(fh, 1):
-            line = line.strip()
-            if not line or line.startswith("#"):
-                continue
-            parts = line.split()
-            if len(parts) < 3:
-                print(
-                    f"  [WARN] prediction file line {lineno}: fewer than 3 columns — skipped.",
-                    file=sys.stderr,
-                )
-                continue
-            rows.append((parts[0], parts[1]))
-    return rows
 
 def motif_matches(motif: str, text: str, start: int) -> bool:
     """Check whether `motif` matches `text` starting at `start`."""
@@ -107,7 +84,9 @@ def similarity(pair_A: tuple[str, str], pair_B: tuple[str, str], V: dict[str, st
                     for nid, seq in V.items()
                     if (positions := find_motif_positions(motif, seq))}
            for motif in {*pair_A, *pair_B}}
+
     E_A, E_B, pos_AB = set(), set(), set()
+
     for u, v in E:
         u, v = (u, v) if u <= v else (v, u)
 
@@ -121,16 +100,39 @@ def similarity(pair_A: tuple[str, str], pair_B: tuple[str, str], V: dict[str, st
 
         if pair_A_occurs: E_A.add((u, v))
         if pair_B_occurs: E_B.add((u, v))
+
         if ((a0_u and b0_u and (a0_u & b0_u)) and
             (a1_v and b1_v and (a1_v & b1_v))):
             pos_AB.add((u, v))
         elif ((a0_v and b0_v and (a0_v & b0_v)) and
               (a1_u and b1_u and (a1_u & b1_u))):
             pos_AB.add((u, v))
+
     return len(pos_AB) / len(E_A | E_B) if E_A or E_B else 0.0
 
 def sensitivity(S: list[tuple[str, str]], T: list[tuple[str, str]], V: dict[str, str], E: list[tuple[str, str]], k: int) -> float:
-    pass
+    if not S or not T:
+        return 0.0
+
+    S_star = []
+    for candidate in S:
+        if not any(similarity(candidate, kept_pair, V, E) == 1.0
+                   for kept_pair in S_star):
+            S_star.append(candidate)
+
+    if k < 1 or k > len(S_star):
+        raise ValueError(f"k={k} must satisfy 1 <= k <= |S*|={len(S_star)}")
+
+    tp_count = sum(
+        1
+        for pred in S_star[:k]
+        if any(
+            similarity(pred, truth_pair, V, E) == 1.0
+            for truth_pair in T
+        )
+    )
+
+    return tp_count / k
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
@@ -147,11 +149,12 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--predicted", required=True, default=argparse.SUPPRESS,
-        help="Mining algorithm output (3 columns: motif_A motif_B score)"
+        help="Output file produced by motif mining algorithm "
+             "(3 columns: motif_X motif_Y f_score)"
     )
     parser.add_argument(
         "--k", required=True, type=int, default=1,
-        help="Rank to compare 'truth' against 'predicted'"
+        help="Number of 'predicted' motif pairs to compare against 'truth'"
     )
     parser.add_argument(
         "--sequences", required=True, default=argparse.SUPPRESS,
@@ -166,14 +169,33 @@ def parse_args() -> argparse.Namespace:
 def main() -> None:
     args = parse_args()
 
-    truth = read_truth(args.truth)
-    predictions = read_predictions(args.predicted)
-    nodes = read_fasta(args.sequences)
-    edges = read_interactions(args.interactions)
-    
-    # ----- Example -----
-    pair_A, pair_B = truth[0], predictions[0]
-    print(similarity(pair_A, pair_B, nodes, edges))
+    print(f"[1/4] Reading truth set     : {args.truth}", file=sys.stderr)
+    T = read_motif_pairs(args.truth)
+    if not T:
+        raise SystemExit(f"{args.truth} is empty")
+    print(f"        {len(T)} truth pair(s) loaded.", file=sys.stderr)
+
+    print(f"[2/4] Reading predictions   : {args.sequences}", file=sys.stderr)
+    S = read_motif_pairs(args.predicted)
+    if not S:
+        raise SystemExit(f"{args.predicted} is empty.")
+    print(f"        {len(S)} sequences loaded.", file=sys.stderr)
+
+    print(f"[3/4] Reading sequences     : {args.sequences}", file=sys.stderr)
+    V = read_fasta(args.sequences)
+    print(f"        {len(V)} sequence(s) loaded.", file=sys.stderr)
+
+    print(f"[4/4] Reading interactions  : {args.interactions}", file=sys.stderr)
+    E = read_interactions(args.interactions)
+    print(f"        {len(E)} interaction(s) loaded.", file=sys.stderr)
+
+    print(f"\nComputing sensitivity for k={args.k}...\n", file=sys.stderr)
+    result = sensitivity(S, T, V, E, args.k)
+    print(f"|T| (truth pairs)       : {len(T):>6}")
+    print(f"|S| (predicted pairs)   : {len(S):>6}")
+    print(f"k   (cutoff)            : {args.k:>6}")
+    print(f"{'-'*35}")
+    print(f"Sensitivity(S, T, k)    : {result:.3f}")
 
 if __name__ == "__main__":
     main()
