@@ -193,7 +193,7 @@ def main() -> None:
     result = sensitivity(S, T, V, E, args.k)
     print(f"|T| (truth pairs)       : {len(T):>6}")
     print(f"|S| (predicted pairs)   : {len(S):>6}")
-    print(f"k   (cutoff)            : {args.k:>6}")
+    print(f" k  (cutoff)            : {args.k:>6}")
     print(f"{'-'*35}")
     print(f"Sensitivity(S, T, k)    : {result:.3f}")
 
