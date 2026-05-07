@@ -6,10 +6,6 @@ from pprint import pprint
 
 WILDCARD = 'x'
 
-def standardise(a: str, b: str) -> tuple[str, str]:
-    """Return (min, max) under lexicographic order so X <= Y always holds."""
-    return (a, b) if a <= b else (b, a)
-
 def read_fasta(path: str) -> dict[str, str]:
     """Return OrderedDict {id: sequence} from a FASTA file."""
     sequences: dict[str, str] = {}
@@ -60,7 +56,7 @@ def read_truth(path: str) -> list[tuple[str, str]]:
                     file=sys.stderr,
                 )
                 continue
-            pairs.append(standardise(parts[0], parts[1]))
+            pairs.append((parts[0], parts[1]) if parts[0] <= parts[1] else (parts[1], parts[0]))
     return pairs
 
 def read_predictions(path: str) -> list[tuple[str, str]]:
@@ -97,7 +93,7 @@ def find_motif_positions(motif: str, sequence: str) -> set[int]:
     l = len(motif)
     return {i for i in range(len(sequence) - l + 1) if motif_matches(motif, sequence, i)}
 
-def similarity(pair_A: tuple[str, str], pair_B: tuple[str, str], V: dict[str, str], E: list[tuple[str, str]]):
+def similarity(pair_A: tuple[str, str], pair_B: tuple[str, str], V: dict[str, str], E: list[tuple[str, str]]) -> float:
     """
     Returns
         s(pair_A, pair_B, G=(V,E)) = pos(E_A, E_B) / |E_A \\cup E_B|,
@@ -107,12 +103,34 @@ def similarity(pair_A: tuple[str, str], pair_B: tuple[str, str], V: dict[str, st
         - u' matches pair_A[0] and pair_B[0]; and
         - v' matches pair_A[1] and pair_B[1].
     """
-    E_ordered = [standardise(u, v) for u, v in E] # necessary?
-    E_A = {(u, v) for u, v in E_ordered if find_motif_positions(pair_A[0], V[u]) and find_motif_positions(pair_A[1], V[v])}
-    E_B = {(u, v) for u, v in E_ordered if find_motif_positions(pair_B[0], V[u]) and find_motif_positions(pair_B[1], V[v])}
-    pos_AB = {(u, v) for u, v in E_ordered if (find_motif_positions(pair_A[0], V[u]) & find_motif_positions(pair_B[0], V[u])) and
-                                              (find_motif_positions(pair_A[1], V[v]) & find_motif_positions(pair_B[1], V[v]))}
-    return len(pos_AB) / len(E_A | E_B)
+    pos = {motif : {nid: positions
+                    for nid, seq in V.items()
+                    if (positions := find_motif_positions(motif, seq))}
+           for motif in {*pair_A, *pair_B}}
+    E_A, E_B, pos_AB = set(), set(), set()
+    for u, v in E:
+        u, v = (u, v) if u <= v else (v, u)
+
+        a0_u = pos[pair_A[0]].get(u); a1_v = pos[pair_A[1]].get(v)
+        a0_v = pos[pair_A[0]].get(v); a1_u = pos[pair_A[1]].get(u)
+        pair_A_occurs = (a0_u and a1_v) or (a0_v and a1_u)
+
+        b0_u = pos[pair_B[0]].get(u); b1_v = pos[pair_B[1]].get(v)
+        b0_v = pos[pair_B[0]].get(v); b1_u = pos[pair_B[1]].get(u)
+        pair_B_occurs = (b0_u and b1_v) or (b0_v and b1_u)
+
+        if pair_A_occurs: E_A.add((u, v))
+        if pair_B_occurs: E_B.add((u, v))
+        if ((a0_u and b0_u and (a0_u & b0_u)) and
+            (a1_v and b1_v and (a1_v & b1_v))):
+            pos_AB.add((u, v))
+        elif ((a0_v and b0_v and (a0_v & b0_v)) and
+              (a1_u and b1_u and (a1_u & b1_u))):
+            pos_AB.add((u, v))
+    return len(pos_AB) / len(E_A | E_B) if E_A or E_B else 0.0
+
+def sensitivity(S: list[tuple[str, str]], T: list[tuple[str, str]], V: dict[str, str], E: list[tuple[str, str]], k: int) -> float:
+    pass
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
@@ -154,8 +172,8 @@ def main() -> None:
     edges = read_interactions(args.interactions)
     
     # ----- Example -----
-    pair_A, pair_B = truth[0], predictions[4]
-    similarity(pair_A, pair_B, nodes, edges)
+    pair_A, pair_B = truth[0], predictions[0]
+    print(similarity(pair_A, pair_B, nodes, edges))
 
 if __name__ == "__main__":
     main()
