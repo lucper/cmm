@@ -107,21 +107,21 @@ def similarity(pair_A: tuple[str, str], pair_B: tuple[str, str], V: dict[str, st
         elif ((a0_v and b0_v and (a0_v & b0_v)) and
               (a1_u and b1_u and (a1_u & b1_u))):
             pos_AB.add((u, v))
+        elif ((a0_u and b1_u and (a0_u & b1_u)) and
+              (a1_v and b0_v and (a1_v & b0_v))):
+            pos_AB.add((u, v))
+        elif ((a0_v and b1_v and (a0_v & b1_v)) and
+              (a1_u and b0_u and (a1_u & b0_u))):
+            pos_AB.add((u, v))
 
     return len(pos_AB) / len(E_A | E_B) if E_A or E_B else 0.0
 
-def sensitivity(S: list[tuple[str, str]], T: list[tuple[str, str]], V: dict[str, str], E: list[tuple[str, str]], k: int) -> float:
-    if not S or not T:
-        return 0.0
-
+def get_tp_count_and_S_star(S: list[tuple[str, str]], T: list[tuple[str, str]], V: dict[str, str], E: list[tuple[str, str]], k: int) -> float:
     S_star = []
     for candidate in S:
         if not any(similarity(candidate, kept_pair, V, E) == 1.0
                    for kept_pair in S_star):
             S_star.append(candidate)
-
-    if k < 1 or k > len(S_star):
-        raise ValueError(f"k={k} must satisfy 1 <= k <= |S*|={len(S_star)}")
 
     tp_count = sum(
         1
@@ -132,7 +132,15 @@ def sensitivity(S: list[tuple[str, str]], T: list[tuple[str, str]], V: dict[str,
         )
     )
 
-    return tp_count / k
+    return tp_count, S_star
+
+def recall(S: list[tuple[str, str]], T: list[tuple[str, str]], V: dict[str, str], E: list[tuple[str, str]], k: int) -> float:
+    tp_count, _ = get_tp_count_and_S_star(S, T, V, E, k)
+    return tp_count / len(T) if T else 0.0
+
+def precision(S: list[tuple[str, str]], T: list[tuple[str, str]], V: dict[str, str], E: list[tuple[str, str]], k: int) -> float:
+    tp_count, S_star = get_tp_count_and_S_star(S, T, V, E, k)
+    return tp_count / len(S_star[:k]) if S_star[:k] else 0.0
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
@@ -189,13 +197,15 @@ def main() -> None:
     E = read_interactions(args.interactions)
     print(f"        {len(E)} interaction(s) loaded.", file=sys.stderr)
 
-    print(f"\nComputing sensitivity for k={args.k}...\n", file=sys.stderr)
-    result = sensitivity(S, T, V, E, args.k)
+    print(f"\nComputing precision for k={args.k}...\n", file=sys.stderr)
+    ppv = precision(S, T, V, E, args.k)
+    tpr = recall(S, T, V, E, args.k)
     print(f"|T| (truth pairs)       : {len(T):>6}")
     print(f"|S| (predicted pairs)   : {len(S):>6}")
     print(f" k  (cutoff)            : {args.k:>6}")
     print(f"{'-'*35}")
-    print(f"Sensitivity(S, T, k)    : {result:.3f}")
+    print(f"Precision(S, T, k)      : {ppv:.3f}")
+    print(f"Recall(S, T, k)         : {tpr:.3f}")
 
 if __name__ == "__main__":
     main()
