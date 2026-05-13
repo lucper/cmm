@@ -183,7 +183,7 @@ def main() -> None:
         raise SystemExit(f"{args.truth} is empty")
     print(f"        {len(T)} truth pair(s) loaded.", file=sys.stderr)
 
-    print(f"[2/4] Reading predictions   : {args.sequences}", file=sys.stderr)
+    print(f"[2/4] Reading predictions   : {args.predicted}", file=sys.stderr)
     S = read_motif_pairs(args.predicted)
     if not S:
         raise SystemExit(f"{args.predicted} is empty.")
