@@ -9,28 +9,36 @@ def plot_comparison(data_dict, metric_index, ylabel, filename):
     data_dict: {'MethodName': [(ed, prec, rec), ...]}
     metric_index: 1 for Precision, 2 for Recall
     """
+    sns.set_theme(style="ticks", context="paper", font_scale=2.0)
+
+    rows = [
+        {'Method': method, 'Edge density': p[0], ylabel: p[metric_index]}
+        for method, points in data_dict.items()
+        for p in points
+    ]
+    df = pd.DataFrame(rows)
+
     plt.figure(figsize=(10, 6))
-    
-    # Define some distinct markers/colors for variety
-    markers = ['o', 's', '^', 'D', 'v']
-    colors = ['#1f77b4', '#2ca02c', '#d62728', '#9467bd', '#ff7f0e']
 
-    for i, (method, points) in enumerate(data_dict.items()):
-        points.sort() # sort by ed
-        x = [p[0] for p in points]
-        y = [p[metric_index] for p in points]
-        
-        plt.plot(x, y, label=method, marker=markers[i % len(markers)], 
-                 color=colors[i % len(colors)], linewidth=2)
+    plot = sns.lineplot(
+        data=df,
+        x='Edge density',
+        y=ylabel,
+        hue='Method',
+        style='Method',
+        markers=True,
+        dashes=False,
+        linewidth=2.5,
+        markersize=10
+    )
 
-    plt.xlabel('Edge density')
-    plt.ylabel(ylabel)
-    plt.ylim(0, 1.05) # Extra room for clarity
-    plt.grid(True, linestyle=':', alpha=0.6)
-    plt.legend(loc='lower', frameon=True, edgecolor='black')
-    
+    plt.ylim(0, 1.05)
+    plt.legend(title=None, frameon=True, edgecolor='black')
+
+    sns.despine()
+
     plt.tight_layout()
-    plt.savefig(filename, dpi=300)
+    plt.savefig(filename, dpi=300, bbox_inches='tight')
     plt.close()
 
 def main():
