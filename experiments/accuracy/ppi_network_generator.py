@@ -3,6 +3,7 @@
 import argparse
 import random
 import sys
+from operator import itemgetter
 from pathlib import Path
 from itertools import combinations
 
@@ -194,7 +195,7 @@ def run(
 
     # -- Implant instances of all K motifs into sequences ------------------
     minI, maxI = int(0.02 * S), int(0.1 * S)
-    print(f"[4/7] Implanting motif instances (I ∈ [{minI},{maxI}] per motif)...", file=sys.stderr)
+    print(f"[4/7] Implanting motif instances (I ∈ [{minI},{maxI}] sequences per motif)...", file=sys.stderr)
     # motif_hosts[motif_idx] = set of protein IDs that contain that motif
     motif_hosts: dict[int, set[str]] = {i: set() for i in range(K)}
 
@@ -226,7 +227,7 @@ def run(
     all_motif_pairs = list(combinations(motif_indices, 2))
     random.shuffle(all_motif_pairs)
 
-    used_motif_pairs: list[tuple[int, int]] = []
+    used_motif_pairs: set[tuple[int, int]] = set()
 
     for mx, my in all_motif_pairs:
         hosts_x = motif_hosts[mx]
@@ -237,7 +238,7 @@ def run(
                 if u != v:
                     a, b = (u, v) if u <= v else (v, u)
                     implanted_edges.add((a, b))
-        used_motif_pairs.append((mx, my))
+        used_motif_pairs.add((mx, my))
         current_density = edge_density(implanted_edges, S)
         if current_density >= E:
             print(
@@ -259,6 +260,19 @@ def run(
     # edges and replace them entirely so the result is perfectly explained
     # by the implanted motif pairs.
     final_edges = implanted_edges
+
+    # An edge may explain multiple motif pairs, so we add other generated
+    # motif pairs (in addition to the ones considered previously) that co-
+    # occur in the `final_edges` set.
+    for mx, my in all_motif_pairs:
+        hosts_x = motif_hosts[mx]
+        hosts_y = motif_hosts[my]
+        e = sum(
+            1 for u, v in final_edges
+            if (u in hosts_x and v in hosts_y) or (u in hosts_y and v in hosts_x)
+        )
+        if e > 0:
+            used_motif_pairs.add((mx, my))
 
     # -- Verify motifs actually present ------------------------------------
     # After ALL implantations are done, confirm each motif is still detectable.
@@ -328,6 +342,8 @@ def run(
 
         score = compute_f(e, final_density, hosts_x, hosts_y)
         output_pairs.append((motif_x, motif_y, score))
+
+    output_pairs = sorted(output_pairs, key=itemgetter(2,0,1))
 
     # -- Write outputs -----------------------------------------------------
     print("[7/7] Writing outputs...", file=sys.stderr)
