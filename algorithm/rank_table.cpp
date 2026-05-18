@@ -29,10 +29,9 @@ size_t rank_table_t::get_ell() const
 size_t rank_table_t::get_rank_of_substr(size_t i, size_t k) const
 {
     size_t suff = S_offset[k] + i;
-    if (suff + ell >= S_offset[k + 1]) { // ell-mer covers a SEP symbol.
-        std::fprintf(stderr, "Tried to access a substring in invalid suffix.\n");
-        exit(EXIT_FAILURE);
-    }
+    if (suff + ell >= S_offset[k + 1]) // ell-mer covers a SEP symbol.
+        throw std::out_of_range("Invalid substring access: substring in invalid suffix (" +
+                                std::to_string(suff) + ").\n");
     return static_cast<size_t>(R1[suff]);
 }
 
