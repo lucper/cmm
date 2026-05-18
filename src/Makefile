@@ -1,7 +1,7 @@
 CXX      := g++
 CC       := gcc
-CXXFLAGS := -std=c++17 -Wall -Wextra -fno-omit-frame-pointer -O3 -march=native -I.
-CFLAGS   := -O3 -march=native -I.
+CXXFLAGS := -std=c++17 -Wall -Wextra -fno-omit-frame-pointer -O3 -march=native
+CFLAGS   := -O3 -march=native
 LDFLAGS  := -fopenmp
 LIBSAIS_OBJ := libsais64.o libsais.o
 
