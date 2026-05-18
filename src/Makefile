@@ -12,12 +12,15 @@ endif
 CORE_SRCS := motifs_search.cpp rank_table.cpp data_import.cpp
 CORE_OBJS := $(CORE_SRCS:.cpp=.o)
 
-all: libcmm.a cmm
+BINDIR := ../bin
+
+all: libcmm.a $(BINDIR)/cmm
 
 libcmm.a: $(CORE_OBJS) $(LIBSAIS_OBJ)
 	ar rcs $@ $^
 
-cmm: main.o libcmm.a
+$(BINDIR)/cmm: main.o libcmm.a
+	mkdir -p $(BINDIR)
 	$(CXX) $(LDFLAGS) -o $@ $^
 
 %.o: %.cpp
