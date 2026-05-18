@@ -14,7 +14,7 @@ D           := 3
 K           := 10
 S           := 100
 DATASET     := yeast
-TOP_K       := 50
+TOP_K       := 10 20 30 40 50
 OUT_PREFIX  := sampled_$(DATASET)_l$(L)_d$(D)_K$(K)_S$(S)
 PROG_PREFIX := sampled_$(DATASET)_l$(L)_d$(D)_k$(TOP_K)_S$(S)
 RESULTS     := $(foreach m,$(PROGS),results_$(m).txt)
@@ -33,16 +33,18 @@ all: comparison_precision.png comparison_recall.png
 comparison_precision.png comparison_recall.png &: $(RESULTS)
 > cat $^ | $(PYTHON) plot.py
 
-results_%.txt: $(foreach i,$(ED),$(PROG_PREFIX)_e$(i).%.out)
+results_%.txt: $(foreach i,$(ED),$(foreach k,$(TOP_K),sampled_$(DATASET)_l$(L)_d$(D)_k$(k)_S$(S)_e$(i).%.out))
 > rm -f $@
 > for i in $(ED); do \
->   echo -n "$* 0.$${i} " >> $@; \
->   $(PYTHON) evaluate_precision_and_recall.py \
-> 	  --predicted $(PROG_PREFIX)_e$${i}.$*.out \
->	  --k $(TOP_K) \
-> 	  --truth $(OUT_PREFIX)_e$${i}.dat \
->	  --sequences $(OUT_PREFIX)_e$${i}.fa \
->	  --interactions $(OUT_PREFIX)_e$${i}.int >> $@; \
+>   for k in $(TOP_K); do \
+>     echo -n "$*_k$${k} 0.$${i} " >> $@; \
+>     $(PYTHON) evaluate_precision_and_recall.py \
+> 	    --predicted sampled_$(DATASET)_l$(L)_d$(D)_k$${k}_S$(S)_e$${i}.$*.out \
+>	    --k $${k} \
+> 	    --truth $(OUT_PREFIX)_e$${i}.dat \
+>	    --sequences $(OUT_PREFIX)_e$${i}.fa \
+>	    --interactions $(OUT_PREFIX)_e$${i}.int >> $@; \
+>   done; \
 > done
 
 $(OUT_PREFIX)_e%.fa $(OUT_PREFIX)_e%.int $(OUT_PREFIX)_e%.dat &: $(VENV_DIR)/bin/activate
