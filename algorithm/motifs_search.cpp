@@ -65,7 +65,7 @@ std::vector<motif_pair_record_t> main_algo(const std::vector<std::string>& V,
     for (size_t i = 0; i < num_threads; i++)
         workspaces.emplace_back(ESA, ell, V.size(), number_of_edges, max_seq_len);
 
-#ifndef NDEBUG
+#ifdef NDEBUG
     // Progress bar
     using namespace indicators;
     ProgressBar bar(
@@ -218,7 +218,7 @@ std::vector<motif_pair_record_t> main_algo(const std::vector<std::string>& V,
                 ws.intersec_nodes_count_set_indices.clear();
             }
 
-#ifndef NDEBUG
+#ifdef NDEBUG
             // Update progress bar
             size_t current = ++pairs_completed;
             if (current % update_interval == 0 || current == total_pairs) {
@@ -256,8 +256,8 @@ std::vector<motif_pair_record_t> main_algo(const std::vector<std::string>& V,
 
     std::reverse(solution.begin(), solution.end());
 
-#ifdef NDEBUG
-    std::cerr << "Total number of prunings: " << pruning_cnt_global << std::endl;
+#ifndef NDEBUG
+    std::fprintf(stderr, "Total number of prunings: %ld\n", pruning_cnt_global);
 #endif
 
     return solution;

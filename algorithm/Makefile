@@ -7,6 +7,8 @@ LIBSAIS_OBJ := libsais64.o libsais.o
 
 ifdef DEBUG
   CXXFLAGS += -g
+else
+  CXXFLAGS += -DNDEBUG
 endif
 
 CORE_SRCS := motifs_search.cpp rank_table.cpp data_import.cpp
