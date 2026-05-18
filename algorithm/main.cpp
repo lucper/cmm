@@ -70,8 +70,8 @@ int main(int argc, char* argv[]) {
 
         if (supp_func == "E")
             solution = main_algo<sort_by_countE_t>(gi.node_labels, gi.adj_list, ell, d, k, num_threads, true);
-        else if (supp_func == "chi2")
-            solution = main_algo<sort_by_chi2_t>(gi.node_labels, gi.adj_list, ell, d, k, num_threads, true);
+        else if (supp_func == "x2")
+            solution = main_algo<sort_by_x2_t>(gi.node_labels, gi.adj_list, ell, d, k, num_threads, true);
         else
             throw std::invalid_argument("Invalid support function: " + supp_func + ".");
 

@@ -123,9 +123,9 @@ std::vector<motif_pair_record_t> main_algo(const std::vector<std::string>& V,
                 // pruning
                 if (to_prune) {
                     size_t countE_max = std::min(countX * max_countY, countX * max_degree_rank_X);
-                    double max_chi2 =  std::max(0.0, static_cast<double>(countE_max) * chi2_coeff);
+                    double max_x2 =  std::max(0.0, static_cast<double>(countE_max) * x2_coeff);
                     motif_pair_record_t best_candidate;
-                    best_candidate.chi2 = max_chi2;
+                    best_candidate.x2 = max_x2;
                     best_candidate.countE = countE_max;
                     if (ws.topK.size() >= k && !motif_comparator(best_candidate, ws.topK.top())) {
                         ws.pruning_cnt += 1;
