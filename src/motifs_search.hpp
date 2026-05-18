@@ -8,12 +8,15 @@
 #include <utility>
 #include <omp.h>
 #include <cmath>
-#include <atomic>
-#include <indicators/progress_bar.hpp>
-#include <indicators/cursor_control.hpp>
 #include "utils.hpp"
 #include "rank_table.hpp"
 #include "esa.hpp"
+
+#ifndef NDEBUG
+#include <atomic>
+#include <indicators/progress_bar.hpp>
+#include <indicators/cursor_control.hpp>
+#endif
 
 struct motif_pair_record_t {
     size_t rankX, rankY;
@@ -57,6 +60,8 @@ struct thread_workspace_t {
 
     std::vector<bool> rank_membership;
 
+    size_t pruning_cnt; // counter for pruning
+
     thread_workspace_t(const esa_t& ESA, size_t ell, size_t V_size, size_t E_size, size_t max_seq_len)
         : intersec_nodes_count(ESA.N), intersec_nodes_count_set_indices(ESA.N),
           edge_count(ESA.N), edge_count_set_indices(ESA.N),
@@ -67,7 +72,8 @@ struct thread_workspace_t {
           uniq_ranks_per_node_buffer(ESA.N), rank_timestamp(ESA.N + 1),
           edge_timestamp(E_size),
           has_rank_X(V_size, false),
-          rank_membership(ESA.N + 1, false)
+          rank_membership(ESA.N + 1, false),
+          pruning_cnt(0)
     {
         for (size_t i = 0; i < V_size; i++)
             node_offsets_Y[i] = i * max_seq_len;
@@ -138,6 +144,6 @@ struct thread_workspace_t {
 template <typename Tag>
 std::vector<motif_pair_record_t> main_algo(const std::vector<std::string>& V,
                                            const std::vector<std::vector<std::pair<uint32_t, uint32_t>>>& G,
-                                           size_t ell, size_t d, size_t k, size_t num_threads);
+                                           size_t ell, size_t d, size_t k, size_t num_threads, bool to_prune);
 
 #endif

@@ -69,9 +69,9 @@ int main(int argc, char* argv[]) {
         auto start_time = std::chrono::steady_clock::now();
 
         if (supp_func == "E")
-            solution = main_algo<sort_by_countE_t>(gi.node_labels, gi.adj_list, ell, d, k, num_threads);
+            solution = main_algo<sort_by_countE_t>(gi.node_labels, gi.adj_list, ell, d, k, num_threads, true);
         else if (supp_func == "chi2")
-            solution = main_algo<sort_by_chi2_t>(gi.node_labels, gi.adj_list, ell, d, k, num_threads);
+            solution = main_algo<sort_by_chi2_t>(gi.node_labels, gi.adj_list, ell, d, k, num_threads, true);
         else
             throw std::invalid_argument("Invalid support function: " + supp_func + ".");
 
