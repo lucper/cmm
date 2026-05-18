@@ -12,7 +12,7 @@
 #include "rank_table.hpp"
 #include "esa.hpp"
 
-#ifndef NDEBUG
+#ifdef NDEBUG
 #include <atomic>
 #include "indicators.hpp"
 #endif
