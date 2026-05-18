@@ -9,8 +9,7 @@
 #include <omp.h>
 #include <cmath>
 #include <atomic>
-#include <indicators/progress_bar.hpp>
-#include <indicators/cursor_control.hpp>
+#include "indicators.hpp"
 #include "utils.hpp"
 #include "rank_table.hpp"
 #include "esa.hpp"
