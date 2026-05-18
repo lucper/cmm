@@ -9,8 +9,7 @@
 #include <omp.h>
 #include <cmath>
 #include <atomic>
-#include <indicators/progress_bar.hpp>
-#include <indicators/cursor_control.hpp>
+#include "indicators.hpp"
 #include "utils.hpp"
 #include "rank_table.hpp"
 #include "esa.hpp"
@@ -21,17 +20,17 @@ struct motif_pair_record_t {
     size_t countE;
     double countE_bar;
     size_t countX, countY, countXY;
-    double chi2;
+    double x2;
 };
 
 // tags
-struct sort_by_chi2_t {};
+struct sort_by_x2_t {};
 struct sort_by_countE_t {};
 
 template <typename Tag>
 struct motif_pair_record_comp_t {
     bool operator()(const motif_pair_record_t& lhs, const motif_pair_record_t& rhs) const {
-        if constexpr (std::is_same_v<Tag, sort_by_chi2_t>) return lhs.chi2 > rhs.chi2;
+        if constexpr (std::is_same_v<Tag, sort_by_x2_t>) return lhs.x2 > rhs.x2;
         else if constexpr (std::is_same_v<Tag, sort_by_countE_t>) return lhs.countE > rhs.countE;
         else return false;
     }
