@@ -46,12 +46,20 @@ target_link_libraries(cmm_core PUBLIC indicators cxxopts libsais OpenMP::OpenMP_
 target_compile_options(cmm_core PRIVATE
     -Wall -Wextra
     -fno-omit-frame-pointer
-    $<$<CONFIG:Release>:-O3 -march=native -flto>
-    $<$<CONFIG:Debug>:-g -O0 -fno-inline>
+    -O3 -march=native
+    $<$<CONFIG:Release>:-flto>
+    $<$<CONFIG:Debug>:-g>
 )
 
 add_executable(cmm src/main.cpp)
 target_link_libraries(cmm PRIVATE cmm_core OpenMP::OpenMP_CXX)
 target_compile_options(cmm PRIVATE
+    $<$<CONFIG:Release>:-flto>
+)
+
+add_executable(cmm_perf experiments/performance/perf_main_algo.cpp)
+target_include_directories(cmm_perf PRIVATE ${CMAKE_SOURCE_DIR}/src)
+target_link_libraries(cmm_perf PRIVATE cmm_core OpenMP::OpenMP_CXX)
+target_compile_options(cmm_perf PRIVATE
     $<$<CONFIG:Release>:-flto>
 )
