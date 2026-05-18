@@ -3,7 +3,7 @@
 #include <vector>
 #include <iostream>
 #include <cstring>
-#include <cxxopts.hpp>
+#include "cxxopts.hpp"
 #include "motifs_search.hpp"
 #include "data_import.hpp"
 
@@ -17,7 +17,7 @@ int main(int argc, char* argv[]) {
         ("i,interactions", "Path to text file with lines formatted as 'u v', where u and v are sequence IDs from the FASTA file. [required]", cxxopts::value<std::string>())
         ("l,motif-length", "Motif length. [required]", cxxopts::value<int>())
         ("d,number-of-wildcards", "Number in [0,l) of wildcards in motif. [required]", cxxopts::value<int>())
-        ("f,support-function", "Support function to sort motifs ('E', 'chi2'). [required]", cxxopts::value<std::string>())
+        ("f,support-function", "Support function to sort motifs ('E', 'x2'). [required]", cxxopts::value<std::string>())
         ("k,number-of-motifs", "Number of top k motifs.", cxxopts::value<int>()->default_value("1"))
         ("t,threads", "Number of threads.", cxxopts::value<int>()->default_value("1"))
         ("v,version", "Print version.")
@@ -70,8 +70,8 @@ int main(int argc, char* argv[]) {
 
         if (supp_func == "E")
             solution = main_algo<sort_by_countE_t>(gi.node_labels, gi.adj_list, ell, d, k, num_threads);
-        else if (supp_func == "chi2")
-            solution = main_algo<sort_by_chi2_t>(gi.node_labels, gi.adj_list, ell, d, k, num_threads);
+        else if (supp_func == "x2")
+            solution = main_algo<sort_by_x2_t>(gi.node_labels, gi.adj_list, ell, d, k, num_threads);
         else
             throw std::invalid_argument("Invalid support function: " + supp_func + ".");
 
@@ -82,10 +82,15 @@ int main(int argc, char* argv[]) {
         int s = elapsed % 60;
         std::fprintf(stderr, "Total elapsed time: [%dh:%dm:%ds]\n", h, m, s);
 
-        std::fprintf(stdout, "X\tY\tE_XY\tE_XY_bar\tchi2\n");
-        for (auto &mp : solution)
-            std::fprintf(stdout, "%s\t%s\t%ld\t%.2f\t%.2f\n",
-                         mp.X.c_str(), mp.Y.c_str(), mp.countE, mp.countE_bar, mp.chi2);
+        std::fprintf(stdout, "X Y x2\n");
+
+        for (auto &mp : solution) {
+            double f = 0.0;
+            if (supp_func == "E") f = mp.countE;
+            else if (supp_func == "x2") f = mp.x2;
+            std::fprintf(stdout, "%s %s %.2f\n",
+                         mp.X.c_str(), mp.Y.c_str(), f);
+        }
     } catch (const std::exception& e) {
         std::cerr << e.what() << std::endl;
         return EXIT_FAILURE;

@@ -41,12 +41,12 @@ std::vector<motif_pair_record_t> main_algo(const std::vector<std::string>& V,
 
     std::priority_queue<motif_pair_record_t, std::vector<motif_pair_record_t>, motif_comparator_t> topK_global;
 
-    // Parameters for chi2 that depend on graph topology only.
+    // Parameters for x2 that depend on graph topology only.
     size_t number_of_edges = 0;
     for (const auto& node : G) number_of_edges += node.size();
     number_of_edges /= 2;
     double edge_density = static_cast<double>(number_of_edges) / ((G.size() * (G.size() - 1)) / 2);
-    double chi2_coeff = edge_density > 0 ? (std::pow(1.0 - edge_density,2) / edge_density) : 0;
+    double x2_coeff = edge_density > 0 ? (std::pow(1.0 - edge_density,2) / edge_density) : 0;
 
     esa_t ESA(V);
 
@@ -118,9 +118,9 @@ std::vector<motif_pair_record_t> main_algo(const std::vector<std::string>& V,
 
                 // pruning
                 size_t countE_max = std::min(countX * max_countY, countX * max_degree_rank_X);
-                double max_chi2 =  std::max(0.0, static_cast<double>(countE_max) * chi2_coeff);
+                double max_x2 =  std::max(0.0, static_cast<double>(countE_max) * x2_coeff);
                 motif_pair_record_t best_candidate;
-                best_candidate.chi2 = max_chi2;
+                best_candidate.x2 = max_x2;
                 best_candidate.countE = countE_max;
                 if (ws.topK.size() >= k && !motif_comparator(best_candidate, ws.topK.top()))
                     continue;
@@ -185,11 +185,11 @@ std::vector<motif_pair_record_t> main_algo(const std::vector<std::string>& V,
                     size_t Emax = (countX * countY) - ((countXY * (countXY - 1))/2) - countXY;
                     size_t countE = ws.edge_count[rank_Y];
                     double countE_bar = edge_density * Emax;
-                    double chi2 = (countE_bar > 0 && countE > countE_bar) ? (static_cast<double>(std::pow(countE - countE_bar, 2)) / countE_bar) : 0;
+                    double x2 = (countE_bar > 0 && countE > countE_bar) ? (static_cast<double>(std::pow(countE - countE_bar, 2)) / countE_bar) : 0;
 
                     motif_pair_record_t candidate;
                     candidate.countE = countE;
-                    candidate.chi2 = chi2;
+                    candidate.x2 = x2;
                     if (ws.topK.size() < k || motif_comparator(candidate, ws.topK.top())) {
                         candidate.rankX = rank_X;
                         candidate.rankY = rank_Y;
@@ -253,7 +253,7 @@ template std::vector<motif_pair_record_t> main_algo<sort_by_countE_t>(
     size_t, size_t, size_t, size_t
 );
 
-template std::vector<motif_pair_record_t> main_algo<sort_by_chi2_t>(
+template std::vector<motif_pair_record_t> main_algo<sort_by_x2_t>(
     const std::vector<std::string>&,
     const std::vector<std::vector<std::pair<uint32_t, uint32_t>>>&,
     size_t, size_t, size_t, size_t
