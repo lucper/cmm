@@ -62,7 +62,7 @@ Support function to be maximized by the algorithm.
 We support `E`, the number of edges in which a motif pair co-occurs, and `x2`, the $\chi^2$-score.
 
 ## Example
-The following command runs the program in the example input files abov.
+The following command runs the program in the example input files above.
 It retrieves the top 5 motif pairs with highest $\chi^2$-score.
 Each motif will have length 5 and 2 wildcard symbols (`x`).
 ```bash
