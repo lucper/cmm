@@ -17,7 +17,7 @@ cmm_perf.o: cmm_perf.cpp
 	$(CXX) $(CXXFLAGS) -fopenmp -c -o $@ $^
 
 $(LIB):
-	$(MAKE) -C ../../src
+	$(MAKE) -C ../../algorithm
 
 clean:
 	rm -f cmm_perf.o cmm_perf
