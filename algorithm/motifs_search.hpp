@@ -79,7 +79,7 @@ struct thread_workspace_t {
         uniq_ranks_per_node_buffer.clear();
         std::fill(rank_timestamp.begin(), rank_timestamp.end(), 0);
 
-        // TODO: Not sure if this is the best way to do it.
+        // TODO: perhaps refactor a separate struct to handle this.
         bool is_table_X = (&rank_table == &this->rank_table_X);
         auto& active_ranks = is_table_X ? active_ranks_X : active_ranks_Y;
         auto& rank_active_counts = is_table_X ? rank_active_counts_X : rank_active_counts_Y;

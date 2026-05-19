@@ -8,7 +8,7 @@
 #include "data_import.hpp"
 
 int main(int argc, char* argv[]) {
-    cxxopts::Options options("cmm", "Correlated Motif Mining\n");
+    cxxopts::Options options("cmm", "Correlated Motif Miner\n");
     const std::string VERSION = "1.0";
 
     options.set_width(80);
