@@ -5,6 +5,7 @@
 #include <regex>
 #include <string>
 #include <vector>
+#include <set>
 
 #include "motifs_search.hpp"
 #include "data_import.hpp"
