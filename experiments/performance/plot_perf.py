@@ -122,7 +122,7 @@ def make_plots(df: pd.DataFrame, out_dir: str) -> None:
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__,
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("tsv",     help="TSV file produced by cmm_perf")
+    parser.add_argument("tsv",       help="TSV file produced by cmm_perf")
     parser.add_argument("--out-dir", default="plots", help="Output directory for PDFs")
     args = parser.parse_args()
 
