@@ -1,4 +1,8 @@
 ## Installation
+**Requirements:**
+- C++17 compiler (e.g., GCC 7+)
+- GNU/Linux system (e.g., Ubuntu, Fedora)
+
 Run the following command in the current directory to compile and link the code:
 ```bash
 make
