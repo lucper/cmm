@@ -40,7 +40,8 @@ def make_plots(df: pd.DataFrame, out_dir: str) -> None:
 
     for edge_density, df_ed in df.groupby("edge_density"):
         for (ell, df_ell) in df_ed.groupby("ell"):
-            fig, ax = plt.subplots(figsize=(10, 5))
+            # Clean 7x4.5 presentation canvas
+            fig, ax = plt.subplots(figsize=(7, 4.5))
 
             # x positions: one per distinct (V, total_label_len) pair, sorted by V
             instance_keys = (
@@ -59,14 +60,14 @@ def make_plots(df: pd.DataFrame, out_dir: str) -> None:
                 marker = MARKERS[d % len(MARKERS)]
                 ax.plot(xs, df_d["time_ms"] / 1000,
                         color=color, marker=marker,
-                        linewidth=1.8, markersize=6,
+                        linewidth=2.0, markersize=7,
                         label=f"($\\ell={ell}$, $d$={d})")
 
             # Primary x ticks: V values
             ax.set_xticks(list(x_positions))
             ax.set_xticklabels(
                 [str(row.V) for _, row in instance_keys.iterrows()],
-                fontsize=9,
+                fontsize=12,
             )
 
             # Secondary x ticks beneath: total_label_len
@@ -75,40 +76,39 @@ def make_plots(df: pd.DataFrame, out_dir: str) -> None:
             ax2.set_xticks(list(x_positions))
             ax2.set_xticklabels(
                 [f"{row.total_label_len:,}" for _, row in instance_keys.iterrows()],
-                fontsize=7.5, color="#555555",
+                fontsize=11, color="#333333",
             )
             ax2.xaxis.set_ticks_position("bottom")
             ax2.xaxis.set_label_position("bottom")
-            ax2.spines["bottom"].set_position(("outward", 25))
-            ax2.spines["bottom"].set_color(("#555555"))
-            ax2.tick_params(axis="x", colors="#555555")
+
+            ax2.spines["bottom"].set_position(("outward", 32))
+            ax2.spines["bottom"].set_color(("#333333"))
+            ax2.tick_params(axis="x", colors="#333333", labelsize=11)
             ax2.set_xlabel("")
 
             ax.set_xlabel("")
-            fig.canvas.draw()
+
             ax.annotate("$|V|$\t",
                 xy=(0.5, 0), xycoords="axes fraction",
-                xytext=(0, -48), textcoords="offset points",
-                fontsize=10, color="black",
+                xytext=(0, -62), textcoords="offset points",
+                fontsize=13, color="black",
                 ha="right", va="top", annotation_clip=False,
             )
             ax.annotate("$N$",
                 xy=(0.5, 0), xycoords="axes fraction",
-                xytext=(0, -48), textcoords="offset points",
-                fontsize=10, color="#555555",
+                xytext=(0, -62), textcoords="offset points",
+                fontsize=13, color="#333333",
                 ha="left", va="top", annotation_clip=False,
             )
 
-            ax.set_ylabel("Time (s)", fontsize=10)
+            ax.set_ylabel("Time (s)", fontsize=13)
+            ax.tick_params(axis="y", labelsize=12)
             ax.set_yscale("log")
             ax.yaxis.set_major_formatter(ticker.FuncFormatter(
                 lambda x, _: f"{int(x):,}" if x >= 1 else f"{x:.2g}"
             ))
-            ax.set_title(
-                f"Edge density = {edge_density:.2f}",
-                fontsize=11,
-            )
-            ax.legend(title="combination", fontsize=9, title_fontsize=9,
+
+            ax.legend(title="combination", fontsize=11, title_fontsize=11,
                       loc="upper left", framealpha=0.85)
             ax.grid(axis="y", linestyle="--", linewidth=0.6, alpha=0.5)
 
