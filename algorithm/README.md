@@ -1,6 +1,6 @@
 ## Installation
 **Requirements:**
-- C++17 compiler (e.g., GCC 7+)
+- C++17 compiler GCC 7+
 - GNU/Linux system (e.g., Ubuntu, Fedora)
 
 Run the following command in the current directory to compile and link the code:
@@ -11,7 +11,7 @@ make
 The result will be the executable `cmm`.
 By running `./cmm -h`, the followling message should be displayed.
 ```text
-Correlated Motif Mining
+Correlated Motif Miner
 
 Usage:
 cmm [OPTION...]
