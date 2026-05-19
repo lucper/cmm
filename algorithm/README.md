@@ -10,7 +10,7 @@ make
 
 The result will be the executable `cmm`.
 By running `./cmm -h`, the followling message should be displayed.
-```bash
+```text
 Correlated Motif Mining
 
 Usage:
