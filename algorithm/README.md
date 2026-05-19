@@ -11,7 +11,7 @@ make
 The result will be the executable `cmm`.
 By running `./cmm -h`, the followling message should be displayed.
 ```text
-Correlated Motif Mining
+Correlated Motif Miner
 
 Usage:
 cmm [OPTION...]
