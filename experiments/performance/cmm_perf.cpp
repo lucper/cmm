@@ -12,14 +12,15 @@
 namespace fs = std::filesystem;
 
 int main(int argc, char* argv[]) {
-    if (argc < 6) {
+    if (argc < 7) {
         std::fprintf(stderr,
-            "Usage: %s <fa_file> <int_file> <ell> <d> <edge_density>\n\n"
+            "Usage: %s <fa_file> <int_file> <ell> <d> <edge_density> <num_threads>\n\n"
             "  fa_file      : FASTA file with protein sequences\n"
             "  int_file     : interactions file with lines formatted as 'u v'\n"
             "  ell          : motif length\n"
             "  d            : number of wildcards in [0, ell)\n"
-            "  edge_density : edge density of the graph (e.g. 0.05)\n",
+            "  edge_density : edge density of the graph (e.g. 0.05)\n"
+            "  num_threads  : number of threads to be requested\n",
             argv[0]);
         return EXIT_SUCCESS;
     }
@@ -30,6 +31,7 @@ int main(int argc, char* argv[]) {
         int    ell          = std::stoi(argv[3]);
         int    d            = std::stoi(argv[4]);
         double edge_density = std::stod(argv[5]);
+        int    num_threads  = std::stod(argv[6]);
 
         if (!fs::exists(fa_path))
             throw std::runtime_error("FASTA file not found: " + fa_path.string());
@@ -43,7 +45,6 @@ int main(int argc, char* argv[]) {
             throw std::invalid_argument("edge_density must be in (0, 1).");
 
         const int K           = 100;
-        const int NUM_THREADS = omp_get_max_threads();
 
         std::string instance_name = fa_path.stem().string();
 
@@ -51,7 +52,7 @@ int main(int argc, char* argv[]) {
         std::fprintf(stderr, "Edge density      : %.4f\n", edge_density);
         std::fprintf(stderr, "ell               : %d\n", ell);
         std::fprintf(stderr, "d                 : %d\n", d);
-        std::fprintf(stderr, "Requested threads : %d\n", NUM_THREADS);
+        std::fprintf(stderr, "Requested threads : %d\n", num_threads);
         std::fprintf(stderr, "k                 : %d\n", K);
 
         graph_input_t gi = read_graph_files(int_path.string(), fa_path.string());
@@ -66,7 +67,7 @@ int main(int argc, char* argv[]) {
 
         auto t0 = std::chrono::steady_clock::now();
 
-        auto solution = main_algo<sort_by_x2_t>(gi.node_labels, gi.adj_list, ell, d, K, NUM_THREADS, true);
+        auto solution = main_algo<sort_by_x2_t>(gi.node_labels, gi.adj_list, ell, d, K, num_threads, true);
 
         auto t1 = std::chrono::steady_clock::now();
         long ms = std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0).count();
