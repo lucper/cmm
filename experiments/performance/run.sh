@@ -8,15 +8,16 @@ CMM_PERF="./cmm_perf"
 VENV="venv"
 SEED=42
 
-OUT_RQ1="rq1.tsv"
-OUT_RQ2="rq2.tsv"
-OUT_RQ3="rq3.tsv"
+OUT_RQ1="rq1_out.tsv"
+OUT_RQ2="rq2_out.tsv"
+OUT_RQ3="rq3_out.tsv"
 
 MAX_THREADS=64
 TRIALS=5
 
 ## Setup virtual environment
-if [ ! -d "${VENV}" ]; then
+if [ ! -d "${VENV}" ]
+then
     echo "Creating virtual environment..." >&2
     python3 -m venv ${VENV}
     ${VENV}/bin/pip install -q -r requirements.txt
@@ -38,7 +39,8 @@ do
     do
         fa="instances/ed${ed}/sampled_human_V${v}_ed${ed}.fa"
         int="instances/ed${ed}/sampled_human_V${v}_ed${ed}.int"
-        if [ ! -f "${fa}" ] || [ ! -f "${int}" ]; then
+        if [ ! -f "${fa}" ] || [ ! -f "${int}" ]
+        then
             ${GENERATE} \
                 --n ${v} --density 0.${ed} --seed ${SEED} \
                 --out-nodes ${fa} \
@@ -60,7 +62,9 @@ run_cmm_perf() {
 
     local key=$(basename ${fa} .fa)
 
-    if [ -f "${tsv}" ] && grep -q "^${trial}	${key}" ${tsv}; then
+    local uniq_pattern="${trial}|${key}|${ell}|${d}|${threads}"
+    if [ -f "${tsv}" ] && (cut -f 1,2,6,7,10 ${tsv} | tr '\t' '|' | grep -qF "${uniq_pattern}")
+    then
         echo "Skipping trial=${trial} ${key} ell=${ell} d=${d} threads=${threads} -- already done" >&2
         return
     fi
