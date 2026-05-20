@@ -23,9 +23,10 @@ struct motif_pair_record_t {
     double x2;
 };
 
-struct solution_t {
+struct solution_report_t {
     size_t pruning_cnt;
     size_t max_assigned_rank_X;
+    size_t num_threads_spawned;
     std::vector<motif_pair_record_t> motif_pairs;
 };
 
@@ -146,8 +147,8 @@ struct thread_workspace_t {
 };
 
 template <typename Tag>
-solution_t main_algo(const std::vector<std::string>& V,
-                     const std::vector<std::vector<std::pair<uint32_t, uint32_t>>>& G,
-                     size_t ell, size_t d, size_t k, size_t requested_num_threads, bool to_prune);
+solution_report_t main_algo(const std::vector<std::string>& V,
+                            const std::vector<std::vector<std::pair<uint32_t, uint32_t>>>& G,
+                            size_t ell, size_t d, size_t k, size_t requested_num_threads, bool to_prune);
 
 #endif

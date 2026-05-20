@@ -106,7 +106,7 @@ int main(int argc, char* argv[]) {
     if (!out)
         throw std::runtime_error("Cannot open output file: " + output_tsv);
     if (write_header)
-        out << "instance\tedge_density\tV\tN\tell\td\tmax_rank\tpruning_cnt\ttime_ms\n";
+        out << "instance\tedge_density\tV\tN\tell\td\tmax_rank\tpruning_cnt\tnum_threads\ttime_ms\n";
 
     // Check completed instances
     std::set<std::tuple<std::string,int,int>> completed;
@@ -116,8 +116,8 @@ int main(int argc, char* argv[]) {
         std::getline(prev, line); // skip header
         while (std::getline(prev, line)) {
             std::istringstream iss(line);
-            std::string inst; double ed; int v; size_t N; int ell, d; size_t max_rank; size_t pruning_cnt; long ms;
-            if (iss >> inst >> ed >> v >> N >> ell >> d >> max_rank >> pruning_cnt >> ms)
+            std::string inst; double ed; int v; size_t N; int ell, d; size_t max_rank; size_t pruning_cnt; size_t num_threads_spawned; long ms;
+            if (iss >> inst >> ed >> v >> N >> ell >> d >> max_rank >> pruning_cnt >> num_threads_spawned >> ms)
                 completed.insert({inst, ell, d});
         }
     }
@@ -159,6 +159,7 @@ int main(int argc, char* argv[]) {
                 << d                            << '\t'
                 << solution.max_assigned_rank_X << '\t'
                 << solution.pruning_cnt         << '\t'
+                << solution.num_threads_spawned << '\t'
                 << ms                           << '\n';
             out.flush();
         }

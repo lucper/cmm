@@ -28,9 +28,9 @@ static std::vector<std::vector<uint16_t>> all_H_combinations(size_t ell, size_t 
 }
 
 template <typename Tag>
-solution_t main_algo(const std::vector<std::string>& V,
-                     const std::vector<std::vector<std::pair<uint32_t, uint32_t>>>& G,
-                     size_t ell, size_t d, size_t k, size_t requested_num_threads, bool to_prune)
+solution_report_t main_algo(const std::vector<std::string>& V,
+                            const std::vector<std::vector<std::pair<uint32_t, uint32_t>>>& G,
+                            size_t ell, size_t d, size_t k, size_t requested_num_threads, bool to_prune)
 {
     if (k <= 0) throw std::invalid_argument("k must be positive");
     if (ell < 1) throw std::invalid_argument("ell must be positive");
@@ -67,6 +67,8 @@ solution_t main_algo(const std::vector<std::string>& V,
     for (size_t i = 0; i < num_threads; i++)
         workspaces.emplace_back(ESA, ell, V.size(), number_of_edges, max_seq_len);
 
+    size_t num_threads_spawned = 0;
+
 #ifdef NDEBUG
     // Progress bar
     using namespace indicators;
@@ -94,6 +96,9 @@ solution_t main_algo(const std::vector<std::string>& V,
 
     #pragma omp parallel
     {
+    #pragma omp master
+    num_threads_spawned = omp_get_num_threads();
+
     size_t tid = omp_get_thread_num();
     thread_workspace_t<motif_comparator_t>& ws = workspaces[tid];
 
@@ -249,9 +254,10 @@ solution_t main_algo(const std::vector<std::string>& V,
     }
 
     // Get solution from priority queue and set counters
-    solution_t solution;
+    solution_report_t solution;
     solution.pruning_cnt = pruning_cnt_global;
     solution.max_assigned_rank_X = max_assigned_rank_X_global;
+    solution.num_threads_spawned = num_threads_spawned;
     solution.motif_pairs.reserve(topK_global.size());
     while (!topK_global.empty()) {
         solution.motif_pairs.push_back(topK_global.top());
@@ -262,13 +268,13 @@ solution_t main_algo(const std::vector<std::string>& V,
     return solution;
 }
 
-template solution_t main_algo<sort_by_countE_t>(
+template solution_report_t main_algo<sort_by_countE_t>(
     const std::vector<std::string>&,
     const std::vector<std::vector<std::pair<uint32_t, uint32_t>>>&,
     size_t, size_t, size_t, size_t, bool
 );
 
-template solution_t main_algo<sort_by_x2_t>(
+template solution_report_t main_algo<sort_by_x2_t>(
     const std::vector<std::string>&,
     const std::vector<std::vector<std::pair<uint32_t, uint32_t>>>&,
     size_t, size_t, size_t, size_t, bool
