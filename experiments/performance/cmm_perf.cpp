@@ -31,7 +31,7 @@ int main(int argc, char* argv[]) {
         int    ell          = std::stoi(argv[3]);
         int    d            = std::stoi(argv[4]);
         double edge_density = std::stod(argv[5]);
-        int    num_threads  = std::stod(argv[6]);
+        int    num_threads  = std::stoi(argv[6]);
 
         if (!fs::exists(fa_path))
             throw std::runtime_error("FASTA file not found: " + fa_path.string());
@@ -60,7 +60,7 @@ int main(int argc, char* argv[]) {
         for (const auto& s : gi.node_labels) N += s.size();
         size_t V = gi.node_labels.size();
 
-        std::fprintf(stderr, "V                 : %ld\n", V);
+        std::fprintf(stderr, "V                 : %zu\n", V);
         std::fprintf(stderr, "N                 : %zu\n", N);
         std::fprintf(stderr, "Running ...\n");
         std::fflush(stderr);
@@ -78,7 +78,7 @@ int main(int argc, char* argv[]) {
 
         std::fprintf(stderr, "Done: %ld ms, %ld KB\n", ms, peak_ram_kb);
 
-        std::printf("%s\t%.4f\t%ld\t%ld\t%d\t%d\t%zu\t%zu\t%zu\t%ld\t%ld\n",
+        std::printf("%s\t%.4f\t%ld\t%ld\t%d\t%d\t%zu\t%zu\t%d\t%zu\t%ld\t%ld\n",
             instance_name.c_str(),
             edge_density,
             V,
@@ -87,6 +87,7 @@ int main(int argc, char* argv[]) {
             d,
             solution.max_assigned_rank_X,
             solution.pruning_cnt,
+            num_threads,
             solution.num_threads_spawned,
             ms,
             peak_ram_kb);
