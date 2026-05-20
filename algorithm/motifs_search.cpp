@@ -30,7 +30,7 @@ static std::vector<std::vector<uint16_t>> all_H_combinations(size_t ell, size_t 
 template <typename Tag>
 std::vector<motif_pair_record_t> main_algo(const std::vector<std::string>& V,
                                            const std::vector<std::vector<std::pair<uint32_t, uint32_t>>>& G,
-                                           size_t ell, size_t d, size_t k, size_t num_threads)
+                                           size_t ell, size_t d, size_t k, size_t requested_num_threads)
 {
     if (k <= 0) throw std::invalid_argument("k must be positive");
     if (ell < 1) throw std::invalid_argument("ell must be positive");
@@ -57,6 +57,7 @@ std::vector<motif_pair_record_t> main_algo(const std::vector<std::string>& V,
         if (v.length() > max_seq_len)
             max_seq_len = v.length();
 
+    size_t num_threads = std::min(all_H.size(), requested_num_threads);
     omp_set_num_threads(num_threads);
     std::vector<thread_workspace_t<motif_comparator_t>> workspaces;
     workspaces.reserve(num_threads);

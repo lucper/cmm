@@ -137,6 +137,6 @@ struct thread_workspace_t {
 template <typename Tag>
 std::vector<motif_pair_record_t> main_algo(const std::vector<std::string>& V,
                                            const std::vector<std::vector<std::pair<uint32_t, uint32_t>>>& G,
-                                           size_t ell, size_t d, size_t k, size_t num_threads);
+                                           size_t ell, size_t d, size_t k, size_t requested_num_threads);
 
 #endif
