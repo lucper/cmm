@@ -1,9 +1,7 @@
 #include <chrono>
 #include <filesystem>
 #include <iostream>
-#include <regex>
 #include <string>
-#include <vector>
 #include <sys/resource.h>
 
 #include "motifs_search_test.hpp"
@@ -78,7 +76,7 @@ int main(int argc, char* argv[]) {
 
         std::fprintf(stderr, "Done: %ld ms, %ld KB\n", ms, peak_ram_kb);
 
-        std::printf("%s\t%.4f\t%ld\t%ld\t%d\t%d\t%zu\t%zu\t%d\t%zu\t%ld\t%ld\n",
+        std::printf("%s\t%.4f\t%zu\t%zu\t%d\t%d\t%zu\t%zu\t%d\t%zu\t%ld\t%ld\n",
             instance_name.c_str(),
             edge_density,
             V,
