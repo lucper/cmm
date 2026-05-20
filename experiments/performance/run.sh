@@ -125,7 +125,7 @@ done
 ## RQ3
 echo "Running experiment for RQ3..." >&2
 ED=05
-V=100
+V=50
 ELL=8
 D=4
 for trial in $(seq 1 ${TRIALS})
