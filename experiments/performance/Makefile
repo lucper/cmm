@@ -4,6 +4,8 @@ LDFLAGS  := -fopenmp
 
 ifdef DEBUG
   CXXFLAGS += -g
+else
+  CXXFLAGS += -DNDEBUG
 endif
 
 ALG_DIR  := ../../algorithm
