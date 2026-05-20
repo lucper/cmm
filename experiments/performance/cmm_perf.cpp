@@ -92,10 +92,10 @@ int main(int argc, char* argv[]) {
     const int    NUM_THREADS  = omp_get_max_threads() - 1;
     const double edge_density = parse_edge_density(input_dir.filename().string());
 
-    std::fprintf(stderr, "Directory  : %s\n", input_dir.string().c_str());
-    std::fprintf(stderr, "Edge density: %.4f\n", edge_density);
-    std::fprintf(stderr, "Threads    : %d\n", NUM_THREADS);
-    std::fprintf(stderr, "k          : %d\n", K);
+    std::fprintf(stderr, "Directory         : %s\n", input_dir.string().c_str());
+    std::fprintf(stderr, "Edge density      : %.4f\n", edge_density);
+    std::fprintf(stderr, "Requested threads : %d\n", NUM_THREADS);
+    std::fprintf(stderr, "k                 : %d\n", K);
 
     auto pairs = collect_pairs(input_dir);
     std::fprintf(stderr, "Instances  : %zu\n\n", pairs.size());
