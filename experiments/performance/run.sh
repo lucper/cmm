@@ -47,26 +47,28 @@ done
 
 ## RQ2: impact of edge density
 V=100
-for e in 05 10 15 20 25 30
+for trial in 1 2 3 4 5
 do
-    ell=5
-    for d in 0 1 2
+    for e in 05 10 15 20 25 30
     do
-        ./cmm_perf \
-            instances/ed${e}/sampled_human_V${V}_ed${e}.fa \
-            instances/ed${e}/sampled_human_V${V}_ed${e}.int \
-            ${ell} ${d} 0.${e} ${MAX_THREADS} >> ${OUT_RQ2}
-    done
-
-    ell=8
-    for d in 0 1 2 3 4
-    do
-        ./cmm_perf \
-            instances/ed${e}/sampled_human_V${V}_ed${e}.fa \
-            instances/ed${e}/sampled_human_V${V}_ed${e}.int \
-            ${ell} ${d} 0.${e} ${MAX_THREADS} >> ${OUT_RQ2}
-    done
+        ell=5
+        for d in 0 1 2
+        do
+            ./cmm_perf \
+                instances/ed${e}/sampled_human_V${V}_ed${e}.fa \
+                instances/ed${e}/sampled_human_V${V}_ed${e}.int \
+                ${ell} ${d} 0.${e} ${MAX_THREADS} >> ${OUT_RQ2}
+        done
     
+        ell=8
+        for d in 0 1 2 3 4
+        do
+            ./cmm_perf \
+                instances/ed${e}/sampled_human_V${V}_ed${e}.fa \
+                instances/ed${e}/sampled_human_V${V}_ed${e}.int \
+                ${ell} ${d} 0.${e} ${MAX_THREADS} >> ${OUT_RQ2}
+        done
+    done
 done
 
 ## RQ3: memory
