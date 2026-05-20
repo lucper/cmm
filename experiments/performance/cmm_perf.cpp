@@ -7,7 +7,7 @@
 #include <vector>
 #include <set>
 
-#include "motifs_search.hpp"
+#include "motifs_search_test.hpp"
 #include "data_import.hpp"
 
 namespace fs = std::filesystem;

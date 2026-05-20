@@ -9,15 +9,15 @@ ifdef DEBUG
   CXXFLAGS += -g
 endif
 
-CORE_SRCS := motifs_search.cpp rank_table.cpp data_import.cpp
+CORE_SRCS := rank_table.cpp data_import.cpp
 CORE_OBJS := $(CORE_SRCS:.cpp=.o)
 
-all: libcmm.a cmm
+all: librank.a cmm
 
-libcmm.a: $(CORE_OBJS) $(LIBSAIS_OBJ)
+librank.a: $(CORE_OBJS) $(LIBSAIS_OBJ)
 	ar rcs $@ $^
 
-cmm: main.o libcmm.a
+cmm: main.o motifs_search.cpp librank.a
 	$(CXX) $(LDFLAGS) -o $@ $^
 
 %.o: %.cpp
@@ -27,4 +27,4 @@ cmm: main.o libcmm.a
 	$(CC) $(CFLAGS) -c -o $@ $^
 
 clean:
-	rm -f *.o libcmm.a cmm
+	rm -f *.o librank.a cmm
