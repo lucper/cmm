@@ -106,7 +106,7 @@ int main(int argc, char* argv[]) {
     if (!out)
         throw std::runtime_error("Cannot open output file: " + output_tsv);
     if (write_header)
-        out << "instance\tedge_density\tV\ttotal_label_len\tell\td\ttime_ms\n";
+        out << "instance\tedge_density\tV\tN\tell\td\tmax_rank\tpruning_cnt\ttime_ms\n";
 
     // Check completed instances
     std::set<std::tuple<std::string,int,int>> completed;
@@ -116,8 +116,8 @@ int main(int argc, char* argv[]) {
         std::getline(prev, line); // skip header
         while (std::getline(prev, line)) {
             std::istringstream iss(line);
-            std::string inst; double ed; int v; size_t tll; int ell, d; long ms;
-            if (iss >> inst >> ed >> v >> tll >> ell >> d >> ms)
+            std::string inst; double ed; int v; size_t N; int ell, d; size_t max_rank; size_t pruning_cnt; long ms;
+            if (iss >> inst >> ed >> v >> N >> ell >> d >> max_rank >> pruning_cnt >> ms)
                 completed.insert({inst, ell, d});
         }
     }
@@ -129,9 +129,9 @@ int main(int argc, char* argv[]) {
         std::fprintf(stderr, "--- Instance: %s (V=%d) ---\n", instance_name.c_str(), V);
 
         graph_input_t gi = read_graph_files(int_path.string(), fa_path.string());
-        size_t tll = total_label_length(gi.node_labels);
+        size_t N = total_label_length(gi.node_labels);
 
-        std::fprintf(stderr, "  total_label_len = %zu\n", tll);
+        std::fprintf(stderr, "  N = %zu\n", N);
 
         for (const auto& [ell, d] : PARAM_MATRIX) {
             if (completed.count({instance_name, ell, d})) {
@@ -144,20 +144,22 @@ int main(int argc, char* argv[]) {
 
             auto t0 = std::chrono::steady_clock::now();
 
-            main_algo<sort_by_x2_t>(gi.node_labels, gi.adj_list, ell, d, K, NUM_THREADS, true);
+            auto solution = main_algo<sort_by_x2_t>(gi.node_labels, gi.adj_list, ell, d, K, NUM_THREADS, true);
 
             auto t1  = std::chrono::steady_clock::now();
             long ms  = std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0).count();
 
             std::fprintf(stderr, "%ld ms\n", ms);
 
-            out << instance_name   << '\t'
-                << edge_density    << '\t'
-                << V               << '\t'
-                << tll             << '\t'
-                << ell             << '\t'
-                << d               << '\t'
-                << ms              << '\n';
+            out << instance_name                << '\t'
+                << edge_density                 << '\t'
+                << V                            << '\t'
+                << N                            << '\t'
+                << ell                          << '\t'
+                << d                            << '\t'
+                << solution.max_assigned_rank_X << '\t'
+                << solution.pruning_cnt         << '\t'
+                << ms                           << '\n';
             out.flush();
         }
     }
