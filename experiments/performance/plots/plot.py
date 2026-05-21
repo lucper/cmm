@@ -88,12 +88,9 @@ def plot_one(df_ell, x_col, x_label, y_col, y_label, title,
         ax2 = ax.twiny()
         ax2.set_xlim(ax.get_xlim())
         ax2.set_xticks(x_positions)
-        ax2.set_xticklabels(
-            [str(secondary_map.get(v, "")) for v in x_vals],
-            color="gray", fontsize=8
-        )
-        ax2.set_xlabel(secondary_label, color="gray", fontsize=9)
-        ax2.tick_params(axis="x", colors="gray")
+        ax2.set_xticklabels([str(secondary_map.get(v, "")) for v in x_vals], fontsize=10)
+        ax2.set_xlabel(secondary_label, fontsize=11)
+        ax2.tick_params(axis="x", labelsize=10)
 
     fig.savefig(output_path, format="pdf", bbox_inches="tight")
     plt.close(fig)
