@@ -2,9 +2,7 @@
 
 import argparse
 import pandas as pd
-import numpy as np
 import matplotlib.pyplot as plt
-import matplotlib.ticker as mticker
 import seaborn as sns
 from pathlib import Path
 
@@ -16,166 +14,183 @@ COLS = [
     "time_ms", "peak_ram_kb"
 ]
 
+ELLS = [5, 8]
+
 def load(path):
     df = pd.read_csv(path, sep="\t", header=None, names=COLS)
-    df["time_s"]    = df["time_ms"] / 1000.0
+    df = df[df["ell"].isin(ELLS)]
+    df["time_s"]      = df["time_ms"] / 1000.0
     df["peak_ram_mb"] = df["peak_ram_kb"] / 1024.0
     return df
 
-def aggregate(df, group_cols, value_col, error):
-    agg = df.groupby(group_cols)[value_col].agg(
-        median="median",
-        vmin="min",
-        vmax="max"
-    ).reset_index()
-    return agg
-
 def v_to_n(df):
-    """Return a dict mapping V -> median N (N is fixed per V by seed)."""
-    return df.groupby("V")["N"].median().astype(int).to_dict()
+    return df.drop_duplicates("V").set_index("V")["N"].to_dict()
 
 def req_to_spawned(df):
-    """Return a dict mapping num_threads_requested -> median num_threads_spawned."""
-    return df.groupby("num_threads_requested")["num_threads_spawned"].median().astype(int).to_dict()
+    return df.drop_duplicates("num_threads_requested") \
+             .set_index("num_threads_requested")["num_threads_spawned"].to_dict()
 
-def make_secondary_xaxis(ax, primary_ticks, mapping, label, color="gray"):
-    """Add a secondary x-axis on top with mapped tick labels."""
-    ax2 = ax.twiny()
-    ax2.set_xlim(ax.get_xlim())
-    ax2.set_xticks(primary_ticks)
-    ax2.set_xticklabels(
-        [str(mapping.get(t, "")) for t in primary_ticks],
-        color=color, fontsize=8
-    )
-    ax2.set_xlabel(label, color=color, fontsize=9)
-    ax2.tick_params(axis="x", colors=color)
-    return ax2
+def plot_one(df_ell, x_col, x_label, y_col, y_label, title,
+             error, secondary_map, secondary_label, output_path,
+             ell=None, show_max_rank=False):
+    ds      = sorted(df_ell["d"].unique())
+    palette = sns.color_palette("tab10", n_colors=len(ds))
 
-def plot_rq(df, x_col, x_label, y_col, y_label, title,
-            error, secondary_map, secondary_label,
-            output_path):
-    """
-    Generic plot: subplots per ell, lines per d.
-    """
-    ells = sorted(df["ell"].unique())
-    n_subplots = len(ells)
+    x_vals      = sorted(df_ell[x_col].unique())
+    x_to_pos    = {v: i for i, v in enumerate(x_vals)}
+    x_positions = list(range(len(x_vals)))
 
-    fig, axes = plt.subplots(1, n_subplots, figsize=(5 * n_subplots, 4),
-                             sharey=False, constrained_layout=True)
-    if n_subplots == 1:
-        axes = [axes]
+    fig, ax = plt.subplots(figsize=(7, 4.5), constrained_layout=True)
 
-    palette = sns.color_palette("tab10")
+    for color, d in zip(palette, ds):
+        sub = df_ell[df_ell["d"] == d].groupby(x_col).agg(
+            median=(y_col, "median"),
+            vmin=(y_col, "min"),
+            vmax=(y_col, "max"),
+            max_rank=("max_rank", "first")
+        ).reset_index().sort_values(x_col)
 
-    for ax, ell in zip(axes, ells):
-        sub = df[df["ell"] == ell]
-        ds  = sorted(sub["d"].unique())
+        xs = [x_to_pos[v] for v in sub[x_col]]
 
-        group_cols = [x_col, "ell", "d"]
-        agg = aggregate(sub, group_cols, y_col, error)
+        label = f"($\\ell$={ell}, $d$={d})" if ell else f"$d$={d}"
+        ax.plot(xs, sub["median"],
+                marker="o", linewidth=2.0, markersize=7,
+                label=label, color=color)
+        if error:
+            ax.fill_between(xs, sub["vmin"], sub["vmax"],
+                            alpha=0.2, color=color)
 
-        for i, d in enumerate(ds):
-            row = agg[agg["d"] == d].sort_values(x_col)
-            color = palette[i % len(palette)]
-            ax.plot(row[x_col], row["median"],
-                    marker="o", label=f"d={d}", color=color)
-            if error:
-                ax.fill_between(row[x_col], row["vmin"], row["vmax"],
-                                alpha=0.2, color=color)
+        if show_max_rank:
+            for x, y, r in zip(xs, sub["median"], sub["max_rank"]):
+                ax.annotate(
+                    f"{int(r):,}",
+                    xy=(x, y),
+                    xytext=(0, 6),
+                    textcoords="offset points",
+                    ha="center", va="bottom",
+                    fontsize=7, color="gray",
+                    fontfamily="monospace"
+                )
 
-        ax.set_xlabel(x_label, fontsize=10)
-        ax.set_ylabel(y_label, fontsize=10)
-        ax.set_title(f"ell={ell}", fontsize=11)
-        ax.legend(fontsize=8)
-        sns.despine(ax=ax)
+    ax.set_xticks(x_positions)
+    ax.set_xticklabels([str(v) for v in x_vals], fontsize=10)
+    ax.set_xlim(-0.5, len(x_vals) - 0.5)
 
-        # Secondary x-axis
-        if secondary_map is not None:
-            primary_ticks = sorted(sub[x_col].unique())
-            make_secondary_xaxis(ax, primary_ticks, secondary_map,
-                                 secondary_label, color="gray")
+    ax.set_xlabel(x_label, fontsize=11)
+    ax.set_ylabel(y_label, fontsize=11)
+    ax.set_title(title, fontsize=12)
+    ax.tick_params(axis="y", labelsize=10)
+    ax.legend(fontsize=9)
+    ax.grid(axis="y", linestyle="--", linewidth=0.6, alpha=0.5)
+    sns.despine(ax=ax)
 
-    fig.suptitle(title, fontsize=13, fontweight="bold")
+    if secondary_map is not None:
+        ax2 = ax.twiny()
+        ax2.set_xlim(ax.get_xlim())
+        ax2.set_xticks(x_positions)
+        ax2.set_xticklabels(
+            [str(secondary_map.get(v, "")) for v in x_vals],
+            color="gray", fontsize=8
+        )
+        ax2.set_xlabel(secondary_label, color="gray", fontsize=9)
+        ax2.tick_params(axis="x", colors="gray")
+
     fig.savefig(output_path, format="pdf", bbox_inches="tight")
     plt.close(fig)
     print(f"Saved: {output_path}")
 
-def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--input",  required=True, help="Input TSV file")
-    parser.add_argument("--rq",     required=True, choices=["rq1", "rq2", "rq3"],
-                        help="Which RQ to plot")
-    parser.add_argument("--output", required=True, help="Output PDF file")
-    parser.add_argument("--error",  action="store_true",
-                        help="Show min/max error bands")
-    args = parser.parse_args()
-
-    sns.set_theme(style="whitegrid", font_scale=1.0)
-
-    df = load(args.input)
-
-    if args.rq == "rq1":
-        v2n = v_to_n(df)
-        plot_rq(
-            df,
+def run_rq1(df, stem, error, max_rank):
+    v2n = v_to_n(df)
+    for ell in ELLS:
+        plot_one(
+            df_ell=df[df["ell"] == ell],
             x_col="V",
-            x_label="V (number of nodes)",
+            x_label="$V$",
             y_col="time_s",
             y_label="Time (s)",
-            title="RQ1: Impact of V and N on running time",
-            error=args.error,
+            title="",
+            error=error,
             secondary_map=v2n,
-            secondary_label="N (total sequence length)",
-            output_path=args.output
+            secondary_label="$N$",
+            output_path=f"{stem}_ell{ell}.pdf",
+            ell=ell,
+            show_max_rank=max_rank
         )
 
-    elif args.rq == "rq2":
-        df["edge_density_pct"] = (df["edge_density"] * 100).round().astype(int)
-        plot_rq(
-            df,
+def run_rq2(df, stem, error, max_rank):
+    df["edge_density_pct"] = (df["edge_density"] * 100).round().astype(int)
+    for ell in ELLS:
+        plot_one(
+            df_ell=df[df["ell"] == ell],
             x_col="edge_density_pct",
             x_label="Edge density (%)",
             y_col="time_s",
             y_label="Time (s)",
-            title="RQ2: Impact of edge density on running time",
-            error=args.error,
+            title="",
+            error=error,
             secondary_map=None,
             secondary_label=None,
-            output_path=args.output
+            output_path=f"{stem}_ell{ell}.pdf",
+            ell=ell,
+            show_max_rank=max_rank
         )
 
+def run_rq3(df, stem, error, max_rank):
+    req2spawned = req_to_spawned(df)
+
+    # Time plot
+    plot_one(
+        df_ell=df,
+        x_col="num_threads_requested",
+        x_label="Threads requested",
+        y_col="time_s",
+        y_label="Time (s)",
+        title="",
+        error=error,
+        secondary_map=req2spawned,
+        secondary_label="Threads spawned",
+        output_path=f"{stem}_time.pdf",
+        show_max_rank=max_rank
+    )
+
+    # Memory plot
+    plot_one(
+        df_ell=df,
+        x_col="num_threads_requested",
+        x_label="Threads requested",
+        y_col="peak_ram_mb",
+        y_label="Peak RAM (MB)",
+        title="",
+        error=error,
+        secondary_map=req2spawned,
+        secondary_label="Threads spawned",
+        output_path=f"{stem}_memory.pdf",
+        show_max_rank=False  # max_rank not meaningful for memory plot
+    )
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--input",    required=True)
+    parser.add_argument("--rq",       required=True, choices=["rq1", "rq2", "rq3"])
+    parser.add_argument("--output",   required=True,
+                        help="Output stem (e.g. rq1)")
+    parser.add_argument("--error",    action="store_true",
+                        help="Show min/max error bands")
+    parser.add_argument("--max-rank", action="store_true",
+                        help="Annotate each point with its max_rank value")
+    args = parser.parse_args()
+
+    sns.set_theme(style="white", font_scale=1.0)
+
+    df   = load(args.input)
+    stem = str(Path(args.output).with_suffix(""))  # strip extension if given
+
+    if args.rq == "rq1":
+        run_rq1(df, stem, args.error, args.max_rank)
+    elif args.rq == "rq2":
+        run_rq2(df, stem, args.error, args.max_rank)
     elif args.rq == "rq3":
-        req2spawned = req_to_spawned(df)
-        stem = Path(args.output).stem
-        parent = Path(args.output).parent
-
-        # Time plot
-        plot_rq(
-            df,
-            x_col="num_threads_requested",
-            x_label="Threads requested",
-            y_col="time_s",
-            y_label="Time (s)",
-            title="RQ3: Scaling — running time",
-            error=args.error,
-            secondary_map=req2spawned,
-            secondary_label="Threads spawned",
-            output_path=str(parent / f"{stem}_time.pdf")
-        )
-
-        # Memory plot
-        plot_rq(
-            df,
-            x_col="num_threads_requested",
-            x_label="Threads requested",
-            y_col="peak_ram_mb",
-            y_label="Peak RAM (MB)",
-            title="RQ3: Scaling — peak memory",
-            error=args.error,
-            secondary_map=req2spawned,
-            secondary_label="Threads spawned",
-            output_path=str(parent / f"{stem}_memory.pdf")
-        )
+        run_rq3(df, stem, args.error, args.max_rank)
 
 if __name__ == "__main__":
     main()
