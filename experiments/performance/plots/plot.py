@@ -52,7 +52,7 @@ def plot_one(df_ell, x_col, x_label, y_col, y_label, title,
 
         xs = [x_to_pos[v] for v in sub[x_col]]
 
-        label = f"($\\ell$={ell}, $d$={d})" if ell else f"$d$={d}"
+        label = f"($\\ell$={ell}, $d$={d})" if ell is not None else f"$d$={d}"
         ax.plot(xs, sub["median"],
                 marker="o", linewidth=2.0, markersize=7,
                 label=label, color=color)
@@ -109,7 +109,21 @@ def run_rq1(df, stem, error, max_rank):
             error=error,
             secondary_map=v2n,
             secondary_label="$N$",
-            output_path=f"{stem}_ell{ell}.pdf",
+            output_path=f"{stem}_ell{ell}_time.pdf",
+            ell=ell,
+            show_max_rank=max_rank
+        )
+        plot_one(
+            df_ell=df[df["ell"] == ell],
+            x_col="V",
+            x_label="$V$",
+            y_col="peak_ram_mb",
+            y_label="Peak RAM (MB)",
+            title="",
+            error=error,
+            secondary_map=v2n,
+            secondary_label="$N$",
+            output_path=f"{stem}_ell{ell}_memory.pdf",
             ell=ell,
             show_max_rank=max_rank
         )
@@ -127,7 +141,21 @@ def run_rq2(df, stem, error, max_rank):
             error=error,
             secondary_map=None,
             secondary_label=None,
-            output_path=f"{stem}_ell{ell}.pdf",
+            output_path=f"{stem}_ell{ell}_time.pdf",
+            ell=ell,
+            show_max_rank=max_rank
+        )
+        plot_one(
+            df_ell=df[df["ell"] == ell],
+            x_col="edge_density_pct",
+            x_label="Edge density (%)",
+            y_col="peak_ram_mb",
+            y_label="Peak RAM (MB)",
+            title="",
+            error=error,
+            secondary_map=None,
+            secondary_label=None,
+            output_path=f"{stem}_ell{ell}_memory.pdf",
             ell=ell,
             show_max_rank=max_rank
         )
@@ -135,7 +163,6 @@ def run_rq2(df, stem, error, max_rank):
 def run_rq3(df, stem, error, max_rank):
     req2spawned = req_to_spawned(df)
 
-    # Time plot
     plot_one(
         df_ell=df,
         x_col="num_threads_requested",
@@ -150,7 +177,6 @@ def run_rq3(df, stem, error, max_rank):
         show_max_rank=max_rank
     )
 
-    # Memory plot
     plot_one(
         df_ell=df,
         x_col="num_threads_requested",
