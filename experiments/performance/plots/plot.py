@@ -68,19 +68,19 @@ def plot_one(df_ell, x_col, x_label, y_col, y_label, title,
                     xytext=(0, 6),
                     textcoords="offset points",
                     ha="center", va="bottom",
-                    fontsize=7, color="gray",
+                    fontsize=14, color="gray",
                     fontfamily="monospace"
                 )
 
     ax.set_xticks(x_positions)
-    ax.set_xticklabels([str(v) for v in x_vals], fontsize=10)
+    ax.set_xticklabels([str(v) for v in x_vals], fontsize=18)
     ax.set_xlim(-0.5, len(x_vals) - 0.5)
 
-    ax.set_xlabel(x_label, fontsize=11)
-    ax.set_ylabel(y_label, fontsize=11)
-    ax.set_title(title, fontsize=12)
-    ax.tick_params(axis="y", labelsize=10)
-    ax.legend(fontsize=9)
+    ax.set_xlabel(x_label, fontsize=20)
+    ax.set_ylabel(y_label, fontsize=20)
+    ax.set_title(title, fontsize=12) # not needed?
+    ax.tick_params(axis="y", labelsize=18)
+    ax.legend(fontsize=18)
     ax.grid(axis="y", linestyle="--", linewidth=0.6, alpha=0.5)
     sns.despine(ax=ax)
 
@@ -88,9 +88,9 @@ def plot_one(df_ell, x_col, x_label, y_col, y_label, title,
         ax2 = ax.twiny()
         ax2.set_xlim(ax.get_xlim())
         ax2.set_xticks(x_positions)
-        ax2.set_xticklabels([str(secondary_map.get(v, "")) for v in x_vals], fontsize=10)
-        ax2.set_xlabel(secondary_label, fontsize=11)
-        ax2.tick_params(axis="x", labelsize=10)
+        ax2.set_xticklabels([str(secondary_map.get(v, "")) for v in x_vals], fontsize=18)
+        ax2.set_xlabel(secondary_label, fontsize=20)
+        ax2.tick_params(axis="x", labelsize=18)
 
     fig.savefig(output_path, format="pdf", bbox_inches="tight")
     plt.close(fig)
