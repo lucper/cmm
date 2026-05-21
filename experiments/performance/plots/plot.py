@@ -32,7 +32,7 @@ def req_to_spawned(df):
 
 def plot_one(df_ell, x_col, x_label, y_col, y_label, title,
              error, secondary_map, secondary_label, output_path,
-             ell=None, show_max_rank=False):
+             ell=None, show_max_rank=False, log_scale=False):
     ds      = sorted(df_ell["d"].unique())
     palette = sns.color_palette("tab10", n_colors=len(ds))
 
@@ -84,6 +84,9 @@ def plot_one(df_ell, x_col, x_label, y_col, y_label, title,
     ax.grid(axis="y", linestyle="--", linewidth=0.6, alpha=0.5)
     sns.despine(ax=ax)
 
+    if log_scale:
+        ax.set_yscale("log")
+
     if secondary_map is not None:
         ax2 = ax.twiny()
         ax2.set_xlim(ax.get_xlim())
@@ -96,7 +99,7 @@ def plot_one(df_ell, x_col, x_label, y_col, y_label, title,
     plt.close(fig)
     print(f"Saved: {output_path}")
 
-def run_rq1(df, stem, error, max_rank):
+def run_rq1(df, stem, error, max_rank, log_scale):
     v2n = v_to_n(df)
     for ell in ELLS:
         plot_one(
@@ -111,7 +114,8 @@ def run_rq1(df, stem, error, max_rank):
             secondary_label="$N$",
             output_path=f"{stem}_ell{ell}_time.pdf",
             ell=ell,
-            show_max_rank=max_rank
+            show_max_rank=max_rank,
+            log_scale=log_scale
         )
         plot_one(
             df_ell=df[df["ell"] == ell],
@@ -125,10 +129,11 @@ def run_rq1(df, stem, error, max_rank):
             secondary_label="$N$",
             output_path=f"{stem}_ell{ell}_memory.pdf",
             ell=ell,
-            show_max_rank=max_rank
+            show_max_rank=max_rank,
+            log_scale=log_scale
         )
 
-def run_rq2(df, stem, error, max_rank):
+def run_rq2(df, stem, error, max_rank, log_scale):
     df["edge_density_pct"] = (df["edge_density"] * 100).round().astype(int)
     for ell in ELLS:
         plot_one(
@@ -143,7 +148,8 @@ def run_rq2(df, stem, error, max_rank):
             secondary_label=None,
             output_path=f"{stem}_ell{ell}_time.pdf",
             ell=ell,
-            show_max_rank=max_rank
+            show_max_rank=max_rank,
+            log_scale=log_scale
         )
         plot_one(
             df_ell=df[df["ell"] == ell],
@@ -157,10 +163,11 @@ def run_rq2(df, stem, error, max_rank):
             secondary_label=None,
             output_path=f"{stem}_ell{ell}_memory.pdf",
             ell=ell,
-            show_max_rank=max_rank
+            show_max_rank=max_rank,
+            log_scale=log_scale
         )
 
-def run_rq3(df, stem, error, max_rank):
+def run_rq3(df, stem, error, max_rank, log_scale):
     req2spawned = req_to_spawned(df)
 
     plot_one(
@@ -174,7 +181,8 @@ def run_rq3(df, stem, error, max_rank):
         secondary_map=req2spawned,
         secondary_label="Threads spawned",
         output_path=f"{stem}_time.pdf",
-        show_max_rank=max_rank
+        show_max_rank=max_rank,
+        log_scale=log_scale
     )
 
     plot_one(
@@ -188,7 +196,8 @@ def run_rq3(df, stem, error, max_rank):
         secondary_map=req2spawned,
         secondary_label="Threads spawned",
         output_path=f"{stem}_memory.pdf",
-        show_max_rank=False  # max_rank not meaningful for memory plot
+        show_max_rank=False,  # max_rank not meaningful for memory plot
+        log_scale=log_scale
     )
 
 def main():
@@ -201,6 +210,8 @@ def main():
                         help="Show min/max error bands")
     parser.add_argument("--max-rank", action="store_true",
                         help="Annotate each point with its max_rank value")
+    parser.add_argument("--log-scale", action="store_true",
+                        help="Use log scale on y-axis")
     args = parser.parse_args()
 
     sns.set_theme(style="white", font_scale=1.0)
@@ -209,11 +220,11 @@ def main():
     stem = str(Path(args.output).with_suffix(""))  # strip extension if given
 
     if args.rq == "rq1":
-        run_rq1(df, stem, args.error, args.max_rank)
+        run_rq1(df, stem, args.error, args.max_rank, args.log_scale)
     elif args.rq == "rq2":
-        run_rq2(df, stem, args.error, args.max_rank)
+        run_rq2(df, stem, args.error, args.max_rank, args.log_scale)
     elif args.rq == "rq3":
-        run_rq3(df, stem, args.error, args.max_rank)
+        run_rq3(df, stem, args.error, args.max_rank, args,log_scale)
 
 if __name__ == "__main__":
     main()
