@@ -52,7 +52,7 @@ def plot_one(df_ell, x_col, x_label, y_col, y_label, title,
 
         xs = [x_to_pos[v] for v in sub[x_col]]
 
-        label = f"($\\ell$={ell}, $d$={d})" if ell is not None else f"$d$={d}"
+        label = f"($d$={d})" if ell is not None else f"$d$={d}"
         ax.plot(xs, sub["median"],
                 marker="o", linewidth=2.0, markersize=7,
                 label=label, color=color)
@@ -167,35 +167,37 @@ def run_rq2(df, stem, error, max_rank, log_scale):
             log_scale=log_scale
         )
 
-def run_rq3(df, stem, error, max_rank, log_scale):
+def run_rq3(df, stem, error, max_rank, log_scale, ell=8):
     req2spawned = req_to_spawned(df)
 
     plot_one(
-        df_ell=df,
+        df_ell=df[df["ell"] == ell],
         x_col="num_threads_requested",
-        x_label="Threads requested",
+        x_label="Number of threads",
         y_col="time_s",
         y_label="Time (s)",
         title="",
         error=error,
-        secondary_map=req2spawned,
-        secondary_label="Threads spawned",
+        secondary_map=None,
+        secondary_label=None,
         output_path=f"{stem}_time.pdf",
+        ell=ell,
         show_max_rank=max_rank,
         log_scale=log_scale
     )
 
     plot_one(
-        df_ell=df,
+        df_ell=df[df["ell"] == ell],
         x_col="num_threads_requested",
-        x_label="Threads requested",
+        x_label="Number of threads",
         y_col="peak_ram_mb",
         y_label="Peak RAM (MB)",
         title="",
         error=error,
-        secondary_map=req2spawned,
-        secondary_label="Threads spawned",
+        secondary_map=None,
+        secondary_label=None,
         output_path=f"{stem}_memory.pdf",
+        ell=ell,
         show_max_rank=False,  # max_rank not meaningful for memory plot
         log_scale=log_scale
     )
