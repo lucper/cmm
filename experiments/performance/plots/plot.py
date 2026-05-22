@@ -224,7 +224,7 @@ def main():
     elif args.rq == "rq2":
         run_rq2(df, stem, args.error, args.max_rank, args.log_scale)
     elif args.rq == "rq3":
-        run_rq3(df, stem, args.error, args.max_rank, args,log_scale)
+        run_rq3(df, stem, args.error, args.max_rank, args.log_scale)
 
 if __name__ == "__main__":
     main()
