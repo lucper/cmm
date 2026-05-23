@@ -35,7 +35,7 @@ echo "Generating instances..." >&2
 for ed in 05 10 15 20 25 30
 do
     mkdir -p instances/ed${ed}
-    for v in 100 200 400 800 1600
+    for v in 50 100 200 400 800 1600
     do
         fa="instances/ed${ed}/sampled_human_V${v}_ed${ed}.fa"
         int="instances/ed${ed}/sampled_human_V${v}_ed${ed}.int"
@@ -79,19 +79,19 @@ echo "Running experiment for RQ1..." >&2
 ED=05
 for trial in $(seq 1 ${TRIALS})
 do
-    for v in 100 200 400 800 1600
+    for v in 100 200 400 800 #1600
     do
         fa="instances/ed${ED}/sampled_human_V${v}_ed${ED}.fa"
         int="instances/ed${ED}/sampled_human_V${v}_ed${ED}.int"
 
         ell=5
-        for d in 0 1 2
+        for d in 0 1 2 3 4
         do
             run_cmm_perf ${OUT_RQ1} ${trial} ${fa} ${int} ${ell} ${d} ${ED} ${MAX_THREADS}
         done
 
         ell=8
-        for d in 0 1 2 3 4
+        for d in 0 1 2 3 4 5 6 7
         do
             run_cmm_perf ${OUT_RQ1} ${trial} ${fa} ${int} ${ell} ${d} ${ED} ${MAX_THREADS}
         done
@@ -109,13 +109,13 @@ do
         int="instances/ed${ed}/sampled_human_V${V}_ed${ed}.int"
 
         ell=5
-        for d in 0 1 2
+        for d in 0 1 2 3 4
         do
             run_cmm_perf ${OUT_RQ2} ${trial} ${fa} ${int} ${ell} ${d} ${ed} ${MAX_THREADS}
         done
 
         ell=8
-        for d in 0 1 2 3 4
+        for d in 0 1 2 3 4 5 6 7
         do
             run_cmm_perf ${OUT_RQ2} ${trial} ${fa} ${int} ${ell} ${d} ${ed} ${MAX_THREADS}
         done
@@ -125,7 +125,7 @@ done
 ## RQ3
 echo "Running experiment for RQ3..." >&2
 ED=05
-V=50
+V=100
 ELL=8
 D=4
 for trial in $(seq 1 ${TRIALS})
