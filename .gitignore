@@ -15,6 +15,10 @@ logs/
 *.png
 *.o
 *.a
+*.pdf
+*.tsv
+*.fa
+*.int
 .DS_Store
 .idea/
 benchmark/FlameGraph/

@@ -3,28 +3,23 @@ CC       := gcc
 CXXFLAGS := -std=c++17 -Wall -Wextra -fno-omit-frame-pointer -O3 -march=native
 CFLAGS   := -O3 -march=native
 LDFLAGS  := -fopenmp
-LIBSAIS_OBJ := libsais64.o libsais.o
 
 ifdef DEBUG
   CXXFLAGS += -g
 endif
 
-CORE_SRCS := motifs_search.cpp rank_table.cpp data_import.cpp
-CORE_OBJS := $(CORE_SRCS:.cpp=.o)
+OBJS := main.o motifs_search.o rank_table.o data_import.o libsais64.o libsais.o
 
-all: libcmm.a cmm
+all: cmm
 
-libcmm.a: $(CORE_OBJS) $(LIBSAIS_OBJ)
-	ar rcs $@ $^
-
-cmm: main.o libcmm.a
+cmm: $(OBJS)
 	$(CXX) $(LDFLAGS) -o $@ $^
 
 %.o: %.cpp
-	$(CXX) $(CXXFLAGS) -fopenmp -c -o $@ $^
+	$(CXX) $(CXXFLAGS) -fopenmp -c -o $@ $<
 
 %.o: %.c
-	$(CC) $(CFLAGS) -c -o $@ $^
+	$(CC) $(CFLAGS) -c -o $@ $<
 
 clean:
-	rm -f *.o libcmm.a cmm
+	rm -f $(OBJS) cmm

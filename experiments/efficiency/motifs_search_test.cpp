@@ -1,4 +1,4 @@
-#include "motifs_search.hpp"
+#include "motifs_search_test.hpp"
 
 static std::string apply_mask(std::string_view motif, const std::vector<uint16_t>& H, char wildcard = '*')
 {
@@ -28,9 +28,9 @@ static std::vector<std::vector<uint16_t>> all_H_combinations(size_t ell, size_t 
 }
 
 template <typename Tag>
-std::vector<motif_pair_record_t> main_algo(const std::vector<std::string>& V,
-                                           const std::vector<std::vector<std::pair<uint32_t, uint32_t>>>& G,
-                                           size_t ell, size_t d, size_t k, size_t requested_num_threads)
+solution_report_t main_algo(const std::vector<std::string>& V,
+                            const std::vector<std::vector<std::pair<uint32_t, uint32_t>>>& G,
+                            size_t ell, size_t d, size_t k, size_t requested_num_threads, bool to_prune)
 {
     if (k <= 0) throw std::invalid_argument("k must be positive");
     if (ell < 1) throw std::invalid_argument("ell must be positive");
@@ -40,6 +40,9 @@ std::vector<motif_pair_record_t> main_algo(const std::vector<std::string>& V,
     motif_comparator_t motif_comparator;
 
     std::priority_queue<motif_pair_record_t, std::vector<motif_pair_record_t>, motif_comparator_t> topK_global;
+
+    size_t pruning_cnt_global = 0;
+    size_t max_assigned_rank_X_global = 0;
 
     // Parameters for x2 that depend on graph topology only.
     size_t number_of_edges = 0;
@@ -64,6 +67,9 @@ std::vector<motif_pair_record_t> main_algo(const std::vector<std::string>& V,
     for (size_t i = 0; i < num_threads; i++)
         workspaces.emplace_back(ESA, ell, V.size(), number_of_edges, max_seq_len);
 
+    size_t num_threads_spawned = 0;
+
+#ifdef NDEBUG
     // Progress bar
     using namespace indicators;
     ProgressBar bar(
@@ -86,16 +92,20 @@ std::vector<motif_pair_record_t> main_algo(const std::vector<std::string>& V,
     bar.set_option(option::PostfixText("[wildcard combinations: 0/" + std::to_string(total_pairs) + "]"));
     bar.set_progress(0);
     std::cerr << "\r" << std::flush;
+#endif
 
     #pragma omp parallel
     {
+    #pragma omp master
+    num_threads_spawned = omp_get_num_threads();
+
     size_t tid = omp_get_thread_num();
     thread_workspace_t<motif_comparator_t>& ws = workspaces[tid];
 
     #pragma omp for schedule(dynamic)
     for (size_t d_u = 0; d_u < all_H.size(); d_u++) {
         auto& H_u = all_H[d_u];
-        ws.rank_table_X.sort_by_prefix(H_u);
+        ws.max_assigned_rank_X = ws.rank_table_X.sort_by_prefix(H_u);
         ws.build_csr(V, ws.rank_table_X);
 
         for (size_t d_v = d_u; d_v < all_H.size(); d_v++) {
@@ -118,13 +128,17 @@ std::vector<motif_pair_record_t> main_algo(const std::vector<std::string>& V,
                     max_degree_rank_X = std::max(max_degree_rank_X, G[nodes_with_rank_X[i]].size());
 
                 // Pruning
-                size_t countE_max = std::min(countX * max_countY, countX * max_degree_rank_X);
-                double max_x2 =  std::max(0.0, static_cast<double>(countE_max) * x2_coeff);
-                motif_pair_record_t best_candidate;
-                best_candidate.x2 = max_x2;
-                best_candidate.countE = countE_max;
-                if (ws.topK.size() >= k && !motif_comparator(best_candidate, ws.topK.top()))
-                    continue;
+                if (to_prune) {
+                    size_t countE_max = std::min(countX * max_countY, countX * max_degree_rank_X);
+                    double max_x2 =  std::max(0.0, static_cast<double>(countE_max) * x2_coeff);
+                    motif_pair_record_t best_candidate;
+                    best_candidate.x2 = max_x2;
+                    best_candidate.countE = countE_max;
+                    if (ws.topK.size() >= k && !motif_comparator(best_candidate, ws.topK.top())) {
+                        ws.pruning_cnt += 1;
+                        continue;
+                    }
+                }
 
                 ws.edge_count_set_indices.clear();
 
@@ -211,6 +225,7 @@ std::vector<motif_pair_record_t> main_algo(const std::vector<std::string>& V,
                 ws.intersec_nodes_count_set_indices.clear();
             }
 
+#ifdef NDEBUG
             // Update progress bar
             size_t current = ++pairs_completed;
             if (current % update_interval == 0 || current == total_pairs) {
@@ -222,11 +237,14 @@ std::vector<motif_pair_record_t> main_algo(const std::vector<std::string>& V,
                     std::cerr << "\r" << std::flush;
                 }
             }
+#endif
         }
     }
     }
 
     for (auto& ws : workspaces) {
+        pruning_cnt_global += ws.pruning_cnt;
+        max_assigned_rank_X_global = std::max(ws.max_assigned_rank_X, max_assigned_rank_X_global);
         while (!ws.topK.empty()) {
             const auto& candidate = ws.topK.top();
             topK_global.push(candidate);
@@ -235,28 +253,29 @@ std::vector<motif_pair_record_t> main_algo(const std::vector<std::string>& V,
         }
     }
 
-    // Get solution from priority queue.
-    std::vector<motif_pair_record_t> solution;
-    solution.reserve(topK_global.size());
-
+    // Get solution from priority queue and set counters
+    solution_report_t solution;
+    solution.pruning_cnt = pruning_cnt_global;
+    solution.max_assigned_rank_X = max_assigned_rank_X_global;
+    solution.num_threads_spawned = num_threads_spawned;
+    solution.motif_pairs.reserve(topK_global.size());
     while (!topK_global.empty()) {
-        solution.push_back(topK_global.top());
+        solution.motif_pairs.push_back(topK_global.top());
         topK_global.pop();
     }
-
-    std::reverse(solution.begin(), solution.end());
+    std::reverse(solution.motif_pairs.begin(), solution.motif_pairs.end());
 
     return solution;
 }
 
-template std::vector<motif_pair_record_t> main_algo<sort_by_countE_t>(
+template solution_report_t main_algo<sort_by_countE_t>(
     const std::vector<std::string>&,
     const std::vector<std::vector<std::pair<uint32_t, uint32_t>>>&,
-    size_t, size_t, size_t, size_t
+    size_t, size_t, size_t, size_t, bool
 );
 
-template std::vector<motif_pair_record_t> main_algo<sort_by_x2_t>(
+template solution_report_t main_algo<sort_by_x2_t>(
     const std::vector<std::string>&,
     const std::vector<std::vector<std::pair<uint32_t, uint32_t>>>&,
-    size_t, size_t, size_t, size_t
+    size_t, size_t, size_t, size_t, bool
 );
