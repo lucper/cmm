@@ -23,6 +23,13 @@ struct motif_pair_record_t {
     double x2;
 };
 
+struct solution_report_t {
+    size_t pruning_cnt;
+    size_t max_assigned_rank_X;
+    size_t num_threads_spawned;
+    std::vector<motif_pair_record_t> motif_pairs;
+};
+
 // tags
 struct sort_by_x2_t {};
 struct sort_by_countE_t {};
@@ -56,6 +63,10 @@ struct thread_workspace_t {
 
     std::vector<bool> rank_membership;
 
+    // Profiling
+    size_t pruning_cnt;
+    size_t max_assigned_rank_X;
+
     thread_workspace_t(const esa_t& ESA, size_t ell, size_t V_size, size_t E_size, size_t max_seq_len)
         : intersec_nodes_count(ESA.N), intersec_nodes_count_set_indices(ESA.N),
           edge_count(ESA.N), edge_count_set_indices(ESA.N),
@@ -66,7 +77,8 @@ struct thread_workspace_t {
           uniq_ranks_per_node_buffer(ESA.N), rank_timestamp(ESA.N + 1),
           edge_timestamp(E_size),
           has_rank_X(V_size, false),
-          rank_membership(ESA.N + 1, false)
+          rank_membership(ESA.N + 1, false),
+          pruning_cnt(0), max_assigned_rank_X(0)
     {
         for (size_t i = 0; i < V_size; i++)
             node_offsets_Y[i] = i * max_seq_len;
@@ -135,8 +147,8 @@ struct thread_workspace_t {
 };
 
 template <typename Tag>
-std::vector<motif_pair_record_t> main_algo(const std::vector<std::string>& V,
-                                           const std::vector<std::vector<std::pair<uint32_t, uint32_t>>>& G,
-                                           size_t ell, size_t d, size_t k, size_t requested_num_threads);
+solution_report_t main_algo(const std::vector<std::string>& V,
+                            const std::vector<std::vector<std::pair<uint32_t, uint32_t>>>& G,
+                            size_t ell, size_t d, size_t k, size_t requested_num_threads, bool to_prune);
 
 #endif

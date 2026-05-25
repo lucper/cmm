@@ -4,6 +4,7 @@
 #include <iostream>
 #include <cstring>
 #include "cxxopts.hpp"
+#include <sys/resource.h>
 #include "motifs_search.hpp"
 #include "data_import.hpp"
 
@@ -81,6 +82,12 @@ int main(int argc, char* argv[]) {
         int m = (elapsed % 3600) / 60;
         int s = elapsed % 60;
         std::fprintf(stderr, "Total elapsed time: [%dh:%dm:%ds]\n", h, m, s);
+
+        struct rusage usage;
+        getrusage(RUSAGE_SELF, &usage);
+        long peak_ram_kb = usage.ru_maxrss;
+        std::fprintf(stderr, "Peak RAM: %ld KB\n", peak_ram_kb);
+
 
         std::fprintf(stdout, "X Y x2\n");
 
