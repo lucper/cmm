@@ -2,7 +2,7 @@
 
 set -euo pipefail
 
-DATA="../data/aj-human/BioPlex_293T.seq"
+DATA="../aj_data/human/BioPlex_293T.seq"
 GENERATE="../generate_instance.py"
 CMM_PERF="./cmm_perf"
 VENV="venv"
