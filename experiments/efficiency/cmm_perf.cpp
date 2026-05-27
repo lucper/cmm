@@ -85,8 +85,8 @@ int main(int argc, char* argv[]) {
 
         auto t0 = std::chrono::steady_clock::now();
 
-        auto solution = main_algo<sort_by_x2_t>(gi.node_labels, gi.adj_list, ell, d, k, num_threads, true,
-                                                c_begin, c_end);
+        auto solution = main_algo<sort_by_x2_t>(gi.node_labels, gi.adj_list, ell, d, k, num_threads,
+                                                true, c_begin, c_end);
 
         auto t1 = std::chrono::steady_clock::now();
         long ms = std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0).count();
