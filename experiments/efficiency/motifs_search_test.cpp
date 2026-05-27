@@ -55,12 +55,18 @@ solution_report_t main_algo(const std::vector<std::string>& V,
 
     auto all_H = all_H_combinations(ell, d);
 
+    std::vector<std::pair<size_t, size_t>> cells;
+    cells.reserve(all_H.size() * (all_H.size() + 1) / 2);
+    for (size_t d_u = 0; d_u < all_H.size(); d_u++)
+        for (size_t d_v = d_u; d_v < all_H.size(); d_v++)
+            cells.emplace_back(d_u, d_v);
+
     size_t max_seq_len = 0;
     for (const auto& v : V)
         if (v.length() > max_seq_len)
             max_seq_len = v.length();
 
-    size_t num_threads = std::min(all_H.size(), requested_num_threads);
+    size_t num_threads = std::min(cells.size(), requested_num_threads);
     omp_set_num_threads(num_threads);
     std::vector<thread_workspace_t<motif_comparator_t>> workspaces;
     workspaces.reserve(num_threads);
@@ -103,16 +109,18 @@ solution_report_t main_algo(const std::vector<std::string>& V,
     thread_workspace_t<motif_comparator_t>& ws = workspaces[tid];
 
     #pragma omp for schedule(dynamic)
-    for (size_t d_u = 0; d_u < all_H.size(); d_u++) {
+    for (size_t c = 0; c < cells.size(); c++) {
+        auto [d_u, d_v] = cells[c];
         auto& H_u = all_H[d_u];
+        auto& H_v = all_H[d_v];
+
         ws.max_assigned_rank_X = ws.rank_table_X.sort_by_prefix(H_u);
         ws.build_csr(V, ws.rank_table_X);
 
-        for (size_t d_v = d_u; d_v < all_H.size(); d_v++) {
-            auto& H_v = all_H[d_v];
-            ws.rank_table_Y.sort_by_prefix(H_v);
-            ws.build_csr(V, ws.rank_table_Y);
+        ws.rank_table_Y.sort_by_prefix(H_v);
+        ws.build_csr(V, ws.rank_table_Y);
 
+        {
             uint32_t max_countY = 0;
             for (auto rank_Y : ws.active_ranks_Y)
                 max_countY = std::max(max_countY, ws.rank_active_counts_Y[rank_Y]);
