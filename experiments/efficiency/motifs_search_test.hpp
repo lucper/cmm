@@ -9,6 +9,7 @@
 #include <omp.h>
 #include <cmath>
 #include <atomic>
+#include <cstdint>
 #include "indicators.hpp"
 #include "utils.hpp"
 #include "rank_table.hpp"
@@ -21,6 +22,7 @@ struct motif_pair_record_t {
     double countE_bar;
     size_t countX, countY, countXY;
     double x2;
+    size_t cell_c, cell_du, cell_dv; // cell provenance
 };
 
 struct solution_report_t {
@@ -149,6 +151,7 @@ struct thread_workspace_t {
 template <typename Tag>
 solution_report_t main_algo(const std::vector<std::string>& V,
                             const std::vector<std::vector<std::pair<uint32_t, uint32_t>>>& G,
-                            size_t ell, size_t d, size_t k, size_t requested_num_threads, bool to_prune);
+                            size_t ell, size_t d, size_t k, size_t requested_num_threads, bool to_prune,
+                            size_t c_begin = 0, size_t c_end = SIZE_MAX);
 
 #endif

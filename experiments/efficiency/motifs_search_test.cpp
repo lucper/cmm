@@ -30,7 +30,8 @@ static std::vector<std::vector<uint16_t>> all_H_combinations(size_t ell, size_t 
 template <typename Tag>
 solution_report_t main_algo(const std::vector<std::string>& V,
                             const std::vector<std::vector<std::pair<uint32_t, uint32_t>>>& G,
-                            size_t ell, size_t d, size_t k, size_t requested_num_threads, bool to_prune)
+                            size_t ell, size_t d, size_t k, size_t requested_num_threads, bool to_prune,
+                            size_t c_begin, size_t c_end)
 {
     if (k <= 0) throw std::invalid_argument("k must be positive");
     if (ell < 1) throw std::invalid_argument("ell must be positive");
@@ -55,18 +56,28 @@ solution_report_t main_algo(const std::vector<std::string>& V,
 
     auto all_H = all_H_combinations(ell, d);
 
+    // Precompute the upper-triangular cells (d_u <= d_v) of wildcard combinations.
     std::vector<std::pair<size_t, size_t>> cells;
     cells.reserve(all_H.size() * (all_H.size() + 1) / 2);
     for (size_t d_u = 0; d_u < all_H.size(); d_u++)
         for (size_t d_v = d_u; d_v < all_H.size(); d_v++)
             cells.emplace_back(d_u, d_v);
 
+    if (c_end > cells.size()) c_end = cells.size();
+    if (c_begin > c_end)
+        throw std::invalid_argument("Invalid cell range: c_begin (" + std::to_string(c_begin) +
+                                    ") > c_end (" + std::to_string(c_end) + ").");
+    size_t range_size = c_end - c_begin;
+    if (range_size == 0)
+        throw std::invalid_argument("Empty cell range: [" + std::to_string(c_begin) +
+                                    ", " + std::to_string(c_end) + ").");
+
     size_t max_seq_len = 0;
     for (const auto& v : V)
         if (v.length() > max_seq_len)
             max_seq_len = v.length();
 
-    size_t num_threads = std::min(cells.size(), requested_num_threads);
+    size_t num_threads = std::min(range_size, requested_num_threads);
     omp_set_num_threads(num_threads);
     std::vector<thread_workspace_t<motif_comparator_t>> workspaces;
     workspaces.reserve(num_threads);
@@ -91,7 +102,7 @@ solution_report_t main_algo(const std::vector<std::string>& V,
         option::PrefixText("Mining motifs "),
         option::Stream(std::cerr)
     );
-    size_t total_pairs = all_H.size() * (all_H.size() + 1) / 2;
+    size_t total_pairs = range_size;
     std::atomic<size_t> pairs_completed(0);
     size_t update_interval = std::max(static_cast<size_t>(1), total_pairs / 100);
 
@@ -109,7 +120,7 @@ solution_report_t main_algo(const std::vector<std::string>& V,
     thread_workspace_t<motif_comparator_t>& ws = workspaces[tid];
 
     #pragma omp for schedule(dynamic)
-    for (size_t c = 0; c < cells.size(); c++) {
+    for (size_t c = c_begin; c < c_end; c++) {
         auto [d_u, d_v] = cells[c];
         auto& H_u = all_H[d_u];
         auto& H_v = all_H[d_v];
@@ -222,6 +233,9 @@ solution_report_t main_algo(const std::vector<std::string>& V,
                         candidate.countX = countX;
                         candidate.countY = countY;
                         candidate.countXY = countXY;
+                        candidate.cell_c = c;
+                        candidate.cell_du = d_u;
+                        candidate.cell_dv = d_v;
                         if (ws.topK.size() >= k) ws.topK.pop();
                         ws.topK.push(candidate);
                     }
@@ -279,11 +293,11 @@ solution_report_t main_algo(const std::vector<std::string>& V,
 template solution_report_t main_algo<sort_by_countE_t>(
     const std::vector<std::string>&,
     const std::vector<std::vector<std::pair<uint32_t, uint32_t>>>&,
-    size_t, size_t, size_t, size_t, bool
+    size_t, size_t, size_t, size_t, bool, size_t, size_t
 );
 
 template solution_report_t main_algo<sort_by_x2_t>(
     const std::vector<std::string>&,
     const std::vector<std::vector<std::pair<uint32_t, uint32_t>>>&,
-    size_t, size_t, size_t, size_t, bool
+    size_t, size_t, size_t, size_t, bool, size_t, size_t
 );
