@@ -13,7 +13,7 @@ namespace fs = std::filesystem;
 int main(int argc, char* argv[]) {
     if (argc < 8) {
         std::fprintf(stderr,
-            "Usage: %s <fa_file> <int_file> <ell> <d> <num_threads> <solution_file>\n\n"
+            "Usage: %s <fa_file> <int_file> <ell> <d> <k> <num_threads> <solution_file>\n\n"
             "  fa_file       : FASTA file with protein sequences\n"
             "  int_file      : interactions file with lines formatted as 'u v'\n"
             "  ell           : motif length\n"
