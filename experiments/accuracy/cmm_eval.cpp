@@ -7,7 +7,7 @@
 
 /* Returns occurrences of pattern p in text t.
  * We require that |p| <= 64, which should be true for the motif lengths considered.*/
-std::vector<int> find_occs(std::string t, std::string p, char wildcard = 'x')
+std::vector<int> find_occs(const std::string& p, const std::string& t, char wildcard = 'x')
 {
     std::vector<int> positions;
     int n = t.length();
@@ -40,7 +40,7 @@ std::vector<int> find_occs(std::string t, std::string p, char wildcard = 'x')
 }
 
 /* True if there exist i in occs(P,w), j in occs(Q,w) with |i-j| <= h. */
-bool motifs_are_near(std::string& P, std::string& Q, std::string& w, int h)
+bool motifs_are_near(const std::string& P, const std::string& Q, const std::string& w, int h)
 {
     std::vector<int> a = find_occs(P, w);
     if (a.empty()) return false;
@@ -66,7 +66,7 @@ bool motifs_are_near(std::string& P, std::string& Q, std::string& w, int h)
  * X, Y, Z, W : motif strings with wildcards
  * h : integer proximity threshold */
 size_t count_Eh(const graph_input_t& graph_input,
-                std::string X, std::string Y, std::string Z, std::string W,
+                const std::string X, const std::string Y, const std::string Z, const std::string W,
                 int h)
 {
     auto V = graph_input.node_labels;
