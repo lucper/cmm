@@ -9,6 +9,8 @@
 #include <omp.h>
 #include <cmath>
 #include <atomic>
+#include <cstdint>
+#include <random>
 #include "indicators.hpp"
 #include "utils.hpp"
 #include "rank_table.hpp"
@@ -21,11 +23,14 @@ struct motif_pair_record_t {
     double countE_bar;
     size_t countX, countY, countXY;
     double x2;
+    size_t cell_c, cell_du, cell_dv; // cell provenance
 };
 
 struct solution_report_t {
     size_t pruning_cnt;
     size_t max_assigned_rank_X;
+    size_t min_assigned_rank_X;
+    double avg_assigned_rank_X;
     size_t num_threads_spawned;
     std::vector<motif_pair_record_t> motif_pairs;
 };
@@ -63,9 +68,12 @@ struct thread_workspace_t {
 
     std::vector<bool> rank_membership;
 
-    // Profiling
+    // Profiling. Per-thread accumulators over the cells this thread processed.
     size_t pruning_cnt;
-    size_t max_assigned_rank_X;
+    size_t min_rank_X;   // min over this thread's per-cell max-ranks (SIZE_MAX = none yet)
+    size_t max_rank_X;   // max over this thread's per-cell max-ranks
+    size_t sum_rank_X;   // sum over this thread's per-cell max-ranks (for the average)
+    size_t cell_count_X; // number of cells this thread folded in
 
     thread_workspace_t(const esa_t& ESA, size_t ell, size_t V_size, size_t E_size, size_t max_seq_len)
         : intersec_nodes_count(ESA.N), intersec_nodes_count_set_indices(ESA.N),
@@ -78,7 +86,7 @@ struct thread_workspace_t {
           edge_timestamp(E_size),
           has_rank_X(V_size, false),
           rank_membership(ESA.N + 1, false),
-          pruning_cnt(0), max_assigned_rank_X(0)
+          pruning_cnt(0), min_rank_X(SIZE_MAX), max_rank_X(0), sum_rank_X(0), cell_count_X(0)
     {
         for (size_t i = 0; i < V_size; i++)
             node_offsets_Y[i] = i * max_seq_len;
@@ -149,6 +157,7 @@ struct thread_workspace_t {
 template <typename Tag>
 solution_report_t main_algo(const std::vector<std::string>& V,
                             const std::vector<std::vector<std::pair<uint32_t, uint32_t>>>& G,
-                            size_t ell, size_t d, size_t k, size_t requested_num_threads, bool to_prune);
+                            size_t ell, size_t d, size_t k, size_t requested_num_threads, bool to_prune,
+                            size_t c_begin = 0, size_t c_end = SIZE_MAX);
 
 #endif
