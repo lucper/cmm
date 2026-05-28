@@ -1,4 +1,5 @@
 #include "motifs_search_test.hpp"
+#include <random>
 
 static std::string apply_mask(std::string_view motif, const std::vector<uint16_t>& H, char wildcard = '*')
 {
@@ -62,6 +63,10 @@ solution_report_t main_algo(const std::vector<std::string>& V,
     for (size_t d_u = 0; d_u < all_H.size(); d_u++)
         for (size_t d_v = d_u; d_v < all_H.size(); d_v++)
             cells.emplace_back(d_u, d_v);
+
+    // Deterministically shuffle the cell order for load balancing.
+    std::mt19937_64 rng(0xC0FFEEULL);
+    std::shuffle(cells.begin(), cells.end(), rng);
 
     if (c_end > cells.size()) c_end = cells.size();
     if (c_begin > c_end)
