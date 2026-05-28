@@ -98,7 +98,7 @@ int main(int argc, char* argv[]) {
 
         std::fprintf(stderr, "Done: %ld ms, %ld KB\n", ms, peak_ram_kb);
 
-        std::printf("%s\t%.4f\t%zu\t%zu\t%d\t%d\t%zu\t%zu\t%d\t%zu\t%ld\t%ld\n",
+        std::printf("%s\t%.4f\t%zu\t%zu\t%d\t%d\t%zu\t%zu\t%.4f\t%zu\t%d\t%zu\t%ld\t%ld\n",
             instance_name.c_str(),
             edge_density,
             V,
@@ -106,6 +106,8 @@ int main(int argc, char* argv[]) {
             ell,
             d,
             solution.max_assigned_rank_X,
+            solution.min_assigned_rank_X,
+            solution.avg_assigned_rank_X,
             solution.pruning_cnt,
             num_threads,
             solution.num_threads_spawned,

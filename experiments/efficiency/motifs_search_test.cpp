@@ -1,5 +1,4 @@
 #include "motifs_search_test.hpp"
-#include <random>
 
 static std::string apply_mask(std::string_view motif, const std::vector<uint16_t>& H, char wildcard = '*')
 {
@@ -45,6 +44,9 @@ solution_report_t main_algo(const std::vector<std::string>& V,
 
     size_t pruning_cnt_global = 0;
     size_t max_assigned_rank_X_global = 0;
+    size_t min_assigned_rank_X_global = SIZE_MAX;
+    size_t sum_assigned_rank_X_global = 0;
+    size_t cell_count_X_global = 0;
 
     // Parameters for x2 that depend on graph topology only.
     size_t number_of_edges = 0;
@@ -130,7 +132,11 @@ solution_report_t main_algo(const std::vector<std::string>& V,
         auto& H_u = all_H[d_u];
         auto& H_v = all_H[d_v];
 
-        ws.max_assigned_rank_X = ws.rank_table_X.sort_by_prefix(H_u);
+        size_t cell_max_rank_X = ws.rank_table_X.sort_by_prefix(H_u);
+        ws.min_rank_X = std::min(ws.min_rank_X, cell_max_rank_X);
+        ws.max_rank_X = std::max(ws.max_rank_X, cell_max_rank_X);
+        ws.sum_rank_X += cell_max_rank_X;
+        ws.cell_count_X++;
         ws.build_csr(V, ws.rank_table_X);
 
         ws.rank_table_Y.sort_by_prefix(H_v);
@@ -271,7 +277,12 @@ solution_report_t main_algo(const std::vector<std::string>& V,
 
     for (auto& ws : workspaces) {
         pruning_cnt_global += ws.pruning_cnt;
-        max_assigned_rank_X_global = std::max(ws.max_assigned_rank_X, max_assigned_rank_X_global);
+        if (ws.cell_count_X > 0) {
+            max_assigned_rank_X_global = std::max(max_assigned_rank_X_global, ws.max_rank_X);
+            min_assigned_rank_X_global = std::min(min_assigned_rank_X_global, ws.min_rank_X);
+            sum_assigned_rank_X_global += ws.sum_rank_X;
+            cell_count_X_global += ws.cell_count_X;
+        }
         while (!ws.topK.empty()) {
             const auto& candidate = ws.topK.top();
             topK_global.push(candidate);
@@ -284,6 +295,8 @@ solution_report_t main_algo(const std::vector<std::string>& V,
     solution_report_t solution;
     solution.pruning_cnt = pruning_cnt_global;
     solution.max_assigned_rank_X = max_assigned_rank_X_global;
+    solution.min_assigned_rank_X = (cell_count_X_global > 0) ? min_assigned_rank_X_global : 0;
+    solution.avg_assigned_rank_X = (cell_count_X_global > 0) ? static_cast<double>(sum_assigned_rank_X_global) / cell_count_X_global : 0.0;
     solution.num_threads_spawned = num_threads_spawned;
     solution.motif_pairs.reserve(topK_global.size());
     while (!topK_global.empty()) {
