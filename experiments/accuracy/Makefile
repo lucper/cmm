@@ -1,64 +1,27 @@
-SHELL := /usr/bin/bash
-.RECIPEPREFIX := >
-.DELETE_ON_ERROR:
+CXX      := g++
+CXXFLAGS := -std=c++17 -Wall -Wextra -fno-omit-frame-pointer -O3 -march=native -I../../algorithm -I.
+LDFLAGS  := -fopenmp
 
-VENV_DIR    := venv
-PYTHON      := $(VENV_DIR)/bin/python
-PIP         := $(VENV_DIR)/bin/pip
+ifdef DEBUG
+  CXXFLAGS += -g
+else
+  CXXFLAGS += -DNDEBUG
+endif
 
-# default parameters
-PROGS       := cmm slider++
-ED          := 05 10 15 20 25 30
-L           := 8
-D           := 3
-K           := 10
-S           := 100
-DATASET     := yeast
-TOP_K       := 10 20 30 40 50
-OUT_PREFIX  := sampled_$(DATASET)_l$(L)_d$(D)_K$(K)_S$(S)
-PROG_PREFIX := sampled_$(DATASET)_l$(L)_d$(D)_k$(TOP_K)_S$(S)
-RESULTS     := $(foreach m,$(PROGS),results_$(m).txt)
+ALG_DIR  := ../../algorithm
+ALG_OBJS := $(ALG_DIR)/data_import.o
+OBJS     := cmm_eval.o
 
-usage:
-> # DATASET ED SEQ INTS PROG
-.PHONY: usage
+all: cmm_eval
 
-clear:
-> rm -rf *.png
-.PHONY: clear
+cmm_eval: $(OBJS) $(ALG_OBJS)
+	$(CXX) $(LDFLAGS) -o $@ $^
 
-all: comparison_precision.png comparison_recall.png
-.PHONY: all
+%.o: %.cpp
+	$(CXX) $(CXXFLAGS) -fopenmp -c -o $@ $<
 
-comparison_precision.png comparison_recall.png &: $(RESULTS)
-> cat $^ | $(PYTHON) plot.py
+$(ALG_OBJS):
+	$(MAKE) -C $(ALG_DIR)
 
-results_%.txt: $(foreach i,$(ED),$(foreach k,$(TOP_K),sampled_$(DATASET)_l$(L)_d$(D)_k$(k)_S$(S)_e$(i).%.out))
-> rm -f $@
-> for i in $(ED); do \
->   for k in $(TOP_K); do \
->     echo -n "$*_k$${k} 0.$${i} " >> $@; \
->     $(PYTHON) evaluate_precision_and_recall.py \
-> 	    --predicted sampled_$(DATASET)_l$(L)_d$(D)_k$${k}_S$(S)_e$${i}.$*.out \
->	    --k $${k} \
-> 	    --truth $(OUT_PREFIX)_e$${i}.dat \
->	    --sequences $(OUT_PREFIX)_e$${i}.fa \
->	    --interactions $(OUT_PREFIX)_e$${i}.int >> $@; \
->   done; \
-> done
-
-$(OUT_PREFIX)_e%.fa $(OUT_PREFIX)_e%.int $(OUT_PREFIX)_e%.dat &: $(VENV_DIR)/bin/activate
-> $(PYTHON) ppi_network_generator.py \
-> 	--fasta $(SEQ) \
-> 	--interactions $(INTS) \
-> 	--l $(L) --d $(D) \
-> 	--K $(K) --S $(S) --e 0.$* \
-> 	--seed 42 \
-> 	--out-fasta $(OUT_PREFIX)_e$*.fa \
-> 	--out-interactions $(OUT_PREFIX)_e$*.int \
-> 	--out-pairs $(OUT_PREFIX)_e$*.dat
-
-$(VENV_DIR)/bin/activate: requirements.txt
-> python3 -m venv $(VENV_DIR)
-> $(PIP) install --upgrade pip
-> $(PIP) install -r $<
+clean:
+	rm -f $(OBJS) cmm_perf
