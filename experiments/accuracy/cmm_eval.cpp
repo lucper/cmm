@@ -69,15 +69,15 @@ size_t count_Eh(const graph_input_t& graph_input,
                 const std::string X, const std::string Y, const std::string Z, const std::string W,
                 int h)
 {
-    auto V = graph_input.node_labels;
-    auto G = graph_input.adj_list;
+    const auto& V = graph_input.node_labels;
+    const auto& G = graph_input.adj_list;
     size_t count = 0;
 
     for (uint32_t u = 0; u < G.size(); ++u) {
-        std::string& wu = const_cast<std::string&>(V[u]);
-        for (auto [v, edge_id] : G[u]) {
+        const std::string& wu = V[u];
+        for (auto [v, _] : G[u]) {
             if (v < u) continue; // process each undirected edge once
-            std::string& wv = const_cast<std::string&>(V[v]);
+            const std::string& wv = V[v];
 
             // X pairs with Z (then Y pairs with W), either orientation:
             bool xz =
@@ -100,7 +100,7 @@ int main() {
     std::string t = "abccdbbaccabcde"; 
     std::string p = "axc";                
 
-    std::vector<int> matches = find_occs(t, p);
+    std::vector<int> matches = find_occs(p, t);
 
     for (int idx : matches) {
         std::cout << idx << " ";
