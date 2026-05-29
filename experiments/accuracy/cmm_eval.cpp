@@ -89,7 +89,8 @@ size_t count_Eh(const graph_input_t& graph_input,
 
     for (uint32_t u = 0; u < G.size(); ++u) {
         const std::string& wu = V[u];
-        for (auto [v, _] : G[u]) {
+        for (auto [v, edge_id] : G[u]) {
+            (void)edge_id;
             if (v < u) continue; // process each undirected edge once
             const std::string& wv = V[v];
 
@@ -110,7 +111,38 @@ size_t count_Eh(const graph_input_t& graph_input,
     return count;
 }
 
-/* Reads a solution file.
+/* Computes |E_{X,Y} \\cup E_{Z,W}|, the number of edges on which at least one of
+ * the two motif pairs co-occurs (X on one endpoint, Y on the other for {X,Y},
+ * and likewise for {Z,W}). */
+size_t count_union(const graph_input_t& graph_input,
+                   const std::string& X, const std::string& Y,
+                   const std::string& Z, const std::string& W)
+{
+    const auto& V = graph_input.node_labels;
+    const auto& G = graph_input.adj_list;
+
+    std::vector<char> hasX(n), hasY(n), hasZ(n), hasW(n);
+    for (size_t u = 0; u < n; ++u) {
+        hasX[u] = !find_occs(X, V[u]).empty();
+        hasY[u] = !find_occs(Y, V[u]).empty();
+        hasZ[u] = !find_occs(Z, V[u]).empty();
+        hasW[u] = !find_occs(W, V[u]).empty();
+    }
+
+    size_t count = 0;
+    for (uint32_t u = 0; u < V.size(); ++u)
+        for (auto [v, _] : G[u]) {
+            if (v < u) continue; // each undirected edge once
+
+            bool inXY = (hasX[u] && hasY[v]) || (hasX[v] && hasY[u]);
+            bool inZW = (hasZ[u] && hasW[v]) || (hasZ[v] && hasW[u]);
+            if (inXY || inZW) ++count;
+        }
+
+    return count;
+}
+
+/* Reads a solution file produced by main_algo / cmm_perf.
  *
  * Expected format:
  *   - a header line "X Y x2", which is skipped
