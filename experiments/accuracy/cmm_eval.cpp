@@ -2,17 +2,16 @@
 #include <filesystem>
 #include <fstream>
 #include <iostream>
+#include <omp.h>
 #include <sstream>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 #include "data_import.hpp"
 
 namespace fs = std::filesystem;
 
-/* A single motif pair as read from a solution file: {X, Y} plus the support
- * value reported in the third column (x2 or countE, depending on how the
- * solution was produced). */
 struct motif_pair_t {
     std::string X;
     std::string Y;
@@ -53,15 +52,54 @@ std::vector<int> find_occs(const std::string& p, const std::string& t, char wild
     return positions;
 }
 
-/* True if there exist i in occs(P,w), j in occs(Q,w) with |i-j| <= h. */
-bool motifs_are_near(const std::string& P, const std::string& Q, const std::string& w, int h)
+/* Per-(motif, node) precomputed occurrence tables.
+ *
+ * Workflow:
+ *   1. intern() every motif you will query, getting a stable uint32_t id.
+ *   2. build() once over the node sequences -- O(M * V * |w|) bitscans,
+ *      parallel over motifs.
+ *   3. all downstream queries use ids and consult occs[]/has[] in O(1)
+ *      per lookup (occs[] yields a sorted vector for two-pointer checks). */
+struct motif_index_t {
+    std::vector<std::string> motifs;
+    std::unordered_map<std::string, uint32_t> id_of;
+    std::vector<std::vector<std::vector<int>>> occs; // occs[motif_id][node]
+    std::vector<std::vector<char>>              has; // has[motif_id][node]
+
+    uint32_t intern(const std::string& m) {
+        auto it = id_of.find(m);
+        if (it != id_of.end()) return it->second;
+        uint32_t id = static_cast<uint32_t>(motifs.size());
+        motifs.push_back(m);
+        id_of.emplace(m, id);
+        return id;
+    }
+
+    void build(const std::vector<std::string>& node_labels) {
+        const size_t M = motifs.size();
+        const size_t n = node_labels.size();
+        occs.assign(M, std::vector<std::vector<int>>(n));
+        has.assign(M, std::vector<char>(n));
+
+        #pragma omp parallel for schedule(dynamic)
+        for (size_t m = 0; m < M; ++m)
+            for (size_t u = 0; u < n; ++u) {
+                occs[m][u] = find_occs(motifs[m], node_labels[u]);
+                has[m][u]  = !occs[m][u].empty();
+            }
+    }
+};
+
+/* True iff there exist i in occs[P][u], j in occs[Q][u] with |i-j| <= h.
+ * Uses the precomputed sorted occurrence lists; two-pointer min-gap. */
+inline bool motifs_are_near_idx(uint32_t P, uint32_t Q, uint32_t u, int h,
+                                const motif_index_t& idx)
 {
-    std::vector<int> a = find_occs(P, w);
+    const auto& a = idx.occs[P][u];
     if (a.empty()) return false;
-    std::vector<int> b = find_occs(Q, w);
+    const auto& b = idx.occs[Q][u];
     if (b.empty()) return false;
 
-    // Both lists are ascending (left-to-right scan); two-pointer min-gap check.
     size_t i = 0, j = 0;
     while (i < a.size() && j < b.size()) {
         int diff = a[i] - b[j];
@@ -73,84 +111,93 @@ bool motifs_are_near(const std::string& P, const std::string& Q, const std::stri
     return false;
 }
 
-/* Computes |E_h({X,Y},{Z,W})|.
- *
- * graph_input : parsed FASTA + interactions
- * X, Y, Z, W  : motif strings with wildcards
- * h           : integer proximity threshold */
-size_t count_Eh(const graph_input_t& graph_input,
-                const std::string& X, const std::string& Y,
-                const std::string& Z, const std::string& W,
-                int h)
+/* Computes |E_{X,Y} \\cup E_{Z,W}|, the number of edges on which at least one of
+ * the two motif pairs co-occurs (X on one endpoint, Y on the other for {X,Y},
+ * and likewise for {Z,W}). */
+size_t count_Eh_idx(const graph_input_t& gi,
+                    uint32_t X, uint32_t Y, uint32_t Z, uint32_t W,
+                    int h, const motif_index_t& idx)
 {
-    const auto& V = graph_input.node_labels;
-    const auto& G = graph_input.adj_list;
+    const auto& G = gi.adj_list;
     size_t count = 0;
 
     for (uint32_t u = 0; u < G.size(); ++u) {
-        const std::string& wu = V[u];
-        for (auto [v, edge_id] : G[u]) {
-            (void)edge_id;
-            if (v < u) continue; // process each undirected edge once
-            const std::string& wv = V[v];
+        for (auto [v, _] : G[u]) {
+            if (v < u) continue;
 
-            // X pairs with Z (then Y pairs with W), either orientation:
             bool xz =
-                (motifs_are_near(X, Z, wu, h) && motifs_are_near(Y, W, wv, h)) ||
-                (motifs_are_near(X, Z, wv, h) && motifs_are_near(Y, W, wu, h));
-
-            // X pairs with W (then Y pairs with Z), either orientation:
+                (motifs_are_near_idx(X, Z, u, h, idx) && motifs_are_near_idx(Y, W, v, h, idx)) ||
+                (motifs_are_near_idx(X, Z, v, h, idx) && motifs_are_near_idx(Y, W, u, h, idx));
             bool xw = xz ? false :
-                (motifs_are_near(X, W, wu, h) && motifs_are_near(Y, Z, wv, h)) ||
-                (motifs_are_near(X, W, wv, h) && motifs_are_near(Y, Z, wu, h));
+                (motifs_are_near_idx(X, W, u, h, idx) && motifs_are_near_idx(Y, Z, v, h, idx)) ||
+                (motifs_are_near_idx(X, W, v, h, idx) && motifs_are_near_idx(Y, Z, u, h, idx));
 
             if (xz || xw) ++count;
         }
     }
-
     return count;
 }
 
-/* Computes |E_{X,Y} \\cup E_{Z,W}|, the number of edges on which at least one of
- * the two motif pairs co-occurs (X on one endpoint, Y on the other for {X,Y},
- * and likewise for {Z,W}). */
-size_t count_union(const graph_input_t& graph_input,
-                   const std::string& X, const std::string& Y,
-                   const std::string& Z, const std::string& W)
+/* |E_{X,Y} u E_{Z,W}| using the precomputed has[] table. */
+size_t count_union_idx(const graph_input_t& gi,
+                       uint32_t X, uint32_t Y, uint32_t Z, uint32_t W,
+                       const motif_index_t& idx)
 {
-    const auto& V = graph_input.node_labels;
-    const auto& G = graph_input.adj_list;
-    const size_t n = V.size();
-
-    std::vector<char> hasX(n), hasY(n), hasZ(n), hasW(n);
-    for (size_t u = 0; u < n; ++u) {
-        hasX[u] = !find_occs(X, V[u]).empty();
-        hasY[u] = !find_occs(Y, V[u]).empty();
-        hasZ[u] = !find_occs(Z, V[u]).empty();
-        hasW[u] = !find_occs(W, V[u]).empty();
-    }
-
+    const auto& has = idx.has;
+    const auto& G = gi.adj_list;
     size_t count = 0;
-    for (uint32_t u = 0; u < n; ++u)
-        for (auto [v, _] : G[u]) {
-            if (v < u) continue; // each undirected edge once
 
-            bool inXY = (hasX[u] && hasY[v]) || (hasX[v] && hasY[u]);
-            bool inZW = (hasZ[u] && hasW[v]) || (hasZ[v] && hasW[u]);
+    for (uint32_t u = 0; u < G.size(); ++u) {
+        for (auto [v, _] : G[u]) {
+            if (v < u) continue;
+
+            bool inXY = (has[X][u] && has[Y][v]) || (has[X][v] && has[Y][u]);
+            bool inZW = (has[Z][u] && has[W][v]) || (has[Z][v] && has[W][u]);
             if (inXY || inZW) ++count;
         }
-
+    }
     return count;
 }
 
-double similarity(const graph_input_t& graph_input,
-                  const std::string& X, const std::string& Y,
-                  const std::string& Z, const std::string& W,
-                  int h)
+double similarity_idx(const graph_input_t& gi,
+                      uint32_t X, uint32_t Y, uint32_t Z, uint32_t W,
+                      int h, const motif_index_t& idx)
 {
-    size_t card_inter = count_Eh(graph_input, X, Y, Z, W, h);
-    size_t card_union = count_union(graph_input, X, Y, Z, W);
-    return card_union == 0.0 ? 0.0 : static_cast<double>(card_inter) / card_union;
+    size_t inter = count_Eh_idx(gi, X, Y, Z, W, h, idx);
+    size_t uni   = count_union_idx(gi, X, Y, Z, W, idx);
+    return uni == 0 ? 0.0 : static_cast<double>(inter) / uni;
+}
+
+/* Returns true iff similarity({X,Y},{Z,W},h) == 1.0, i.e. every edge in
+ * E_{X,Y} u E_{Z,W} also lies in E_h({X,Y},{Z,W}). Fuses the union and
+ * intersection sweeps into a single edge pass and bails on the first
+ * counterexample -- typically much faster than computing both cardinalities. */
+bool similarity_is_one(const graph_input_t& gi,
+                       uint32_t X, uint32_t Y, uint32_t Z, uint32_t W,
+                       int h, const motif_index_t& idx)
+{
+    const auto& has = idx.has;
+    const auto& G = gi.adj_list;
+
+    for (uint32_t u = 0; u < G.size(); ++u) {
+        for (auto [v, _] : G[u]) {
+            if (v < u) continue;
+
+            bool inXY = (has[X][u] && has[Y][v]) || (has[X][v] && has[Y][u]);
+            bool inZW = (has[Z][u] && has[W][v]) || (has[Z][v] && has[W][u]);
+            if (!(inXY || inZW)) continue; // edge not in the union -- ignore
+
+            bool xz =
+                (motifs_are_near_idx(X, Z, u, h, idx) && motifs_are_near_idx(Y, W, v, h, idx)) ||
+                (motifs_are_near_idx(X, Z, v, h, idx) && motifs_are_near_idx(Y, W, u, h, idx));
+            bool xw = xz ? false :
+                (motifs_are_near_idx(X, W, u, h, idx) && motifs_are_near_idx(Y, Z, v, h, idx)) ||
+                (motifs_are_near_idx(X, W, v, h, idx) && motifs_are_near_idx(Y, Z, u, h, idx));
+
+            if (!(xz || xw)) return false; // union edge missing from intersection
+        }
+    }
+    return true;
 }
 
 /* Reads a solution file produced by main_algo / cmm_perf.
@@ -174,12 +221,10 @@ std::vector<motif_pair_t> read_solution_file(const std::string& path)
         std::istringstream iss(line);
         std::string X, Y, value_tok;
         if (!(iss >> X >> Y >> value_tok)) {
-            // Not three tokens: tolerate a stray line only if it is the header.
             if (first) { first = false; continue; }
             throw std::runtime_error("Malformed solution line: " + line);
         }
 
-        // Skip the header line if present (value column is non-numeric there).
         if (first) {
             first = false;
             try {
@@ -252,21 +297,50 @@ int main(int argc, char* argv[]) {
         std::fprintf(stderr, "E                 : %zu\n", E);
         std::fprintf(stderr, "Pairs in sol A    : %zu\n", sol_a.size());
         std::fprintf(stderr, "Pairs in sol B    : %zu\n", sol_b.size());
-        std::fprintf(stderr, "Running ...\n");
+
+        // --- Precompute motif index over distinct motifs appearing in sol_a. ---
+        motif_index_t idx;
+        std::vector<std::pair<uint32_t, uint32_t>> sol_a_ids(sol_a.size());
+        for (size_t i = 0; i < sol_a.size(); ++i) {
+            sol_a_ids[i].first  = idx.intern(sol_a[i].X);
+            sol_a_ids[i].second = idx.intern(sol_a[i].Y);
+        }
+        std::fprintf(stderr, "Distinct motifs   : %zu\n", idx.motifs.size());
+        std::fprintf(stderr, "Building index ...\n");
+        std::fflush(stderr);
+        idx.build(gi.node_labels);
+
+        // --- Greedy dedup: keep i as representative, mark j as removed iff
+        //     similarity({X_i,Y_i}, {X_j,Y_j}, h) == 1.0. Skip already-removed
+        //     indices on both ends so they neither act as nor get tested against
+        //     a representative. ---
+        std::fprintf(stderr, "Deduplicating ...\n");
         std::fflush(stderr);
 
+        std::vector<char> removed(sol_a.size(), 0);
         for (size_t i = 0; i < sol_a.size(); ++i) {
-            auto [X_i, Y_i, x2_i] = sol_a[i];
+            if (removed[i]) continue;
+            const auto& [X_i, Y_i, val_i] = sol_a[i];
+            const uint32_t Xi = sol_a_ids[i].first;
+            const uint32_t Yi = sol_a_ids[i].second;
             for (size_t j = i + 1; j < sol_a.size(); ++j) {
-                auto [X_j, Y_j, x2_j] = sol_a[j];
-                double sim = similarity(gi, X_i, Y_i, X_j, Y_j, 0);
-                if (sim == 1.0) // removal goes here
-                    std::printf("%s %s %.3f --- %s %s %.3f : %.3f\n",
-                                X_i.c_str(), Y_i.c_str(), x2_i,
-                                X_j.c_str(), Y_j.c_str(), x2_j,
-                                dist);
+                if (removed[j]) continue;
+                const auto& [X_j, Y_j, val_j] = sol_a[j];
+                const uint32_t Xj = sol_a_ids[j].first;
+                const uint32_t Yj = sol_a_ids[j].second;
+                if (similarity_is_one(gi, Xi, Yi, Xj, Yj, h, idx)) {
+                    removed[j] = 1;
+                    std::printf("%s %s %.3f --- %s %s %.3f : 1.000\n",
+                                X_i.c_str(), Y_i.c_str(), val_i,
+                                X_j.c_str(), Y_j.c_str(), val_j);
+                }
             }
         }
+
+        size_t kept = 0;
+        for (size_t i = 0; i < sol_a.size(); ++i) if (!removed[i]) ++kept;
+        std::fprintf(stderr, "Kept              : %zu / %zu\n", kept, sol_a.size());
+        std::fflush(stderr);
 
     } catch (const std::exception& e) {
         std::fprintf(stderr, "Error: %s\n", e.what());
