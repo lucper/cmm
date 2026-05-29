@@ -120,6 +120,7 @@ size_t count_union(const graph_input_t& graph_input,
 {
     const auto& V = graph_input.node_labels;
     const auto& G = graph_input.adj_list;
+    const size_t n = V.size();
 
     std::vector<char> hasX(n), hasY(n), hasZ(n), hasW(n);
     for (size_t u = 0; u < n; ++u) {
@@ -130,7 +131,7 @@ size_t count_union(const graph_input_t& graph_input,
     }
 
     size_t count = 0;
-    for (uint32_t u = 0; u < V.size(); ++u)
+    for (uint32_t u = 0; u < n; ++u)
         for (auto [v, _] : G[u]) {
             if (v < u) continue; // each undirected edge once
 
@@ -140,6 +141,16 @@ size_t count_union(const graph_input_t& graph_input,
         }
 
     return count;
+}
+
+double similarity(const graph_input_t& graph_input,
+                  const std::string& X, const std::string& Y,
+                  const std::string& Z, const std::string& W,
+                  int h)
+{
+    size_t card_inter = count_Eh(graph_input, X, Y, Z, W, h);
+    size_t card_union = count_union(graph_input, X, Y, Z, W);
+    return card_union == 0.0 ? 0.0 : static_cast<double>(card_inter) / card_union;
 }
 
 /* Reads a solution file produced by main_algo / cmm_perf.
@@ -244,20 +255,18 @@ int main(int argc, char* argv[]) {
         std::fprintf(stderr, "Running ...\n");
         std::fflush(stderr);
 
-        // ------------------------------------------------------------------
-        // TODO: measure computation goes here.
-        //
-        // We now have:
-        //   gi          - the graph (sequences + adjacency)
-        //   sol_a[i]    - motif pairs {X, Y} from the first solution
-        //   sol_b[j]    - motif pairs {Z, W} from the second solution
-        //   count_Eh(gi, X, Y, Z, W, h) - cardinality of E_h for a chosen
-        //                                 pair-of-pairs combination
-        //
-        // Open question to settle next: which (i, j) combinations to feed
-        // into count_Eh and how to aggregate the resulting cardinalities
-        // into the measure(s) we want to report.
-        // ------------------------------------------------------------------
+        for (size_t i = 0; i < sol_a.size(); ++i) {
+            auto [X_i, Y_i, x2_i] = sol_a[i];
+            for (size_t j = i + 1; j < sol_a.size(); ++j) {
+                auto [X_j, Y_j, x2_j] = sol_a[j];
+                double sim = similarity(gi, X_i, Y_i, X_j, Y_j, 0);
+                if (sim == 1.0) // removal goes here
+                    std::printf("%s %s %.3f --- %s %s %.3f : %.3f\n",
+                                X_i.c_str(), Y_i.c_str(), x2_i,
+                                X_j.c_str(), Y_j.c_str(), x2_j,
+                                dist);
+            }
+        }
 
     } catch (const std::exception& e) {
         std::fprintf(stderr, "Error: %s\n", e.what());
