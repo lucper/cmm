@@ -279,21 +279,17 @@ int main(int argc, char* argv[]) {
 
         motif_comparator_t idx_a(gi, soln_a);
         auto removed_a = deduplicate_under_similarity(idx_a, soln_a, h);
-        std::fflush(stderr);
 
         size_t kept_a = 0;
         for (size_t i = 0; i < soln_a.size(); ++i) if (!removed_a[i]) ++kept_a;
         std::fprintf(stderr, "Motif pairs kept from sol A : %zu / %zu\n", kept_a, soln_a.size());
-        std::fflush(stderr);
 
         motif_comparator_t idx_b(gi, soln_b);
         auto removed_b = deduplicate_under_similarity(idx_b, soln_b, h);
-        std::fflush(stderr);
 
         size_t kept_b = 0;
         for (size_t i = 0; i < soln_b.size(); ++i) if (!removed_b[i]) ++kept_b;
         std::fprintf(stderr, "Motif pairs kept from sol B : %zu / %zu\n", kept_b, soln_b.size());
-        std::fflush(stderr);
 
     } catch (const std::exception& e) {
         std::fprintf(stderr, "Error: %s\n", e.what());
