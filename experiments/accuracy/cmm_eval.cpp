@@ -12,6 +12,40 @@
 
 namespace fs = std::filesystem;
 
+/* Returns occurrences of pattern p in text t.
+ * We require that |p| <= 64, which should be true for the motif lengths considered. */
+std::vector<int> find_occs(const std::string& p, const std::string& t, char wildcard = 'x')
+{
+    std::vector<int> positions;
+    int n = t.length();
+    int m = p.length();
+
+    if (m == 0 || n < m) return positions;
+    if (m > 64) throw std::invalid_argument("Pattern length exceeds 64 bits.");
+
+    uint64_t char_mask[256]; // all ASCII alphabet
+    for (int i = 0; i < 256; ++i)
+        char_mask[i] = 0;
+
+    for (int i = 0; i < m; ++i)
+        if (p[i] == wildcard)
+            for (int ch = 0; ch < 256; ++ch)
+                char_mask[ch] |= (UINT64_C(1) << i);
+        else
+            char_mask[static_cast<unsigned char>(p[i])] |= (UINT64_C(1) << i);
+
+    uint64_t state = 0;
+    uint64_t match_bit = (UINT64_C(1) << (m - 1));
+    for (int i = 0; i < n; ++i) {
+        state = ((state << 1) | UINT64_C(1));
+        state &= char_mask[static_cast<unsigned char>(t[i])];
+        if (state & match_bit)
+            positions.push_back(i - m + 1);
+    }
+
+    return positions;
+}
+
 struct motif_pair_t {
     std::string X;
     std::string Y;
@@ -21,18 +55,9 @@ struct motif_pair_t {
 class motif_comparator_t {
 public:
     motif_comparator_t(const graph_input_t& gi, const std::vector<motif_pair_t>& soln) : gi(gi) {
-        uint32_t id = 0;
-        for (auto [X, Y, _] : soln) {
-            if (id_of.find(X) == id_of.end()) {
-                motifs.push_back(X);
-                id_of.emplace(X, id);
-                ++id;
-            }
-            if (id_of.find(Y) == id_of.end()) {
-                motifs.push_back(Y);
-                id_of.emplace(Y, id);
-                ++id;
-            }
+        for (const auto& [X, Y, _] : soln) {
+            intern(X);
+            intern(Y);
         }
 
         const size_t M = motifs.size();
@@ -63,7 +88,7 @@ public:
         size_t card_union = 0;
 
         for (uint32_t u = 0; u < G.size(); ++u)
-            for (auto [v, _] : G[u]) {
+            for (const auto& [v, _] : G[u]) {
                 if (v < u) continue;
 
                 // compute union
@@ -86,49 +111,21 @@ public:
     }
 
 private:
-    graph_input_t gi;
+    const graph_input_t& gi;
     std::vector<std::string> motifs;
     std::unordered_map<std::string, uint32_t> id_of;
     std::vector<std::vector<std::vector<int>>> occs; // occs[motif_id][node]
     std::vector<std::vector<char>>              has; // has[motif_id][node]
 
-    /* Returns occurrences of pattern p in text t.
-     * We require that |p| <= 64, which should be true for the motif lengths considered. */
-    std::vector<int> find_occs(const std::string& p, const std::string& t, char wildcard = 'x') const
+    void intern(const std::string& motif)
     {
-        std::vector<int> positions;
-        int n = t.length();
-        int m = p.length();
-
-        if (m == 0 || n < m) return positions;
-        if (m > 64) throw std::invalid_argument("Pattern length exceeds 64 bits.");
-
-        uint64_t char_mask[256]; // all ASCII alphabet
-        for (int i = 0; i < 256; ++i)
-            char_mask[i] = 0;
-
-        for (int i = 0; i < m; ++i)
-            if (p[i] == wildcard)
-                for (int ch = 0; ch < 256; ++ch)
-                    char_mask[ch] |= (UINT64_C(1) << i);
-            else
-                char_mask[static_cast<unsigned char>(p[i])] |= (UINT64_C(1) << i);
-
-        uint64_t state = 0;
-        uint64_t match_bit = (UINT64_C(1) << (m - 1));
-        for (int i = 0; i < n; ++i) {
-            state = ((state << 1) | UINT64_C(1));
-            state &= char_mask[static_cast<unsigned char>(t[i])];
-            if (state & match_bit)
-                positions.push_back(i - m + 1);
-        }
-
-        return positions;
+        auto [it, inserted] = id_of.try_emplace(motif, static_cast<uint32_t>(motifs.size()));
+        if (inserted) motifs.push_back(motif);
     }
 
     /* True iff there exist i in occs[P][u], j in occs[Q][u] with |i-j| <= h.
      * Uses the precomputed sorted occurrence lists; two-pointer min-gap. */
-    inline bool motifs_are_near(uint32_t P, uint32_t Q, uint32_t u, int h) const
+    bool motifs_are_near(uint32_t P, uint32_t Q, uint32_t u, int h) const
     {
         const auto& a = occs[P][u];
         if (a.empty()) return false;
@@ -156,17 +153,21 @@ std::vector<char> deduplicate_under_similarity(const motif_comparator_t& motif_c
                                                const std::vector<motif_pair_t>& soln,
                                                int h)
 {
+    std::vector<std::pair<uint32_t, uint32_t>> ids(soln.size());
+    for (size_t i = 0; i < soln.size(); ++i)
+        ids[i] = {motif_comp.motif_id(soln[i].X),
+                  motif_comp.motif_id(soln[i].Y)};
     std::vector<char> removed(soln.size(), 0);
     for (size_t i = 0; i < soln.size(); ++i) {
         if (removed[i]) continue;
         const auto& [X_i, Y_i, val_i] = soln[i];
-        auto Xi = motif_comp.motif_id(soln[i].X);
-        auto Yi = motif_comp.motif_id(soln[i].Y);
+        auto Xi = ids[i].first;
+        auto Yi = ids[i].second;
         for (size_t j = i + 1; j < soln.size(); ++j) {
             if (removed[j]) continue;
             const auto& [X_j, Y_j, val_j] = soln[j];
-            auto Xj = motif_comp.motif_id(soln[j].X);
-            auto Yj = motif_comp.motif_id(soln[j].Y);
+            auto Xj = ids[j].first;
+            auto Yj = ids[j].second;
             if (motif_comp.similarity(Xi, Yi, Xj, Yj, h) == 1.0) {
                 removed[j] = 1;
                 std::fprintf(stderr, "%s %s %.3f --- %s %s %.3f : 1.0\n",
