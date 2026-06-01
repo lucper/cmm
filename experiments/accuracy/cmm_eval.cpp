@@ -229,7 +229,7 @@ void write_best_match_table(const std::string& path,
     if (!out.is_open())
         throw std::runtime_error("Cannot open output file: " + path);
 
-    out << "rank\tX\tY\tscore\tbest_X\tbest_Y\tbest_score\tsimilarity\tdistance\n";
+    out << "rank\tX\tY\tscore\tbest_X\tbest_Y\tbest_score\tsimilarity\n";
 
     char row[1024];
     for (size_t i = 0; i < soln_self.size(); ++i) {
@@ -237,11 +237,11 @@ void write_best_match_table(const std::string& path,
         const auto& other = soln_other[matches[i].best_idx];
         double sim = matches[i].max_similarity;
         std::snprintf(row, sizeof(row),
-            "%zu\t%s\t%s\t%.3f\t%s\t%s\t%.3f\t%.6f\t%.6f\n",
+            "%zu\t%s\t%s\t%.3f\t%s\t%s\t%.3f\t%.6f\n",
             i + 1,
             self.X.c_str(), self.Y.c_str(), self.value,
             other.X.c_str(), other.Y.c_str(), other.value,
-            sim, 1.0 - sim);
+            sim);
         out << row;
     }
 }
