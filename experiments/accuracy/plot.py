@@ -1,22 +1,21 @@
 #!/usr/bin/env python3
 """
 For each row in the input TSV -- a motif pair from one solution and the closest
-counterpart in the other -- plot (distance, score). Points in the upper-right
-corner (high score, high distance) are high-scoring pairs whose best match in
-the other solution is far away.
+counterpart in the other -- plot (similarity, score). Points in the upper-left
+corner (high score, low similarity) are high-scoring pairs whose best match in
+the other solution is poor.
 """
 
 import argparse
-from pathlib import Path
-
 import matplotlib.pyplot as plt
 import pandas as pd
 import seaborn as sns
+from pathlib import Path
 
 EXPECTED_COLS = {
     "rank", "X", "Y", "score",
     "best_X", "best_Y", "best_score",
-    "similarity", "distance",
+    "similarity"
 }
 
 def load(path):
@@ -32,27 +31,27 @@ def plot_score_distance(df, output_path, score_label, log_scale, threshold):
     fig, ax = plt.subplots(figsize=(7, 4.5), constrained_layout=True)
 
     if threshold is not None:
-        below = df[df["distance"] <  threshold]
-        above = df[df["distance"] >= threshold]
-        n_above = len(above)
-        n_total = len(df)
-        pct = 100.0 * n_above / n_total if n_total else 0.0
+        matched = df[df["similarity"] >= threshold]
+        missed  = df[df["similarity"] <  threshold]
+        n_missed = len(missed)
+        n_total  = len(df)
+        pct = 100.0 * n_missed / n_total if n_total else 0.0
 
-        ax.scatter(below["distance"], below["score"],
+        ax.scatter(matched["similarity"], matched["score"],
                    s=30, alpha=0.5, color=palette[0], edgecolor="none",
-                   label=f"$d$ < {threshold}")
-        ax.scatter(above["distance"], above["score"],
+                   label=f"$s$ $\\geq$ {threshold}")
+        ax.scatter(missed["similarity"], missed["score"],
                    s=30, alpha=0.7, color=palette[3], edgecolor="none",
-                   label=f"$d$ $\\geq$ {threshold} "
-                         f"({n_above}/{n_total}, {pct:.1f}%)")
+                   label=f"$s$ < {threshold} "
+                         f"({n_missed}/{n_total}, {pct:.1f}%)")
         ax.axvline(x=threshold, color="gray",
                    linestyle="--", linewidth=1.0, alpha=0.7)
         ax.legend(fontsize=14, loc="best")
     else:
-        ax.scatter(df["distance"], df["score"],
+        ax.scatter(df["similarity"], df["score"],
                    s=30, alpha=0.6, color=palette[0], edgecolor="none")
 
-    ax.set_xlabel("Distance ($1-J_h$)", fontsize=20)
+    ax.set_xlabel("Similarity", fontsize=20)
     ax.set_ylabel(score_label, fontsize=20)
     ax.set_xlim(-0.02, 1.02)
     ax.tick_params(axis="both", labelsize=18)
@@ -76,7 +75,8 @@ def main():
     parser.add_argument("--score-label", default="Score",
                         help="Y-axis label, e.g. '$\\chi^2$'")
     parser.add_argument("--threshold",   type=float, default=None,
-                        help="Distance threshold d* in [0,1] to mark with a vertical line")
+                        help="Similarity threshold s* in [0,1] to mark with a vertical line; "
+                             "points with similarity < s* are highlighted as misses")
     parser.add_argument("--log-scale",   action="store_true",
                         help="Use log scale on y-axis")
     args = parser.parse_args()
