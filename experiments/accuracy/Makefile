@@ -20,6 +20,8 @@ cmm_eval: $(OBJS) $(ALG_OBJS)
 %.o: %.cpp
 	$(CXX) $(CXXFLAGS) -fopenmp -c -o $@ $<
 
+cmm_eval.o: cmm_eval.hpp
+
 $(ALG_OBJS):
 	$(MAKE) -C $(ALG_DIR)
 
