@@ -10,7 +10,6 @@ import argparse
 import matplotlib.pyplot as plt
 import pandas as pd
 import seaborn as sns
-from matplotlib.ticker import MaxNLocator
 from pathlib import Path
 
 def parse_input_spec(spec):
@@ -58,11 +57,11 @@ def plot_score_rank(specs, output_path, score_label, log_scale):
         max_rank = max(max_rank, len(scores))
         print(f"Loaded {len(scores)} pairs from {path} (label: {label})")
 
-    ax.set_xlabel("Rank", fontsize=20)
+    ax.set_xlabel("Motif pairs", fontsize=20)
     ax.set_ylabel(score_label, fontsize=20)
     ax.set_xlim(0.5, max_rank + 0.5)
-    ax.xaxis.set_major_locator(MaxNLocator(integer=True))
-    ax.tick_params(axis="both", labelsize=18)
+    ax.set_xticks([])
+    ax.tick_params(axis="y", labelsize=18)
     ax.grid(axis="y", linestyle="--", linewidth=0.6, alpha=0.5)
     sns.despine(ax=ax)
 
