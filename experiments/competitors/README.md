@@ -39,7 +39,7 @@ Then test it:
 chmod +x DSTAR.LinuxRedHat
 ./DSTAR.LinuxRedHat
 ```
-The secon command should yield:
+The second command should yield:
 ```text
 File not found - (null)
 File not found - SHELL=/bin/bash
