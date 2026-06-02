@@ -10,20 +10,25 @@ endif
 
 ALG_DIR  := ../../algorithm
 ALG_OBJS := $(ALG_DIR)/data_import.o
-OBJS     := cmm_eval.o
+BINS     := cmm_eval cmm_dedup
 
-all: cmm_eval
+all: $(BINS)
 
-cmm_eval: $(OBJS) $(ALG_OBJS)
+cmm_eval: cmm_eval.o cmm_acc.o $(ALG_OBJS)
+	$(CXX) $(LDFLAGS) -o $@ $^
+
+cmm_dedup: cmm_dedup.o cmm_acc.o $(ALG_OBJS)
 	$(CXX) $(LDFLAGS) -o $@ $^
 
 %.o: %.cpp
 	$(CXX) $(CXXFLAGS) -fopenmp -c -o $@ $<
 
-cmm_eval.o: cmm_eval.hpp
+cmm_acc.o:   cmm_acc.cpp   cmm_acc.hpp
+cmm_eval.o:  cmm_eval.cpp  cmm_acc.hpp
+cmm_dedup.o: cmm_dedup.cpp cmm_acc.hpp
 
 $(ALG_OBJS):
 	$(MAKE) -C $(ALG_DIR)
 
 clean:
-	rm -f $(OBJS) cmm_perf
+	rm -f *.o $(BINS)
