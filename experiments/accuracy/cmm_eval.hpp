@@ -1,5 +1,5 @@
-#ifndef CMM_EVAL_HPP
-#define CMM_EVAL_HPP
+#ifndef CMM_ACC_HPP
+#define CMM_ACC_HPP
 
 #include <cstdint>
 #include <string>
@@ -61,6 +61,21 @@ private:
  *   - subsequent lines of "<X> <Y> <value>", whitespace separated */
 std::vector<motif_pair_t> read_solution_file(const std::string& path);
 
+/* Writes a solution file in the same format as main_algo / cmm_perf:
+ *   "X Y x2" header followed by rows of "<X> <Y> <value>". */
+void write_solution_file(const std::string& path,
+                         const std::vector<motif_pair_t>& soln);
+
+/* Iterates `soln` in order; for each still-kept pair i, marks any later pair j
+ * with similarity 1.0 as removed. Returns the kept pairs in original order.
+ *
+ * Since main_algo writes solutions sorted by score descending, this preserves
+ * that ordering and keeps the highest-scoring representative of each
+ * similarity-1.0 cluster. */
+std::vector<motif_pair_t> deduplicate_solution(const motif_comparator_t& comp,
+                                               const std::vector<motif_pair_t>& soln,
+                                               int h);
+
 /* For one pair in some solution, the best match found in the other solution. */
 struct best_match_t {
     size_t best_idx;        // index in the "other" solution
@@ -88,4 +103,4 @@ void write_best_match_table(const std::string& path,
                             const std::vector<motif_pair_t>& soln_other,
                             const std::vector<best_match_t>& matches);
 
-#endif // CMM_EVAL_HPP
+#endif // CMM_ACC_HPP
