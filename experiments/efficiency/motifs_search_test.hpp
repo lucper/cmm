@@ -66,8 +66,6 @@ struct thread_workspace_t {
 
     std::vector<bool> has_rank_X;
 
-    std::vector<bool> rank_membership;
-
     // Profiling. Per-thread accumulators over the cells this thread processed.
     size_t pruning_cnt;
     size_t min_rank_X;   // min over this thread's per-cell max-ranks (SIZE_MAX = none yet)
@@ -80,19 +78,18 @@ struct thread_workspace_t {
           edge_count(ESA.N), edge_count_set_indices(ESA.N),
           flat_nodes_X(ESA.N), rank_offsets_X(ESA.N + 1), rank_active_counts_X(ESA.N + 1), active_ranks_X(ESA.N + 1),
           flat_nodes_Y(ESA.N), rank_offsets_Y(ESA.N + 1), rank_active_counts_Y(ESA.N + 1), active_ranks_Y(ESA.N + 1),
-          flat_ranks_Y(V_size * max_seq_len), node_offsets_Y(V_size), node_active_counts_Y(V_size),
+          flat_ranks_Y(ESA.N), node_offsets_Y(V_size), node_active_counts_Y(V_size),
           rank_table_X(ell, ESA), rank_table_Y(ell, ESA),
           uniq_ranks_per_node_buffer(ESA.N), rank_timestamp(ESA.N + 1),
           edge_timestamp(E_size),
           has_rank_X(V_size, false),
-          rank_membership(ESA.N + 1, false),
           pruning_cnt(0), min_rank_X(SIZE_MAX), max_rank_X(0), sum_rank_X(0), cell_count_X(0)
     {
-        for (size_t i = 0; i < V_size; i++)
-            node_offsets_Y[i] = i * max_seq_len;
+        (void) max_seq_len; // flat_ranks_Y sized to ESA.N; node_offsets_Y recomputed in build_csr
     }
 
-    void build_csr(const std::vector<std::string>& V, const rank_table_t& rank_table)
+    void build_csr(const std::vector<std::string>& V, const rank_table_t& rank_table,
+                   uint32_t max_rank)
     {
         size_t ell = rank_table.get_ell();
 
@@ -146,11 +143,19 @@ struct thread_workspace_t {
         }
 
         // placement
-        for (const auto& [node, rank] : uniq_ranks_per_node_buffer) {
+        for (const auto& [node, rank] : uniq_ranks_per_node_buffer)
             flat_nodes[rank_offsets[rank] + rank_active_counts[rank]++] = node;
-            if (!is_table_X)
-                flat_ranks_Y[node_offsets_Y[node] + node_active_counts_Y[node]++] = rank;
-        }
+
+        if (!is_table_X)
+            for (uint32_t rank = 0; rank <= max_rank; rank++) {
+                uint32_t cnt = rank_active_counts[rank];
+                if (cnt == 0) continue;
+                const uint32_t *nodes = &flat_nodes[rank_offsets[rank]];
+                for (uint32_t j = 0; j < cnt; j++) {
+                    uint32_t node = nodes[j];
+                    flat_ranks_Y[node_offsets_Y[node] + node_active_counts_Y[node]++] = rank;
+                }
+            }
     }
 };
 
