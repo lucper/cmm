@@ -66,14 +66,14 @@ struct thread_workspace_t {
 
     std::vector<bool> has_rank_X;
 
-    // Profiling. Per-thread accumulators over the cells this thread processed.
+    // Profiling
     size_t pruning_cnt;
-    size_t min_rank_X;   // min over this thread's per-cell max-ranks (SIZE_MAX = none yet)
-    size_t max_rank_X;   // max over this thread's per-cell max-ranks
-    size_t sum_rank_X;   // sum over this thread's per-cell max-ranks (for the average)
-    size_t cell_count_X; // number of cells this thread folded in
+    uint32_t min_rank_X;
+    uint32_t max_rank_X;
+    size_t sum_rank_X;
+    size_t cell_count_X;
 
-    thread_workspace_t(const esa_t& ESA, size_t ell, size_t V_size, size_t E_size, size_t max_seq_len)
+    thread_workspace_t(const esa_t& ESA, size_t ell, size_t V_size, size_t E_size)
         : intersec_nodes_count(ESA.N), intersec_nodes_count_set_indices(ESA.N),
           edge_count(ESA.N), edge_count_set_indices(ESA.N),
           flat_nodes_X(ESA.N), rank_offsets_X(ESA.N + 1), rank_active_counts_X(ESA.N + 1), active_ranks_X(ESA.N + 1),
@@ -83,10 +83,8 @@ struct thread_workspace_t {
           uniq_ranks_per_node_buffer(ESA.N), rank_timestamp(ESA.N + 1),
           edge_timestamp(E_size),
           has_rank_X(V_size, false),
-          pruning_cnt(0), min_rank_X(SIZE_MAX), max_rank_X(0), sum_rank_X(0), cell_count_X(0)
-    {
-        (void) max_seq_len; // flat_ranks_Y sized to ESA.N; node_offsets_Y recomputed in build_csr
-    }
+          pruning_cnt(0), min_rank_X(UINT32_MAX), max_rank_X(0), sum_rank_X(0), cell_count_X(0)
+    {}
 
     void build_csr(const std::vector<std::string>& V, const rank_table_t& rank_table,
                    uint32_t max_rank)

@@ -44,7 +44,7 @@ std::string_view rank_table_t::get_substr_with_rank(size_t r) const
     return std::string_view((const char *) S + IR1[r], ell);
 }
 
-size_t rank_table_t::sort_by_prefix(const std::vector<uint16_t>& H)
+uint32_t rank_table_t::sort_by_prefix(const std::vector<uint16_t>& H)
 {
     // Positions H must be in [ell] and sorted.
 

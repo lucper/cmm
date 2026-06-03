@@ -79,17 +79,12 @@ solution_report_t main_algo(const std::vector<std::string>& V,
         throw std::invalid_argument("Empty cell range: [" + std::to_string(c_begin) +
                                     ", " + std::to_string(c_end) + ").");
 
-    size_t max_seq_len = 0;
-    for (const auto& v : V)
-        if (v.length() > max_seq_len)
-            max_seq_len = v.length();
-
     size_t num_threads = std::min(range_size, requested_num_threads);
     omp_set_num_threads(num_threads);
     std::vector<thread_workspace_t<motif_comparator_t>> workspaces;
     workspaces.reserve(num_threads);
     for (size_t i = 0; i < num_threads; i++)
-        workspaces.emplace_back(ESA, ell, V.size(), number_of_edges, max_seq_len);
+        workspaces.emplace_back(ESA, ell, V.size(), number_of_edges);
 
     size_t num_threads_spawned = 0;
 
@@ -132,15 +127,15 @@ solution_report_t main_algo(const std::vector<std::string>& V,
         auto& H_u = all_H[d_u];
         auto& H_v = all_H[d_v];
 
-        size_t cell_max_rank_X = ws.rank_table_X.sort_by_prefix(H_u);
+        uint32_t cell_max_rank_X = ws.rank_table_X.sort_by_prefix(H_u);
         ws.min_rank_X = std::min(ws.min_rank_X, cell_max_rank_X);
         ws.max_rank_X = std::max(ws.max_rank_X, cell_max_rank_X);
         ws.sum_rank_X += cell_max_rank_X;
         ws.cell_count_X++;
-        ws.build_csr(V, ws.rank_table_X, static_cast<uint32_t>(cell_max_rank_X));
+        ws.build_csr(V, ws.rank_table_X, cell_max_rank_X);
 
-        size_t cell_max_rank_Y = ws.rank_table_Y.sort_by_prefix(H_v);
-        ws.build_csr(V, ws.rank_table_Y, static_cast<uint32_t>(cell_max_rank_Y));
+        uint32_t cell_max_rank_Y = ws.rank_table_Y.sort_by_prefix(H_v);
+        ws.build_csr(V, ws.rank_table_Y, cell_max_rank_Y);
 
         {
             const bool same_d = (d_u == d_v);
@@ -278,8 +273,8 @@ solution_report_t main_algo(const std::vector<std::string>& V,
     for (auto& ws : workspaces) {
         pruning_cnt_global += ws.pruning_cnt;
         if (ws.cell_count_X > 0) {
-            max_assigned_rank_X_global = std::max(max_assigned_rank_X_global, ws.max_rank_X);
-            min_assigned_rank_X_global = std::min(min_assigned_rank_X_global, ws.min_rank_X);
+            max_assigned_rank_X_global = std::max(max_assigned_rank_X_global, static_cast<size_t>(ws.max_rank_X));
+            min_assigned_rank_X_global = std::min(min_assigned_rank_X_global, static_cast<size_t>(ws.min_rank_X));
             sum_assigned_rank_X_global += ws.sum_rank_X;
             cell_count_X_global += ws.cell_count_X;
         }

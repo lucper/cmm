@@ -25,7 +25,7 @@ public:
      *
      * Output:
      * INT value of maximum rank. */
-    size_t sort_by_prefix(const std::vector<uint16_t>& H);
+    uint32_t sort_by_prefix(const std::vector<uint16_t>& H);
 
     /* Returns a pointer to a substring with rank r. Note that the ranks can change if one runs
      * map_ell_mers_to_ranks multiple times.
@@ -51,7 +51,7 @@ private:
     const int64_t *SA;
     const int64_t *LCP;
 
-    size_t max_rank_R1;
+    uint32_t max_rank_R1;
 
     std::vector<uint32_t> sSA;
 
