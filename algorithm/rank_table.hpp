@@ -35,13 +35,13 @@ public:
      *
      * Output:
      * ell-length substring of rank r. */
-    std::string_view get_substr_with_rank(size_t r) const;
+    std::string_view get_substr_with_rank(uint32_t r) const;
 
     /* Returns the rank of substring s[i..i+ell-1], where s is the k-th string in the collection seqs.
      *
      * Input:
      * INT index i of k-th string string seqs[k]. */
-    size_t get_rank_of_substr(size_t i, size_t k) const;
+    uint32_t get_rank_of_substr(size_t i, size_t k) const;
 
 private:
     size_t ell;

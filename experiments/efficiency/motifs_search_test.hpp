@@ -17,7 +17,7 @@
 #include "esa.hpp"
 
 struct motif_pair_record_t {
-    size_t rankX, rankY;
+    uint32_t rankX, rankY;
     std::string X, Y;
     size_t countE;
     double countE_bar;
