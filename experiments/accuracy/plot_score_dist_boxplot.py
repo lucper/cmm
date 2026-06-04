@@ -14,6 +14,7 @@ names cannot contain colons.
 import argparse
 import matplotlib.pyplot as plt
 import pandas as pd
+import numpy as np
 import seaborn as sns
 from pathlib import Path
 
@@ -85,23 +86,39 @@ def plot_box(df, datasets, methods, output_path, score_label, log_scale):
                 meanprops={"marker": "D", "markerfacecolor": "white",
                            "markeredgecolor": "black", "markersize": 5})
 
-    # Annotate N above each box. Seaborn dodges hued boxes within each
-    # categorical x-slot; we replicate that placement so the annotations
-    # sit directly above their boxes.
+    # Width scales with number of datasets so boxes don't get crushed.
     box_width = 0.8
     dodge = box_width / n_methods
+
     for d_idx, dataset in enumerate(datasets):
         for m_idx, method in enumerate(methods):
             sub = df[(df["dataset"] == dataset) & (df["method"] == method)]
             if len(sub) == 0:
                 continue
-            n   = len(sub)
+
+            n = len(sub)
             top = sub["score"].max()
-            x   = d_idx - box_width / 2 + (m_idx + 0.5) * dodge
-            ax.annotate(f"{n}", xy=(x, top), xytext=(0, 6),
+            mean_val = sub["score"].mean()
+
+            # Calculate the exact center position of this specific box
+            x_center = d_idx - box_width / 2 + (m_idx + 0.5) * dodge
+
+            # 1. Label 1: Sample size (N) placed higher up (e.g., 18 points above the max data point)
+            ax.annotate(f"$M={n}$", xy=(x_center, top), xytext=(1, 35),
                         textcoords="offset points",
-                        ha="center", va="bottom",
-                        fontsize=14, color="gray",
+                        ha="left", va="center",
+                        rotation=30,
+                        fontsize=12, color="gray",
+                        fontfamily="monospace")
+
+            # 2. Label 2: Mean value placed directly under the N label (e.g., 4 points above the max data point)
+            # Color-coded to match the box method so it's instantly recognizable
+            ax.annotate(f"$\mu={mean_val:.2f}$", xy=(x_center, top), xytext=(0, 30),
+                        textcoords="offset points",
+                        ha="left", va="center",
+                        rotation=30,
+                        fontsize=12, color=palette[m_idx],
+                        fontweight="bold",
                         fontfamily="monospace")
 
     ax.set_xlabel("")
