@@ -59,17 +59,12 @@ std::vector<motif_pair_record_t> main_algo(const std::vector<std::string>& V,
         for (size_t d_v = d_u; d_v < all_H.size(); d_v++)
             cells.emplace_back(d_u, d_v);
 
-    size_t max_seq_len = 0;
-    for (const auto& v : V)
-        if (v.length() > max_seq_len)
-            max_seq_len = v.length();
-
     size_t num_threads = std::min(cells.size(), requested_num_threads);
     omp_set_num_threads(num_threads);
     std::vector<thread_workspace_t<motif_comparator_t>> workspaces;
     workspaces.reserve(num_threads);
     for (size_t i = 0; i < num_threads; i++)
-        workspaces.emplace_back(ESA, ell, V.size(), number_of_edges, max_seq_len);
+        workspaces.emplace_back(ESA, ell, V.size(), number_of_edges);
 
     // Progress bar
     using namespace indicators;
@@ -105,13 +100,14 @@ std::vector<motif_pair_record_t> main_algo(const std::vector<std::string>& V,
         auto& H_u = all_H[d_u];
         auto& H_v = all_H[d_v];
 
-        ws.rank_table_X.sort_by_prefix(H_u);
-        ws.build_csr(V, ws.rank_table_X);
+        uint32_t cell_max_rank_X = ws.rank_table_X.sort_by_prefix(H_u);
+        ws.build_csr(V, ws.rank_table_X, cell_max_rank_X);
 
-        ws.rank_table_Y.sort_by_prefix(H_v);
-        ws.build_csr(V, ws.rank_table_Y);
+        uint32_t cell_max_rank_Y = ws.rank_table_Y.sort_by_prefix(H_v);
+        ws.build_csr(V, ws.rank_table_Y, cell_max_rank_Y);
 
         {
+            const bool same_d = (d_u == d_v);
             uint32_t max_countY = 0;
             for (auto rank_Y : ws.active_ranks_Y)
                 max_countY = std::max(max_countY, ws.rank_active_counts_Y[rank_Y]);
@@ -161,28 +157,27 @@ std::vector<motif_pair_record_t> main_algo(const std::vector<std::string>& V,
                             uint32_t *ranksY_in_node_v = &ws.flat_ranks_Y[ws.node_offsets_Y[v]];
                             uint32_t number_of_ranksY_in_node_v = ws.node_active_counts_Y[v];
 
-                            for (size_t k = 0; k < number_of_ranksY_in_node_v; k++) {
-                                uint32_t rank_Y = ranksY_in_node_v[k];
-                                ws.rank_membership[rank_Y] = true;
-                                if (rank_X <= rank_Y || d_v != d_u) {
+                            // on the off-diagonal every rank is credited;
+                            // on the diagonal only rank_Y >= rank_X.
+                            auto credit = [&](uint32_t rank_Y) {
+                                if (!same_d || rank_X <= rank_Y) {
                                     if (ws.edge_count[rank_Y] == 0)
                                         ws.edge_count_set_indices.push_back(rank_Y);
                                     ws.edge_count[rank_Y]++;
                                 }
+                            };
+
+                            uint32_t a = 0, b = 0;
+                            uint32_t nu = ws.has_rank_X[v] ? number_of_ranksY_in_node_u : 0;
+                            while (a < nu && b < number_of_ranksY_in_node_v) {
+                                uint32_t ru = ranksY_in_node_u[a];
+                                uint32_t rv = ranksY_in_node_v[b];
+                                if (ru < rv)      { credit(ru); a++; }
+                                else if (rv < ru) { credit(rv); b++; }
+                                else              { credit(rv); a++; b++; }
                             }
-
-                            if (ws.has_rank_X[v])
-                                for (size_t k = 0; k < number_of_ranksY_in_node_u; k++) {
-                                    uint32_t rank_Y = ranksY_in_node_u[k];
-                                    if ((rank_X <= rank_Y || d_v != d_u) && !ws.rank_membership[rank_Y]) {
-                                        if (ws.edge_count[rank_Y] == 0)
-                                            ws.edge_count_set_indices.push_back(rank_Y);
-                                        ws.edge_count[rank_Y]++;
-                                    }
-                                }
-
-                            for (size_t k = 0; k < number_of_ranksY_in_node_v; k++)
-                                ws.rank_membership[ranksY_in_node_v[k]] = false;
+                            while (a < nu) credit(ranksY_in_node_u[a++]);
+                            while (b < number_of_ranksY_in_node_v) credit(ranksY_in_node_v[b++]);
                         }
                 }
 
