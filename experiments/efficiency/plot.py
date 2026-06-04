@@ -9,7 +9,7 @@ from pathlib import Path
 # TSV columns
 COLS = [
     "trial", "instance", "edge_density", "V", "N",
-    "ell", "d", "max_rank", "pruning_cnt",
+    "ell", "d", "max_rank", "min_rank", "avg_rank", "pruning_cnt",
     "num_threads_requested", "num_threads_spawned",
     "time_ms", "peak_ram_kb"
 ]
