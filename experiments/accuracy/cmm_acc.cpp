@@ -96,6 +96,32 @@ double motif_comparator_t::similarity(uint32_t X, uint32_t Y, uint32_t Z, uint32
     return card_union == 0 ? 0.0 : static_cast<double>(card_inter) / card_union;
 }
 
+bool motif_comparator_t::are_identical(uint32_t X, uint32_t Y, uint32_t Z, uint32_t W) const
+{
+    const auto& G = gi.adj_list;
+    bool any_union = false;
+
+    for (uint32_t u = 0; u < G.size(); ++u)
+        for (const auto& [v, _] : G[u]) {
+            if (v < u) continue;
+
+            bool inXY = (has[X][u] && has[Y][v]) || (has[X][v] && has[Y][u]);
+            bool inZW = (has[Z][u] && has[W][v]) || (has[Z][v] && has[W][u]);
+            if (!(inXY || inZW)) continue;
+            any_union = true;
+
+            bool xz =
+                (motifs_are_near(X, Z, u, 0) && motifs_are_near(Y, W, v, 0)) ||
+                (motifs_are_near(X, Z, v, 0) && motifs_are_near(Y, W, u, 0));
+            bool xw = xz ? false :
+                (motifs_are_near(X, W, u, 0) && motifs_are_near(Y, Z, v, 0)) ||
+                (motifs_are_near(X, W, v, 0) && motifs_are_near(Y, Z, u, 0));
+            if (!(xz || xw)) return false; // edge in union but not in intersection
+        }
+
+    return any_union;
+}
+
 void motif_comparator_t::intern(const std::string& motif)
 {
     auto [it, inserted] = id_of.try_emplace(motif, static_cast<uint32_t>(motifs.size()));
@@ -178,8 +204,7 @@ void write_solution_file(const std::string& path,
 }
 
 std::vector<motif_pair_t> deduplicate_solution(const motif_comparator_t& comp,
-                                               const std::vector<motif_pair_t>& soln,
-                                               int h)
+                                               const std::vector<motif_pair_t>& soln)
 {
     const size_t n = soln.size();
 
@@ -189,13 +214,15 @@ std::vector<motif_pair_t> deduplicate_solution(const motif_comparator_t& comp,
         ids[i] = {comp.motif_id(soln[i].X), comp.motif_id(soln[i].Y)};
 
     std::vector<char> removed(n, 0);
+
+    #pragma omp parallel for schedule(dynamic)
     for (size_t i = 0; i < n; ++i) {
         if (removed[i]) continue;
         auto [Xi, Yi] = ids[i];
         for (size_t j = i + 1; j < n; ++j) {
             if (removed[j]) continue;
             auto [Xj, Yj] = ids[j];
-            if (comp.similarity(Xi, Yi, Xj, Yj, h) == 1.0)
+            if (comp.are_identical(Xi, Yi, Xj, Yj))
                 removed[j] = 1;
         }
     }
