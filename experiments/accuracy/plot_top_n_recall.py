@@ -100,7 +100,7 @@ def plot(specs, output_path, top_n, threshold, log_scale, x_label):
         ax.minorticks_off()
 
     ax.set_xlabel(x_label, fontsize=20)
-    ax.set_ylabel(f"% top {top_n} with sim $\\geq$ {threshold}", fontsize=20)
+    ax.set_ylabel(f"% top {top_n} with $s_h \\geq$ {threshold}", fontsize=20)
     ax.set_ylim(-2, 102)
     ax.tick_params(axis="both", labelsize=18)
     ax.grid(linestyle="--", linewidth=0.6, alpha=0.5)
