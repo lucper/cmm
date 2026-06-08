@@ -19,7 +19,7 @@ CMM_EVAL=./cmm_eval
 CMM_DEDUP=./cmm_dedup
 SLIDER_JAR="../competitors/SliderLight/dist/SliderLight.jar"
 
-## Sanity checks: fail if anything's missing
+## sanity checks: fail if anything's missing
 for tool in "${CMM_EVAL}" "${CMM_DEDUP}"
 do
     [ -x "${tool}" ] || { echo "Error: ${tool} not found or not executable" >&2; exit 1; }
@@ -143,7 +143,7 @@ do
 
         for h in "${H_VALUES[@]}"
         do
-            # No-dedup evaluation
+            # no-dedup evaluation
             tsv_nd="${OUT_DIR}/${ds}/eval/${ds}.slider++.agg.min${t}.k${K_TOP}.h${h}.tsv"
             if [ ! -f "${tsv_nd}" ]
             then
@@ -156,7 +156,7 @@ do
                 echo "Skip:    Eval ${ds} min${t} h${h} no-dedup" >&2
             fi
 
-            # Dedup evaluation
+            # dedup evaluation
             tsv_d="${OUT_DIR}/${ds}/eval/${ds}.slider++.agg.min${t}.k${K_TOP}.h${h}.dedup.tsv"
             if [ ! -f "${tsv_d}" ]
             then
