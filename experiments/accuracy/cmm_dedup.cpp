@@ -52,7 +52,7 @@ int main(int argc, char* argv[]) {
         motif_comparator_t comp(gi, soln);
 
         std::fprintf(stderr, "Deduplicating...\n");
-        auto kept = deduplicate_solution(comp, soln, h);
+        auto kept = deduplicate_solution(comp, soln);
 
         write_solution_file(soln_out_path.string(), kept);
 

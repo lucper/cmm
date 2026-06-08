@@ -39,9 +39,9 @@ public:
 
     uint32_t motif_id(const std::string& motif) const;
 
-    /* Returns |E_h({X,Y},{Z,W})| / |E_{X,Y} u E_{Z,W}|, or 0.0 if the union
-     * is empty. */
     double similarity(uint32_t X, uint32_t Y, uint32_t Z, uint32_t W, int h) const;
+
+    bool are_identical(uint32_t X, uint32_t Y, uint32_t Z, uint32_t W) const;
 
 private:
     const graph_input_t& gi;
@@ -73,8 +73,7 @@ void write_solution_file(const std::string& path,
  * that ordering and keeps the highest-scoring representative of each
  * similarity-1.0 cluster. */
 std::vector<motif_pair_t> deduplicate_solution(const motif_comparator_t& comp,
-                                               const std::vector<motif_pair_t>& soln,
-                                               int h);
+                                               const std::vector<motif_pair_t>& soln);
 
 /* For one pair in some solution, the best match found in the other solution. */
 struct best_match_t {
