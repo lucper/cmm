@@ -82,7 +82,7 @@ agg_and_eval() {
         do
             trial_files+=("${OUT_DIR}/${ds}/${ds}.slider++.trial${i}.min${t}.k${K_SLIDER}.out")
         done
-        cat "${trial_files[@]}" | sort -k3 -gr | head -n ${K_TOP} > "${agg}.tmp"
+        cat "${trial_files[@]}" | sort -k3 -gr | awk -v n=${K_TOP} 'NR<=n' > "${agg}.tmp"
         mv "${agg}.tmp" "${agg}"
     else
         echo "Skipping agg ${ds} min${t} trials${r} -- already done" >&2
