@@ -79,16 +79,18 @@ def plot(specs, output_path, top_n, threshold, log_scale, x_label):
         print(f"{dataset} x={x}: {100*r:.1f}% from {path}")
 
     palette = sns.color_palette("tab10", n_colors=max(len(by_dataset), 3))
+    markers = ["o", "s", "^", "D", "v", "P", "*"]  # cycled per dataset
 
     fig, ax = plt.subplots(figsize=(7, 4.5), constrained_layout=True)
 
     all_xs = sorted({x for points in by_dataset.values() for x, _ in points})
 
-    for color, (dataset, points) in zip(palette, by_dataset.items()):
+    for idx, ((dataset, points), color) in enumerate(zip(by_dataset.items(), palette)):
         points.sort()  # ascending x
         xs   = [x for x, _ in points]
         pcts = [100.0 * r for _, r in points]
-        ax.plot(xs, pcts, marker="o", linewidth=2.0, markersize=7,
+        ax.plot(xs, pcts, marker=markers[idx % len(markers)],
+                linewidth=2.0, markersize=8,
                 label=dataset, color=color)
 
     if log_scale:
