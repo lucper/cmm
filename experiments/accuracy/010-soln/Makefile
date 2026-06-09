@@ -7,13 +7,18 @@ DATA    := ../../string_data_cleaned
 FASTA   := $(DATA)/$(DATASET).s700.cleaned.fa
 INTS    := $(DATA)/$(DATASET).s700.cleaned.int
 
-ELL     := 8
-D       := 3
-K       := 10000
+.PHONY: usage
+usage:
+	@echo "Usage: make DATASET=<dataset name>"
+	@echo "            R=<number of runs>"
+	@echo "            T=<max convergence time>"
+	@echo "            ELL=<motif length>"
+	@echo "            D=<number of wildcards>"
+	@echo "            K=<number of top motif pairs>"
+	@echo "            <target>"
 
 .DELETE_ON_ERROR:
-
-$(DATASET)/$(DATASET).slider++.trial$(TRIAL).min$(T).k$(K).out: $(FASTA) $(INTS)
+$(DATASET)/$(DATASET).slider++.l$(ELL)d$(D).trial$(R).min$(T).k$(K).out: $(FASTA) $(INTS)
 	mkdir -p $(@D)
 	$(SLIDER) \
 		-l $(ELL) -d $(D) \
