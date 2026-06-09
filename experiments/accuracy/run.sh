@@ -10,64 +10,11 @@ K_TOP=1000
 H_VALUES=(0 ${ELL})
 
 DEDUP=${DEDUP:-0}                # off by default, override at the call site with: DEDUP=1 ./run.sh
-SEQ_DIR="../string_data_cleaned" # change this
 CMM_DIR="cmm_out"                # change this
 OUT_DIR="slider_out"             # change this
 
 CMM_EVAL=./cmm_eval
 CMM_DEDUP=./cmm_dedup
-SLIDER_JAR="../competitors/SliderLight/dist/SliderLight.jar"
-
-## Sanity checks
-[ -x "${CMM_EVAL}" ] || { echo "Error: ${CMM_EVAL} not found or not executable" >&2; exit 1; }
-[ -f "${SLIDER_JAR}" ] || { echo "Error: SliderLight jar not found at ${SLIDER_JAR}" >&2; exit 1; }
-if [ ${DEDUP} -eq 1 ]
-then
-    [ -x "${CMM_DEDUP}" ] || { echo "Error: ${CMM_DEDUP} not found or not executable" >&2; exit 1; }
-fi
-
-for ds in "${DATASETS[@]}"
-do
-    for ext in fa int
-    do
-        f="${SEQ_DIR}/${ds}.s700.cleaned.${ext}"
-        [ -f "${f}" ] || { echo "Error: ${f} not found" >&2; exit 1; }
-    done
-    f="${CMM_DIR}/${ds}.cmm.out"
-    [ -f "${f}" ] || { echo "Error: ${f} (EXACT solution) not found" >&2; exit 1; }
-done
-
-for ds in "${DATASETS[@]}"
-do
-    mkdir -p "${OUT_DIR}/${ds}" "${OUT_DIR}/${ds}/agg" "${OUT_DIR}/${ds}/eval"
-done
-
-run_slider() {
-    local ds=$1
-    local trial=$2
-    local t=$3
-
-    local out="${OUT_DIR}/${ds}/${ds}.slider++.trial${trial}.min${t}.k${K_SLIDER}.out"
-    if [ -f "${out}" ]
-    then
-        echo "Skipping SLIDER ${ds} trial${trial} min${t} -- already done" >&2
-        return
-    fi
-
-    echo "Running SLIDER ${ds} trial${trial} min${t}" >&2
-    local fa="${SEQ_DIR}/${ds}.s700.cleaned.fa"
-    local int="${SEQ_DIR}/${ds}.s700.cleaned.int"
-    local raw="${out}.raw"
-    java -cp "${SLIDER_JAR}" Framework.Framework \
-        -l ${ELL} -d ${D} \
-        -seq "${fa}" \
-        -int "${int}" \
-        -o "${raw}" \
-        -m slider++ -a ${K_SLIDER} -st x2 -min ${t}
-    tr '-' ' ' < "${raw}.txt" > "${out}.tmp"
-    mv "${out}.tmp" "${out}"
-    rm "${raw}.txt"
-}
 
 agg_and_eval() {
     local ds=$1
@@ -152,30 +99,30 @@ do
     do
         for t in "${TIMES[@]}"
         do
-            run_slider ${ds} ${trial} ${t}
+            make -C 010-soln DATASET=${ds} TRIAL=${trial} T=${t} ELL=${ELL} D=${D}
         done
     done
     for t in "${TIMES[@]}"
     do
-        agg_and_eval ${ds} ${t} ${TRIALS}
+        ## agg_and_eval ${ds} ${t} ${TRIALS}
     done
 done
 
 ## RQ2: vary number of trials (max time fixed at 5)
-echo "Running experiment for RQ2..." >&2
-TIME=5
-TRIAL_COUNTS=(5 10 15 20 25 30)
-MAX_TRIALS=30
-for ds in "${DATASETS[@]}"
-do
-    for trial in $(seq 1 ${MAX_TRIALS})
-    do
-        run_slider ${ds} ${trial} ${TIME}
-    done
-    for r in "${TRIAL_COUNTS[@]}"
-    do
-        agg_and_eval ${ds} ${TIME} ${r}
-    done
-done
+#echo "Running experiment for RQ2..." >&2
+#TIME=5
+#TRIAL_COUNTS=(5 10 15 20 25 30)
+#MAX_TRIALS=30
+#for ds in "${DATASETS[@]}"
+#do
+#    for trial in $(seq 1 ${MAX_TRIALS})
+#    do
+#        run_slider ${ds} ${trial} ${TIME}
+#    done
+#    for r in "${TRIAL_COUNTS[@]}"
+#    do
+#        agg_and_eval ${ds} ${TIME} ${r}
+#    done
+#done
 
 echo "All experiments done." >&2
