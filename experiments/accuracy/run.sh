@@ -14,10 +14,14 @@ CMM_DIR="cmm_out"                # change this
 OUT_DIR="slider_out"             # change this
 
 CMM_EVAL=./cmm_eval
+CMM_DEDUP=./cmm_dedup
 SLIDER_JAR="../competitors/SliderLight/dist/SliderLight.jar"
 
 ## Sanity checks
-[ -x "${CMM_EVAL}" ] || { echo "Error: ${CMM_EVAL} not found or not executable" >&2; exit 1; }
+for tool in "${CMM_EVAL}" "${CMM_DEDUP}"
+do
+    [ -x "${tool}" ] || { echo "Error: ${tool} not found or not executable" >&2; exit 1; }
+done
 [ -f "${SLIDER_JAR}" ] || { echo "Error: SliderLight jar not found at ${SLIDER_JAR}" >&2; exit 1; }
 
 for ds in "${DATASETS[@]}"
@@ -88,19 +92,42 @@ agg_and_eval() {
         echo "Skipping agg ${ds} min${t} trials${r} -- already done" >&2
     fi
 
-    ## Evaluate against EXACT at each h.
+    ## Dedup the top K.
+    local agg_dedup="${OUT_DIR}/${ds}/agg/${ds}.slider++.agg.min${t}.trials${r}.k${K_TOP}.dedup.out"
+    if [ ! -f "${agg_dedup}" ]
+    then
+        echo "Deduping ${ds} min${t} trials${r}" >&2
+        ${CMM_DEDUP} "${fa}" "${int}" "${agg}" 0 "${agg_dedup}.tmp"
+        mv "${agg_dedup}.tmp" "${agg_dedup}"
+    else
+        echo "Skipping dedup ${ds} min${t} trials${r} -- already done" >&2
+    fi
+
+    ## Evaluate against EXACT at each h, both no-dedup and dedup.
     for h in "${H_VALUES[@]}"
     do
-        local tsv="${OUT_DIR}/${ds}/eval/${ds}.slider++.agg.min${t}.trials${r}.k${K_TOP}.h${h}.tsv"
-        if [ ! -f "${tsv}" ]
+        local tsv_nd="${OUT_DIR}/${ds}/eval/${ds}.slider++.agg.min${t}.trials${r}.k${K_TOP}.h${h}.tsv"
+        if [ ! -f "${tsv_nd}" ]
         then
-            echo "Evaluating ${ds} min${t} trials${r} h${h}" >&2
+            echo "Evaluating ${ds} min${t} trials${r} h${h} no-dedup" >&2
             ${CMM_EVAL} "${fa}" "${int}" \
                 "${agg}" "${exact}" \
-                ${h} "${tsv}.tmp" /dev/null
-            mv "${tsv}.tmp" "${tsv}"
+                ${h} "${tsv_nd}.tmp" /dev/null
+            mv "${tsv_nd}.tmp" "${tsv_nd}"
         else
-            echo "Skipping eval ${ds} min${t} trials${r} h${h} -- already done" >&2
+            echo "Skipping eval ${ds} min${t} trials${r} h${h} no-dedup -- already done" >&2
+        fi
+
+        local tsv_d="${OUT_DIR}/${ds}/eval/${ds}.slider++.agg.min${t}.trials${r}.k${K_TOP}.h${h}.dedup.tsv"
+        if [ ! -f "${tsv_d}" ]
+        then
+            echo "Evaluating ${ds} min${t} trials${r} h${h} dedup" >&2
+            ${CMM_EVAL} "${fa}" "${int}" \
+                "${agg_dedup}" "${exact}" \
+                ${h} "${tsv_d}.tmp" /dev/null
+            mv "${tsv_d}.tmp" "${tsv_d}"
+        else
+            echo "Skipping eval ${ds} min${t} trials${r} h${h} dedup -- already done" >&2
         fi
     done
 }
