@@ -94,3 +94,9 @@ do
             "${ds}/${ds}.slider++.l${ELL}d${D}.agg.trials${r}.min${t}.k${K_TOP}.h${H}.dedup.tsv"
     done
 done
+
+echo "=== Stage 040-plots: Plotting ===" >&2
+make -C 040-plots \
+    DATASETS="${DATASETS[*]}" \
+    ELL=${ELL} D=${D} K_TOP=${K_TOP} H=${H} \
+    all
