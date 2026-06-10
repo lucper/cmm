@@ -28,6 +28,6 @@ $(DATASET)/$(DATASET).slider++.l$(ELL)d$(D).agg.trials$(R).min$(T).k$(K_TOP).h$(
 	mkdir -p $(@D)
 	$(CMM_EVAL) $(FASTA) $(INTS) $^ $(H) $@ /dev/null
 
-$(DATASET)/$(DATASET).slider++.l$(ELL)d$(D).agg.trials$(R).min$(T).k$(K_TOP).h$(H).dedup.tsv: $(DEDUP_INPUT)/$(DATASET).slider++.l$(ELL)d$(D).agg.trials$(R).min$(T).k$(K_TOP).dedup.out $(DEDUP_INPUT)/$(DATASET).cmm.l$(ELL)d$(D).out
+$(DATASET)/$(DATASET).slider++.l$(ELL)d$(D).agg.trials$(R).min$(T).k$(K_TOP).h$(H).dedup.tsv: $(DEDUP_INPUT)/$(DATASET).slider++.l$(ELL)d$(D).agg.trials$(R).min$(T).k$(K_TOP).dedup.out $(DEDUP_INPUT)/$(DATASET).cmm.l$(ELL)d$(D).dedup.out
 	mkdir -p $(@D)
 	$(CMM_EVAL) $(FASTA) $(INTS) $^ $(H) $@ /dev/null
