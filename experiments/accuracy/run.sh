@@ -2,127 +2,69 @@
 
 set -euo pipefail
 
-DATASETS=(ecoli yeast fly plant) # add human
+DATASETS=(ecoli yeast fly plant)
+
 ELL=8
 D=3
 K_SLIDER=10000
 K_TOP=1000
-H_VALUES=(0 ${ELL})
+# set to 0 for stricter evaluation
+H=${ELL}
+EXACT_SOLS="cmm_out"
 
-DEDUP=${DEDUP:-0}                # off by default, override at the call site with: DEDUP=1 ./run.sh
-CMM_DIR="cmm_out"                # change this
-OUT_DIR="slider_out"             # change this
+## (trials, time) cells: RQ1 (vary time, trials=5) + RQ2 (vary trials, time=5).
+EXP_CELLS=(
+    "5:5"  "5:10" "5:15" "5:20" "5:25" "5:30"
+    "10:5" "15:5" "20:5" "25:5" "30:5"
+)
 
-CMM_EVAL=./cmm_eval
-CMM_DEDUP=./cmm_dedup
-
-agg_and_eval() {
-    local ds=$1
-    local t=$2
-    local r=$3
-
-    local fa="${SEQ_DIR}/${ds}.s700.cleaned.fa"
-    local int="${SEQ_DIR}/${ds}.s700.cleaned.int"
-    local exact="${CMM_DIR}/${ds}.cmm.out"
-
-    ## Merge+sort top K of r trials at time t.
-    local agg="${OUT_DIR}/${ds}/agg/${ds}.slider++.agg.min${t}.trials${r}.k${K_TOP}.out"
-    if [ ! -f "${agg}" ]
+## Compute max trials needed at each time value (so RQ2's t=5 column doesn't
+## redundantly trigger SLIDER runs at every other time).
+declare -A MAX_R_AT_T
+for cell in "${EXP_CELLS[@]}"
+do
+    r=${cell%:*}; t=${cell#*:}
+    if [ -z "${MAX_R_AT_T[$t]:-}" ] || [ "${MAX_R_AT_T[$t]}" -lt "${r}" ]
     then
-        echo "Aggregating ${ds} min${t} trials${r}" >&2
-        local trial_files=()
-        for i in $(seq 1 ${r})
-        do
-            trial_files+=("${OUT_DIR}/${ds}/${ds}.slider++.trial${i}.min${t}.k${K_SLIDER}.out")
-        done
-        cat "${trial_files[@]}" | sort -k3 -gr | awk -v n=${K_TOP} 'NR<=n' > "${agg}.tmp"
-        mv "${agg}.tmp" "${agg}"
-    else
-        echo "Skipping agg ${ds} min${t} trials${r} -- already done" >&2
+        MAX_R_AT_T[$t]=$r
     fi
+done
 
-    ## No-dedup eval at each h.
-    for h in "${H_VALUES[@]}"
-    do
-        local tsv="${OUT_DIR}/${ds}/eval/${ds}.slider++.agg.min${t}.trials${r}.k${K_TOP}.h${h}.tsv"
-        if [ ! -f "${tsv}" ]
-        then
-            echo "Evaluating ${ds} min${t} trials${r} h${h} no-dedup" >&2
-            ${CMM_EVAL} "${fa}" "${int}" \
-                "${agg}" "${exact}" \
-                ${h} "${tsv}.tmp" /dev/null
-            mv "${tsv}.tmp" "${tsv}"
-        else
-            echo "Skipping eval ${ds} min${t} trials${r} h${h} no-dedup -- already done" >&2
-        fi
-    done
-
-    ## Optional: dedup the top K and eval the dedup'd version at each h.
-    if [ ${DEDUP} -ne 1 ]
-    then
-        return
-    fi
-
-    local agg_dedup="${OUT_DIR}/${ds}/agg/${ds}.slider++.agg.min${t}.trials${r}.k${K_TOP}.dedup.out"
-    if [ ! -f "${agg_dedup}" ]
-    then
-        echo "Deduping ${ds} min${t} trials${r}" >&2
-        ${CMM_DEDUP} "${fa}" "${int}" "${agg}" 0 "${agg_dedup}.tmp"
-        mv "${agg_dedup}.tmp" "${agg_dedup}"
-    else
-        echo "Skipping dedup ${ds} min${t} trials${r} -- already done" >&2
-    fi
-
-    for h in "${H_VALUES[@]}"
-    do
-        local tsv="${OUT_DIR}/${ds}/eval/${ds}.slider++.agg.min${t}.trials${r}.k${K_TOP}.h${h}.dedup.tsv"
-        if [ ! -f "${tsv}" ]
-        then
-            echo "Evaluating ${ds} min${t} trials${r} h${h} dedup" >&2
-            ${CMM_EVAL} "${fa}" "${int}" \
-                "${agg_dedup}" "${exact}" \
-                ${h} "${tsv}.tmp" /dev/null
-            mv "${tsv}.tmp" "${tsv}"
-        else
-            echo "Skipping eval ${ds} min${t} trials${r} h${h} dedup -- already done" >&2
-        fi
-    done
-}
-
-## RQ1: vary max time (trials fixed at 5)
-echo "Running experiment for RQ1..." >&2
-TRIALS=5
-TIMES=(5 10 15 20 25 30)
+echo "=== Stage 010-soln: SLIDER runs ===" >&2
 for ds in "${DATASETS[@]}"
 do
-    for trial in $(seq 1 ${TRIALS})
+    for t in "${!MAX_R_AT_T[@]}"
     do
-        for t in "${TIMES[@]}"
+        for i in $(seq 1 ${MAX_R_AT_T[$t]})
         do
-            make -C 010-soln DATASET=${ds} TRIAL=${trial} T=${t} ELL=${ELL} D=${D}
+            make -C 010-soln \
+                DATASET=${ds} TRIAL=${i} T=${t} ELL=${ELL} D=${D} K=${K_SLIDER} \
+                "${ds}/${ds}.slider++.l${ELL}d${D}.trial${i}.min${t}.k${K_SLIDER}.out"
         done
-    done
-    for t in "${TIMES[@]}"
-    do
-        ## agg_and_eval ${ds} ${t} ${TRIALS}
     done
 done
 
-## RQ2: vary number of trials (max time fixed at 5)
-#echo "Running experiment for RQ2..." >&2
-#TIME=5
-#TRIAL_COUNTS=(5 10 15 20 25 30)
-#MAX_TRIALS=30
-#for ds in "${DATASETS[@]}"
-#do
-#    for trial in $(seq 1 ${MAX_TRIALS})
-#    do
-#        run_slider ${ds} ${trial} ${TIME}
-#    done
-#    for r in "${TRIAL_COUNTS[@]}"
-#    do
-#        agg_and_eval ${ds} ${TIME} ${r}
-#    done
-#done
+echo "=== Stage 020-agg: Aggregation ===" >&2
+for ds in "${DATASETS[@]}"
+do
+    for cell in "${EXP_CELLS[@]}"
+    do
+        r=${cell%:*}; t=${cell#*:}
+        make -C 020-agg \
+            DATASET=${ds} R=${r} T=${t} ELL=${ELL} D=${D} K=${K_SLIDER} K_TOP=${K_TOP} \
+            "${ds}/${ds}.slider++.l${ELL}d${D}.agg.trials${r}.min${t}.k${K_TOP}.out"
+    done
+done
 
-echo "All experiments done." >&2
+echo "=== Stage 030-eval: Similarity evaluation ===" >&2
+for ds in "${DATASETS[@]}"
+do
+    for cell in "${EXP_CELLS[@]}"
+    do
+        r=${cell%:*}; t=${cell#*:}
+        exact_sol="../cmm_out/${ds}.cmm.l${ELL}d${D}.out"
+        make -C 030-eval \
+            DATASET=${ds} R=${r} T=${t} ELL=${ELL} D=${D} K_TOP=${K_TOP} H=${H} EXACT_SOL=${exact_sol} \
+            "${ds}/${ds}.slider++.l${ELL}d${D}.agg.trials${r}.min${t}.k${K_TOP}.h${H}.tsv"
+    done
+done
