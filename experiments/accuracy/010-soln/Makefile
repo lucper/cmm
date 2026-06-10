@@ -18,6 +18,7 @@ usage:
 	@echo "            <target>"
 
 .DELETE_ON_ERROR:
+
 $(DATASET)/$(DATASET).slider++.l$(ELL)d$(D).trial$(R).min$(T).k$(K).out: $(FASTA) $(INTS)
 	mkdir -p $(@D)
 	$(SLIDER) \

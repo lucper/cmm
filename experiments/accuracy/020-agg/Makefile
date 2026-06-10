@@ -14,6 +14,7 @@ usage:
 	@echo "            <target>"
 
 .DELETE_ON_ERROR:
+
 ## RQ1 cells: R=5, T in {5, 10, 15, 20, 25, 30}
 ## RQ2 cells: T=5, R in {5, 10, 15, 20, 25, 30}
 $(DATASET)/$(DATASET).slider++.l$(ELL)d$(D).agg.trials$(R).min$(T).k$(K_TOP).out: $(foreach r,$(shell seq 1 $(R)),$(INPUT)/$(DATASET).slider++.l$(ELL)d$(D).trial$(r).min$(T).k$(K).out)
