@@ -36,9 +36,9 @@ slider_agg   = $(AGG_DIR)/$(1)/$(1).slider++.l$(ELL)d$(D).agg.trials$(2).min$(3)
 slider_dedup = $(DEDUP_DIR)/$(1)/$(1).slider++.l$(ELL)d$(D).agg.trials$(2).min$(3).k$(K_TOP).dedup.out
 
 ## exact_raw(ds): raw exact solution from cmm_out.
-exact_raw   = $(EXACT_DIR)/$(1).cmm.l$(ELL)d$(D).out
+exact_raw   = $(EXACT_DIR)/$(1).cmm.l$(ELL)d$(D).k$(K_TOP).out
 ## exact_dedup(ds): deduped exact solution from 025-dedup.
-exact_dedup = $(DEDUP_DIR)/$(1)/$(1).cmm.l$(ELL)d$(D).dedup.out
+exact_dedup = $(DEDUP_DIR)/$(1)/$(1).cmm.l$(ELL)d$(D).k$(K_TOP).dedup.out
 
 RQ1_TSVS         = $(foreach d,$(DATASETS),$(foreach t,$(T_VALUES),$(call eval_tsv,$(d),$(RQ1_R),$(t))))
 RQ1_TSVS_DEDUP   = $(foreach d,$(DATASETS),$(foreach t,$(T_VALUES),$(call eval_tsv_dedup,$(d),$(RQ1_R),$(t))))
