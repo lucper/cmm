@@ -23,8 +23,6 @@ RQ1_T := 30
 RQ2_R := 30
 RQ2_T := 5
 
-THRESHOLD := 0.5
-
 ## eval_tsv(ds, R, T): non-dedup eval TSV.
 eval_tsv       = $(EVAL_DIR)/$(1)/$(1).slider++.l$(ELL)d$(D).agg.trials$(2).min$(3).k$(K_TOP).h$(H).tsv
 ## eval_tsv_dedup(ds, R, T): dedup eval TSV.
@@ -75,37 +73,37 @@ usage:
 .DELETE_ON_ERROR:
 
 all: \
-    rq1_recall.h$(H).pdf rq1_recall.h$(H).dedup.pdf \
-    rq2_recall.h$(H).pdf rq2_recall.h$(H).dedup.pdf \
+    rq1_recall.h$(H).thr$(THRESHOLD).pdf rq1_recall.h$(H).thr$(THRESHOLD).dedup.pdf \
+    rq2_recall.h$(H).thr$(THRESHOLD).pdf rq2_recall.h$(H).thr$(THRESHOLD).dedup.pdf \
     rq1_boxplot.pdf      rq1_boxplot.dedup.pdf \
     rq2_boxplot.pdf      rq2_boxplot.dedup.pdf
 
-rq1_recall.h$(H).pdf: $(RQ1_TSVS) | $(VENV_DIR)/bin/activate
+rq1_recall.h$(H).thr$(THRESHOLD).pdf: $(RQ1_TSVS) | $(VENV_DIR)/bin/activate
 	$(PYTHON) plot_top_n_recall.py \
 		--input $(RQ1_INPUTS) \
 		--output $@ \
-		--threshold $(THRESHOLD) \
+		--threshold 0.$(THRESHOLD) \
 		--x-label "Max convergence time (min)"
 
-rq1_recall.h$(H).dedup.pdf: $(RQ1_TSVS_DEDUP) | $(VENV_DIR)/bin/activate
+rq1_recall.h$(H).thr$(THRESHOLD).dedup.pdf: $(RQ1_TSVS_DEDUP) | $(VENV_DIR)/bin/activate
 	$(PYTHON) plot_top_n_recall.py \
 		--input $(RQ1_INPUTS_DEDUP) \
 		--output $@ \
-		--threshold $(THRESHOLD) \
+		--threshold 0.$(THRESHOLD) \
 		--x-label "Max convergence time (min)"
 
-rq2_recall.h$(H).pdf: $(RQ2_TSVS) | $(VENV_DIR)/bin/activate
+rq2_recall.h$(H).thr$(THRESHOLD).pdf: $(RQ2_TSVS) | $(VENV_DIR)/bin/activate
 	$(PYTHON) plot_top_n_recall.py \
 		--input $(RQ2_INPUTS) \
 		--output $@ \
-		--threshold $(THRESHOLD) \
+		--threshold 0.$(THRESHOLD) \
 		--x-label "Number of runs"
 
-rq2_recall.h$(H).dedup.pdf: $(RQ2_TSVS_DEDUP) | $(VENV_DIR)/bin/activate
+rq2_recall.h$(H).thr$(THRESHOLD).dedup.pdf: $(RQ2_TSVS_DEDUP) | $(VENV_DIR)/bin/activate
 	$(PYTHON) plot_top_n_recall.py \
 		--input $(RQ2_INPUTS_DEDUP) \
 		--output $@ \
-		--threshold $(THRESHOLD) \
+		--threshold 0.$(THRESHOLD) \
 		--x-label "Number of runs"
 
 rq1_boxplot.pdf: $(RQ1_BOX_FILES) | $(VENV_DIR)/bin/activate

@@ -10,6 +10,7 @@ K_SLIDER=10000
 K_TOP=1000
 # set to 0 for stricter evaluation
 H=${ELL}
+THRESHOLD=70
 
 ## (trials, time) cells: RQ1 (vary time, trials=5) + RQ2 (vary trials, time=5).
 EXP_CELLS=(
@@ -98,5 +99,5 @@ done
 echo "=== Stage 040-plots: Plotting ===" >&2
 make -C 040-plots \
     DATASETS="${DATASETS[*]}" \
-    ELL=${ELL} D=${D} K_TOP=${K_TOP} H=${H} \
+    ELL=${ELL} D=${D} K_TOP=${K_TOP} H=${H} THRESHOLD=${THRESHOLD} \
     all
