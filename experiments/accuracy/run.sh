@@ -2,7 +2,7 @@
 
 set -euo pipefail
 
-DATASETS=(ecoli yeast fly plant)
+DATASETS=(ecoli yeast fly plant human)
 
 ELL=8
 D=3
