@@ -2,7 +2,7 @@
 
 set -euo pipefail
 
-DATASETS=(ecoli yeast fly plant human)
+DATASETS=(ecoli yeast fly plant)
 
 ELL=8
 D=3
@@ -54,6 +54,26 @@ do
             DATASET=${ds} R=${r} T=${t} ELL=${ELL} D=${D} K=${K_SLIDER} K_TOP=${K_TOP} \
             "${ds}/${ds}.slider++.l${ELL}d${D}.agg.trials${r}.min${t}.k${K_TOP}.out"
     done
+done
+
+echo "=== Stage 025-dedup: Deduplication ===" >&2
+## dedup SLIDER
+for ds in "${DATASETS[@]}"
+do
+    for cell in "${EXP_CELLS[@]}"
+    do
+        r=${cell%:*}; t=${cell#*:}
+        make -C 025-dedup \
+            DATASET=${ds} R=${r} T=${t} ELL=${ELL} D=${D} K_TOP=${K_TOP} \
+            "${ds}/${ds}.slider++.l${ELL}d${D}.agg.trials${r}.min${t}.k${K_TOP}.dedup.out"
+    done
+done
+## dedup Exact
+for ds in "${DATASETS[@]}"
+do
+    make -C 025-dedup \
+        DATASET=${ds} ELL=${ELL} D=${D} \
+        "${ds}/${ds}.cmm.l${ELL}d${D}.dedup.out"
 done
 
 echo "=== Stage 030-eval: Similarity evaluation ===" >&2
