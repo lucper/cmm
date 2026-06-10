@@ -29,6 +29,6 @@ $(DATASET)/$(DATASET).slider++.l$(ELL)d$(D).agg.trials$(R).min$(T).k$(K_TOP).ded
 	$(CMM_DEDUP) $(FASTA) $(INTS) $< 0 $@
 
 ## Dedup exact solution.
-$(DATASET)/$(DATASET).cmm.l$(ELL)d$(D).dedup.out: $(EXACT_DIR)/$(DATASET).cmm.l$(ELL)d$(D).out $(FASTA) $(INTS)
+$(DATASET)/$(DATASET).cmm.l$(ELL)d$(D).dedup.out: $(EXACT_DIR)/$(DATASET).cmm.l$(ELL)d$(D).k$(K_TOP).out $(FASTA) $(INTS)
 	mkdir -p $(@D)
 	$(CMM_DEDUP) $(FASTA) $(INTS) $< 0 $@
