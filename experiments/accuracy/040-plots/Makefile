@@ -13,7 +13,7 @@ PIP      := $(VENV_DIR)/bin/pip
 
 ## default
 ## cells and datasets are defined on run.sh
-DATASETS  := ecoli yeast fly plant
+DATASETS  := ecoli yeast fly plant human
 T_VALUES  := 5 10 15 20 25 30
 R_VALUES  := 5 10 15 20 25 30
 
