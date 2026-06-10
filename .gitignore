@@ -20,6 +20,7 @@ logs/
 *.fa
 *.int
 *.perf
+*.gz
 .DS_Store
 .idea/
 benchmark/FlameGraph/
