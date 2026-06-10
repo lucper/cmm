@@ -38,7 +38,7 @@ do
         for i in $(seq 1 ${MAX_R_AT_T[$t]})
         do
             make -C 010-soln \
-                DATASET=${ds} TRIAL=${i} T=${t} ELL=${ELL} D=${D} K=${K_SLIDER} \
+                DATASET=${ds} R=${i} T=${t} ELL=${ELL} D=${D} K=${K_SLIDER} \
                 "${ds}/${ds}.slider++.l${ELL}d${D}.trial${i}.min${t}.k${K_SLIDER}.out"
         done
     done
