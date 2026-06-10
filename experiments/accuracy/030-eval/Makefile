@@ -1,13 +1,14 @@
-SHELL     := /usr/bin/bash
+SHELL       := /usr/bin/bash
 
-CMM_EVAL  := ../cmm_eval
+CMM_EVAL    := ../cmm_eval
 
 ## change this
-DATA      := ../../string_data_cleaned
-FASTA     := $(DATA)/$(DATASET).s700.cleaned.fa
-INTS      := $(DATA)/$(DATASET).s700.cleaned.int
+DATA        := ../../string_data_cleaned
+FASTA       := $(DATA)/$(DATASET).s700.cleaned.fa
+INTS        := $(DATA)/$(DATASET).s700.cleaned.int
 
-INPUT     := ../020-agg/$(DATASET)
+AGG_INPUT   := ../020-agg/$(DATASET)
+DEDUP_INPUT := ../025-dedup/$(DATASET)
 
 .PHONY: usage
 usage:
@@ -22,6 +23,11 @@ usage:
 	@echo "            <target>"
 
 .DELETE_ON_ERROR:
-$(DATASET)/$(DATASET).slider++.l$(ELL)d$(D).agg.trials$(R).min$(T).k$(K_TOP).h$(H).tsv: $(INPUT)/$(DATASET).slider++.l$(ELL)d$(D).agg.trials$(R).min$(T).k$(K_TOP).out
+
+$(DATASET)/$(DATASET).slider++.l$(ELL)d$(D).agg.trials$(R).min$(T).k$(K_TOP).h$(H).tsv: $(AGG_INPUT)/$(DATASET).slider++.l$(ELL)d$(D).agg.trials$(R).min$(T).k$(K_TOP).out $(EXACT_SOL)
 	mkdir -p $(@D)
-	$(CMM_EVAL) $(FASTA) $(INTS) $< $(EXACT_SOL) $(H) $@ /dev/null
+	$(CMM_EVAL) $(FASTA) $(INTS) $^ $(H) $@ /dev/null
+
+$(DATASET)/$(DATASET).slider++.l$(ELL)d$(D).agg.trials$(R).min$(T).k$(K_TOP).h$(H).dedup.tsv: $(DEDUP_INPUT)/$(DATASET).slider++.l$(ELL)d$(D).agg.trials$(R).min$(T).k$(K_TOP).dedup.out $(DEDUP_INPUT)/$(DATASET).cmm.l$(ELL)d$(D).out
+	mkdir -p $(@D)
+	$(CMM_EVAL) $(FASTA) $(INTS) $^ $(H) $@ /dev/null
