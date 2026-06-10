@@ -71,8 +71,8 @@ done
 for ds in "${DATASETS[@]}"
 do
     make -C 025-dedup \
-        DATASET=${ds} ELL=${ELL} D=${D} \
-        "${ds}/${ds}.cmm.l${ELL}d${D}.dedup.out"
+        DATASET=${ds} ELL=${ELL} D=${D} K_TOP=${K_TOP} \
+        "${ds}/${ds}.cmm.l${ELL}d${D}.k${K_TOP}.dedup.out"
 done
 
 echo "=== Stage 030-eval: Similarity evaluation ===" >&2
@@ -83,7 +83,7 @@ do
         r=${cell%:*}; t=${cell#*:}
 
         # no dedup
-        exact_sol="../cmm_out/${ds}.cmm.l${ELL}d${D}.out"
+        exact_sol="../cmm_out/${ds}.cmm.l${ELL}d${D}.k${K_TOP}.out"
         make -C 030-eval \
             DATASET=${ds} R=${r} T=${t} ELL=${ELL} D=${D} K_TOP=${K_TOP} H=${H} EXACT_SOL=${exact_sol} \
             "${ds}/${ds}.slider++.l${ELL}d${D}.agg.trials${r}.min${t}.k${K_TOP}.h${H}.tsv"
