@@ -10,7 +10,6 @@ K_SLIDER=10000
 K_TOP=1000
 # set to 0 for stricter evaluation
 H=${ELL}
-EXACT_SOLS="cmm_out"
 
 ## (trials, time) cells: RQ1 (vary time, trials=5) + RQ2 (vary trials, time=5).
 EXP_CELLS=(
@@ -38,7 +37,7 @@ do
         for i in $(seq 1 ${MAX_R_AT_T[$t]})
         do
             make -C 010-soln \
-                DATASET=${ds} R=${i} T=${t} ELL=${ELL} D=${D} K=${K_SLIDER} \
+                DATASET=${ds} I=${i} T=${t} ELL=${ELL} D=${D} K=${K_SLIDER} \
                 "${ds}/${ds}.slider++.l${ELL}d${D}.trial${i}.min${t}.k${K_SLIDER}.out"
         done
     done
@@ -82,9 +81,16 @@ do
     for cell in "${EXP_CELLS[@]}"
     do
         r=${cell%:*}; t=${cell#*:}
+
+        # no dedup
         exact_sol="../cmm_out/${ds}.cmm.l${ELL}d${D}.out"
         make -C 030-eval \
             DATASET=${ds} R=${r} T=${t} ELL=${ELL} D=${D} K_TOP=${K_TOP} H=${H} EXACT_SOL=${exact_sol} \
             "${ds}/${ds}.slider++.l${ELL}d${D}.agg.trials${r}.min${t}.k${K_TOP}.h${H}.tsv"
+
+        # dedup
+        make -C 030-eval \
+            DATASET=${ds} R=${r} T=${t} ELL=${ELL} D=${D} K_TOP=${K_TOP} H=${H} \
+            "${ds}/${ds}.slider++.l${ELL}d${D}.agg.trials${r}.min${t}.k${K_TOP}.h${H}.dedup.tsv"
     done
 done

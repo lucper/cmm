@@ -10,7 +10,7 @@ INTS    := $(DATA)/$(DATASET).s700.cleaned.int
 .PHONY: usage
 usage:
 	@echo "Usage: make DATASET=<dataset name>"
-	@echo "            R=<number of runs>"
+	@echo "            I=<run index>"
 	@echo "            T=<max convergence time>"
 	@echo "            ELL=<motif length>"
 	@echo "            D=<number of wildcards>"
@@ -19,7 +19,7 @@ usage:
 
 .DELETE_ON_ERROR:
 
-$(DATASET)/$(DATASET).slider++.l$(ELL)d$(D).trial$(R).min$(T).k$(K).out: $(FASTA) $(INTS)
+$(DATASET)/$(DATASET).slider++.l$(ELL)d$(D).trial$(I).min$(T).k$(K).out: $(FASTA) $(INTS)
 	mkdir -p $(@D)
 	$(SLIDER) \
 		-l $(ELL) -d $(D) \
