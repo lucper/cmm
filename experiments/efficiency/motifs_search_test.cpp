@@ -79,17 +79,12 @@ solution_report_t main_algo(const std::vector<std::string>& V,
         throw std::invalid_argument("Empty cell range: [" + std::to_string(c_begin) +
                                     ", " + std::to_string(c_end) + ").");
 
-    size_t max_seq_len = 0;
-    for (const auto& v : V)
-        if (v.length() > max_seq_len)
-            max_seq_len = v.length();
-
     size_t num_threads = std::min(range_size, requested_num_threads);
     omp_set_num_threads(num_threads);
     std::vector<thread_workspace_t<motif_comparator_t>> workspaces;
     workspaces.reserve(num_threads);
     for (size_t i = 0; i < num_threads; i++)
-        workspaces.emplace_back(ESA, ell, V.size(), number_of_edges, max_seq_len);
+        workspaces.emplace_back(ESA, ell, V.size(), number_of_edges);
 
     size_t num_threads_spawned = 0;
 
@@ -132,17 +127,18 @@ solution_report_t main_algo(const std::vector<std::string>& V,
         auto& H_u = all_H[d_u];
         auto& H_v = all_H[d_v];
 
-        size_t cell_max_rank_X = ws.rank_table_X.sort_by_prefix(H_u);
+        uint32_t cell_max_rank_X = ws.rank_table_X.sort_by_prefix(H_u);
         ws.min_rank_X = std::min(ws.min_rank_X, cell_max_rank_X);
         ws.max_rank_X = std::max(ws.max_rank_X, cell_max_rank_X);
         ws.sum_rank_X += cell_max_rank_X;
         ws.cell_count_X++;
-        ws.build_csr(V, ws.rank_table_X);
+        ws.build_csr(V, ws.rank_table_X, cell_max_rank_X);
 
-        ws.rank_table_Y.sort_by_prefix(H_v);
-        ws.build_csr(V, ws.rank_table_Y);
+        uint32_t cell_max_rank_Y = ws.rank_table_Y.sort_by_prefix(H_v);
+        ws.build_csr(V, ws.rank_table_Y, cell_max_rank_Y);
 
         {
+            const bool same_d = (d_u == d_v);
             uint32_t max_countY = 0;
             for (auto rank_Y : ws.active_ranks_Y)
                 max_countY = std::max(max_countY, ws.rank_active_counts_Y[rank_Y]);
@@ -194,30 +190,29 @@ solution_report_t main_algo(const std::vector<std::string>& V,
                         if (ws.edge_timestamp[edge_id] != rank_X + 1) {
                             ws.edge_timestamp[edge_id] = rank_X + 1;
                             uint32_t *ranksY_in_node_v = &ws.flat_ranks_Y[ws.node_offsets_Y[v]];
-                            uint32_t number_of_ranksY_in_node_v = ws.node_active_counts_Y[v];
+                            uint32_t nv = ws.node_active_counts_Y[v];
 
-                            for (size_t k = 0; k < number_of_ranksY_in_node_v; k++) {
-                                uint32_t rank_Y = ranksY_in_node_v[k];
-                                ws.rank_membership[rank_Y] = true;
-                                if (rank_X <= rank_Y || d_v != d_u) {
+                            // on the off-diagonal every rank is credited;
+                            // on the diagonal only rank_Y >= rank_X.
+                            auto credit = [&](uint32_t rank_Y) {
+                                if (!same_d || rank_X <= rank_Y) {
                                     if (ws.edge_count[rank_Y] == 0)
                                         ws.edge_count_set_indices.push_back(rank_Y);
                                     ws.edge_count[rank_Y]++;
                                 }
+                            };
+
+                            uint32_t a = 0, b = 0;
+                            uint32_t nu = ws.has_rank_X[v] ? number_of_ranksY_in_node_u : 0;
+                            while (a < nu && b < nv) {
+                                uint32_t ru = ranksY_in_node_u[a];
+                                uint32_t rv = ranksY_in_node_v[b];
+                                if (ru < rv)      { credit(ru); a++; }
+                                else if (rv < ru) { credit(rv); b++; }
+                                else              { credit(rv); a++; b++; }
                             }
-
-                            if (ws.has_rank_X[v])
-                                for (size_t k = 0; k < number_of_ranksY_in_node_u; k++) {
-                                    uint32_t rank_Y = ranksY_in_node_u[k];
-                                    if ((rank_X <= rank_Y || d_v != d_u) && !ws.rank_membership[rank_Y]) {
-                                        if (ws.edge_count[rank_Y] == 0)
-                                            ws.edge_count_set_indices.push_back(rank_Y);
-                                        ws.edge_count[rank_Y]++;
-                                    }
-                                }
-
-                            for (size_t k = 0; k < number_of_ranksY_in_node_v; k++)
-                                ws.rank_membership[ranksY_in_node_v[k]] = false;
+                            while (a < nu) credit(ranksY_in_node_u[a++]);
+                            while (b < nv) credit(ranksY_in_node_v[b++]);
                         }
                 }
 
@@ -278,8 +273,8 @@ solution_report_t main_algo(const std::vector<std::string>& V,
     for (auto& ws : workspaces) {
         pruning_cnt_global += ws.pruning_cnt;
         if (ws.cell_count_X > 0) {
-            max_assigned_rank_X_global = std::max(max_assigned_rank_X_global, ws.max_rank_X);
-            min_assigned_rank_X_global = std::min(min_assigned_rank_X_global, ws.min_rank_X);
+            max_assigned_rank_X_global = std::max(max_assigned_rank_X_global, static_cast<size_t>(ws.max_rank_X));
+            min_assigned_rank_X_global = std::min(min_assigned_rank_X_global, static_cast<size_t>(ws.min_rank_X));
             sum_assigned_rank_X_global += ws.sum_rank_X;
             cell_count_X_global += ws.cell_count_X;
         }
