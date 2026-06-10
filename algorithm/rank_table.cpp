@@ -27,16 +27,16 @@ size_t rank_table_t::get_ell() const
     return ell;
 }
 
-size_t rank_table_t::get_rank_of_substr(size_t i, size_t k) const
+uint32_t rank_table_t::get_rank_of_substr(size_t i, size_t k) const
 {
     size_t suff = S_offset[k] + i;
     if (suff + ell >= S_offset[k + 1]) // ell-mer covers a SEP symbol.
         throw std::out_of_range("Invalid substring access: substring in invalid suffix (" +
                                 std::to_string(suff) + ").\n");
-    return static_cast<size_t>(R1[suff]);
+    return R1[suff];
 }
 
-std::string_view rank_table_t::get_substr_with_rank(size_t r) const
+std::string_view rank_table_t::get_substr_with_rank(uint32_t r) const
 {
     if (r > max_rank_R1)
         throw std::out_of_range("Invalid rank access: rank " + std::to_string(r) +
@@ -44,7 +44,7 @@ std::string_view rank_table_t::get_substr_with_rank(size_t r) const
     return std::string_view((const char *) S + IR1[r], ell);
 }
 
-size_t rank_table_t::sort_by_prefix(const std::vector<uint16_t>& H)
+uint32_t rank_table_t::sort_by_prefix(const std::vector<uint16_t>& H)
 {
     // Positions H must be in [ell] and sorted.
 
@@ -59,7 +59,7 @@ size_t rank_table_t::sort_by_prefix(const std::vector<uint16_t>& H)
         int frag_len = h_end - h_start;
 
         if (frag_len > 0) {
-            size_t max_rank_R2 = 0;
+            uint32_t max_rank_R2 = 0;
             R2[SA[0]] = 0;
             for (size_t j = 1; j < N; j++)
                 R2[SA[j]] = LCP[j] < frag_len ? ++max_rank_R2 : max_rank_R2;

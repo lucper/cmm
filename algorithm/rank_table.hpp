@@ -25,7 +25,7 @@ public:
      *
      * Output:
      * INT value of maximum rank. */
-    size_t sort_by_prefix(const std::vector<uint16_t>& H);
+    uint32_t sort_by_prefix(const std::vector<uint16_t>& H);
 
     /* Returns a pointer to a substring with rank r. Note that the ranks can change if one runs
      * map_ell_mers_to_ranks multiple times.
@@ -35,13 +35,13 @@ public:
      *
      * Output:
      * ell-length substring of rank r. */
-    std::string_view get_substr_with_rank(size_t r) const;
+    std::string_view get_substr_with_rank(uint32_t r) const;
 
     /* Returns the rank of substring s[i..i+ell-1], where s is the k-th string in the collection seqs.
      *
      * Input:
      * INT index i of k-th string string seqs[k]. */
-    size_t get_rank_of_substr(size_t i, size_t k) const;
+    uint32_t get_rank_of_substr(size_t i, size_t k) const;
 
 private:
     size_t ell;
@@ -51,7 +51,7 @@ private:
     const int64_t *SA;
     const int64_t *LCP;
 
-    size_t max_rank_R1;
+    uint32_t max_rank_R1;
 
     std::vector<uint32_t> sSA;
 
