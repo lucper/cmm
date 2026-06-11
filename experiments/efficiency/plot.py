@@ -31,9 +31,30 @@ def req_to_spawned(df):
     return df.drop_duplicates("num_threads_requested") \
              .set_index("num_threads_requested")["num_threads_spawned"].to_dict()
 
+def d_groups(ell):
+    """Split d values for a given ell into lower and upper halves."""
+    half = ell // 2
+    return [
+        (f"d0_{half-1}",     list(range(0, half))),
+        (f"d{half}_{ell-1}", list(range(half, ell))),
+    ]
+
+def save_legend(handles, labels, output_path, ncol=None):
+    """Save a standalone legend PDF, shared between time and memory plots."""
+    if ncol is None:
+        ncol = len(labels)
+    fig = plt.figure(figsize=(ncol * 1.3, 0.6))
+    fig.legend(handles, labels, loc="center", ncol=ncol,
+               fontsize=18, frameon=False, handlelength=2.5,
+               columnspacing=1.5)
+    fig.savefig(output_path, format="pdf", bbox_inches="tight")
+    plt.close(fig)
+    print(f"Saved: {output_path}")
+
 def plot_one(df_ell, x_col, x_label, y_col, y_label, title,
              error, secondary_map, secondary_label, output_path,
-             ell=None, show_max_rank=False, log_scale=False):
+             ell=None, show_max_rank=False, log_scale=False,
+             show_legend=True):
     ds      = sorted(df_ell["d"].unique())
     palette = sns.color_palette("tab10", n_colors=len(ds))
 
@@ -54,7 +75,7 @@ def plot_one(df_ell, x_col, x_label, y_col, y_label, title,
 
         xs = [x_to_pos[v] for v in sub[x_col]]
 
-        label = f"($d$={d})" if ell is not None else f"$d$={d}"
+        label = f"($\\ell={ell}$, $d$={d})"
         ax.plot(xs, sub["median"],
                 marker=marker, linewidth=2.0, markersize=7,
                 label=label, color=color)
@@ -84,11 +105,15 @@ def plot_one(df_ell, x_col, x_label, y_col, y_label, title,
 
     ax.set_xlabel(x_label, fontsize=20)
     ax.set_ylabel(y_label, fontsize=20)
-    ax.set_title(title, fontsize=12) # not needed?
+    ax.set_title(title, fontsize=12)
     ax.tick_params(axis="y", labelsize=18)
-    ax.legend(fontsize=18)
     ax.grid(axis="y", linestyle="--", linewidth=0.6, alpha=0.5)
     sns.despine(ax=ax)
+
+    # Capture handles before twin axis so the legend only carries primary lines
+    handles, labels = ax.get_legend_handles_labels()
+    if show_legend:
+        ax.legend(handles, labels, fontsize=18)
 
     if secondary_map is not None:
         ax2 = ax.twiny()
@@ -103,78 +128,94 @@ def plot_one(df_ell, x_col, x_label, y_col, y_label, title,
     plt.close(fig)
     print(f"Saved: {output_path}")
 
+    return handles, labels
+
 def run_rq1(df, stem, error, max_rank, log_scale):
     v2n = v_to_n(df)
     for ell in ELLS:
-        plot_one(
-            df_ell=df[df["ell"] == ell],
-            x_col="V",
-            x_label="$V$",
-            y_col="time_s",
-            y_label="Time (s)",
-            title="",
-            error=error,
-            secondary_map=v2n,
-            secondary_label="$N$",
-            output_path=f"{stem}_ell{ell}_time.pdf",
-            ell=ell,
-            show_max_rank=max_rank,
-            log_scale=log_scale
-        )
-        plot_one(
-            df_ell=df[df["ell"] == ell],
-            x_col="V",
-            x_label="$V$",
-            y_col="peak_ram_mb",
-            y_label="Peak RAM (MB)",
-            title="",
-            error=error,
-            secondary_map=v2n,
-            secondary_label="$N$",
-            output_path=f"{stem}_ell{ell}_memory.pdf",
-            ell=ell,
-            show_max_rank=max_rank,
-            log_scale=log_scale
-        )
+        for group_name, ds in d_groups(ell):
+            sub  = df[(df["ell"] == ell) & (df["d"].isin(ds))]
+            base = f"{stem}_ell{ell}_{group_name}"
+
+            h, l = plot_one(
+                df_ell=sub,
+                x_col="V",
+                x_label="$V$",
+                y_col="time_s",
+                y_label="Time (s)",
+                title="",
+                error=error,
+                secondary_map=v2n,
+                secondary_label="$N$",
+                output_path=f"{base}_time.pdf",
+                ell=ell,
+                show_max_rank=max_rank,
+                log_scale=log_scale,
+                show_legend=False
+            )
+            plot_one(
+                df_ell=sub,
+                x_col="V",
+                x_label="$V$",
+                y_col="peak_ram_mb",
+                y_label="Peak RAM (MB)",
+                title="",
+                error=error,
+                secondary_map=v2n,
+                secondary_label="$N$",
+                output_path=f"{base}_memory.pdf",
+                ell=ell,
+                show_max_rank=max_rank,
+                log_scale=False,
+                show_legend=False
+            )
+            save_legend(h, l, f"{base}_legend.pdf")
 
 def run_rq2(df, stem, error, max_rank, log_scale):
     df["edge_density_pct"] = (df["edge_density"] * 100).round().astype(int)
     for ell in ELLS:
-        plot_one(
-            df_ell=df[df["ell"] == ell],
-            x_col="edge_density_pct",
-            x_label="Edge density (%)",
-            y_col="time_s",
-            y_label="Time (s)",
-            title="",
-            error=error,
-            secondary_map=None,
-            secondary_label=None,
-            output_path=f"{stem}_ell{ell}_time.pdf",
-            ell=ell,
-            show_max_rank=max_rank,
-            log_scale=log_scale
-        )
-        plot_one(
-            df_ell=df[df["ell"] == ell],
-            x_col="edge_density_pct",
-            x_label="Edge density (%)",
-            y_col="peak_ram_mb",
-            y_label="Peak RAM (MB)",
-            title="",
-            error=error,
-            secondary_map=None,
-            secondary_label=None,
-            output_path=f"{stem}_ell{ell}_memory.pdf",
-            ell=ell,
-            show_max_rank=max_rank,
-            log_scale=log_scale
-        )
+        for group_name, ds in d_groups(ell):
+            sub  = df[(df["ell"] == ell) & (df["d"].isin(ds))]
+            base = f"{stem}_ell{ell}_{group_name}"
+
+            h, l = plot_one(
+                df_ell=sub,
+                x_col="edge_density_pct",
+                x_label="Edge density (%)",
+                y_col="time_s",
+                y_label="Time (s)",
+                title="",
+                error=error,
+                secondary_map=None,
+                secondary_label=None,
+                output_path=f"{base}_time.pdf",
+                ell=ell,
+                show_max_rank=max_rank,
+                log_scale=log_scale,
+                show_legend=False
+            )
+            plot_one(
+                df_ell=sub,
+                x_col="edge_density_pct",
+                x_label="Edge density (%)",
+                y_col="peak_ram_mb",
+                y_label="Peak RAM (MB)",
+                title="",
+                error=error,
+                secondary_map=None,
+                secondary_label=None,
+                output_path=f"{base}_memory.pdf",
+                ell=ell,
+                show_max_rank=max_rank,
+                log_scale=False,
+                show_legend=False
+            )
+            save_legend(h, l, f"{base}_legend.pdf")
 
 def run_rq3(df, stem, error, max_rank, log_scale, ell=8):
     req2spawned = req_to_spawned(df)
 
-    plot_one(
+    h, l = plot_one(
         df_ell=df[df["ell"] == ell],
         x_col="num_threads_requested",
         x_label="Number of threads",
@@ -187,7 +228,8 @@ def run_rq3(df, stem, error, max_rank, log_scale, ell=8):
         output_path=f"{stem}_time.pdf",
         ell=ell,
         show_max_rank=max_rank,
-        log_scale=log_scale
+        log_scale=log_scale,
+        show_legend=False
     )
 
     plot_one(
@@ -203,8 +245,10 @@ def run_rq3(df, stem, error, max_rank, log_scale, ell=8):
         output_path=f"{stem}_memory.pdf",
         ell=ell,
         show_max_rank=False,  # max_rank not meaningful for memory plot
-        log_scale=log_scale
+        log_scale=False,
+        show_legend=False
     )
+    save_legend(h, l, f"{stem}_legend.pdf")
 
 def main():
     parser = argparse.ArgumentParser()
