@@ -15,6 +15,7 @@ COLS = [
 ]
 
 ELLS = [5, 8]
+MARKERS = ["o", "s", "^", "D", "v", "P", "X", "*"]
 
 def load(path):
     df = pd.read_csv(path, sep="\t", header=None, names=COLS)
@@ -40,9 +41,10 @@ def plot_one(df_ell, x_col, x_label, y_col, y_label, title,
     x_to_pos    = {v: i for i, v in enumerate(x_vals)}
     x_positions = list(range(len(x_vals)))
 
-    fig, ax = plt.subplots(figsize=(7, 4.5), constrained_layout=True)
+    fig, ax = plt.subplots(figsize=(7, 5), constrained_layout=True)
 
-    for color, d in zip(palette, ds):
+    for i, (color, d) in enumerate(zip(palette, ds)):
+        marker = MARKERS[i % len(MARKERS)]
         sub = df_ell[df_ell["d"] == d].groupby(x_col).agg(
             median=(y_col, "median"),
             vmin=(y_col, "min"),
@@ -54,7 +56,7 @@ def plot_one(df_ell, x_col, x_label, y_col, y_label, title,
 
         label = f"($d$={d})" if ell is not None else f"$d$={d}"
         ax.plot(xs, sub["median"],
-                marker="o", linewidth=2.0, markersize=7,
+                marker=marker, linewidth=2.0, markersize=7,
                 label=label, color=color)
         if error:
             ax.fill_between(xs, sub["vmin"], sub["vmax"],
@@ -76,6 +78,10 @@ def plot_one(df_ell, x_col, x_label, y_col, y_label, title,
     ax.set_xticklabels([str(v) for v in x_vals], fontsize=18)
     ax.set_xlim(-0.5, len(x_vals) - 0.5)
 
+    if log_scale:
+        ax.set_yscale("log")
+        y_label = y_label.replace(")", ", log scale)")
+
     ax.set_xlabel(x_label, fontsize=20)
     ax.set_ylabel(y_label, fontsize=20)
     ax.set_title(title, fontsize=12) # not needed?
@@ -84,14 +90,12 @@ def plot_one(df_ell, x_col, x_label, y_col, y_label, title,
     ax.grid(axis="y", linestyle="--", linewidth=0.6, alpha=0.5)
     sns.despine(ax=ax)
 
-    if log_scale:
-        ax.set_yscale("log")
-
     if secondary_map is not None:
         ax2 = ax.twiny()
         ax2.set_xlim(ax.get_xlim())
         ax2.set_xticks(x_positions)
-        ax2.set_xticklabels([str(secondary_map.get(v, "")) for v in x_vals], fontsize=18)
+        ax2.set_xticklabels([str(secondary_map.get(v, "")) for v in x_vals],
+                            fontsize=18, rotation=30, ha="left")
         ax2.set_xlabel(secondary_label, fontsize=20)
         ax2.tick_params(axis="x", labelsize=18)
 
