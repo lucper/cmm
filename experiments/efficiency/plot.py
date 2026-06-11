@@ -39,19 +39,36 @@ def d_groups(ell):
         (f"d{half}_{ell-1}", list(range(half, ell))),
     ]
 
+def ell_d_pair(s):
+    """Argparse type: parse 'ell:d' into an (int, int) tuple."""
+    try:
+        ell_str, d_str = s.split(":")
+        return (int(ell_str), int(d_str))
+    except ValueError:
+        raise argparse.ArgumentTypeError(
+            f"Invalid value: {s!r}. Expected format ell:d, e.g. 8:3"
+        )
+
 def save_legend(handles, labels, output_path, max_cols=4):
+    """Save a standalone legend PDF, fixed canvas size for uniform scaling.
+    Uses min(len(labels), max_cols) columns; the legend itself centers in
+    the canvas so fewer entries cluster in the middle with whitespace.
+    """
     fig = plt.figure(figsize=(11, 0.6))  # wide enough for 4 long entries
     fig.legend(handles, labels, loc="center", ncol=min(len(labels), max_cols),
                fontsize=18, frameon=False, handlelength=2.5,
                columnspacing=1.5)
-    fig.savefig(output_path, format="pdf")  # no bbox_inches
+    fig.savefig(output_path, format="pdf")  # no bbox_inches="tight"
     plt.close(fig)
     print(f"Saved: {output_path}")
 
 def plot_one(df_ell, x_col, x_label, y_col, y_label, title,
              error, secondary_map, secondary_label, output_path,
-             ell=None, show_max_rank=False, log_scale=False,
+             ell=None, annotate_pairs=None, log_scale=False,
              show_legend=True):
+    """Plot one (ell, x, y) view with lines per d.
+    annotate_pairs: set of (ell, d) tuples to annotate with max_rank, or None.
+    """
     ds      = sorted(df_ell["d"].unique())
     palette = sns.color_palette("tab10", n_colors=len(ds))
 
@@ -80,7 +97,7 @@ def plot_one(df_ell, x_col, x_label, y_col, y_label, title,
             ax.fill_between(xs, sub["vmin"], sub["vmax"],
                             alpha=0.2, color=color)
 
-        if show_max_rank:
+        if annotate_pairs is not None and ell is not None and (ell, d) in annotate_pairs:
             for x, y, r in zip(xs, sub["median"], sub["max_rank"]):
                 ax.annotate(
                     f"{int(r):,}",
@@ -127,7 +144,7 @@ def plot_one(df_ell, x_col, x_label, y_col, y_label, title,
 
     return handles, labels
 
-def run_rq1(df, stem, error, max_rank, log_scale):
+def run_rq1(df, stem, error, annotate_pairs, log_scale):
     v2n = v_to_n(df)
     for ell in ELLS:
         for group_name, ds in d_groups(ell):
@@ -146,7 +163,7 @@ def run_rq1(df, stem, error, max_rank, log_scale):
                 secondary_label="$N$",
                 output_path=f"{base}_time.pdf",
                 ell=ell,
-                show_max_rank=max_rank,
+                annotate_pairs=annotate_pairs,
                 log_scale=log_scale,
                 show_legend=False
             )
@@ -162,13 +179,13 @@ def run_rq1(df, stem, error, max_rank, log_scale):
                 secondary_label="$N$",
                 output_path=f"{base}_memory.pdf",
                 ell=ell,
-                show_max_rank=max_rank,
-                log_scale=False,
+                annotate_pairs=annotate_pairs,
+                log_scale=log_scale,
                 show_legend=False
             )
             save_legend(h, l, f"{base}_legend.pdf")
 
-def run_rq2(df, stem, error, max_rank, log_scale):
+def run_rq2(df, stem, error, annotate_pairs, log_scale):
     df["edge_density_pct"] = (df["edge_density"] * 100).round().astype(int)
     for ell in ELLS:
         for group_name, ds in d_groups(ell):
@@ -187,7 +204,7 @@ def run_rq2(df, stem, error, max_rank, log_scale):
                 secondary_label=None,
                 output_path=f"{base}_time.pdf",
                 ell=ell,
-                show_max_rank=max_rank,
+                annotate_pairs=annotate_pairs,
                 log_scale=log_scale,
                 show_legend=False
             )
@@ -203,13 +220,13 @@ def run_rq2(df, stem, error, max_rank, log_scale):
                 secondary_label=None,
                 output_path=f"{base}_memory.pdf",
                 ell=ell,
-                show_max_rank=max_rank,
-                log_scale=False,
+                annotate_pairs=annotate_pairs,
+                log_scale=log_scale,
                 show_legend=False
             )
             save_legend(h, l, f"{base}_legend.pdf")
 
-def run_rq3(df, stem, error, max_rank, log_scale, ell=8):
+def run_rq3(df, stem, error, annotate_pairs, log_scale, ell=8):
     req2spawned = req_to_spawned(df)
 
     h, l = plot_one(
@@ -224,7 +241,7 @@ def run_rq3(df, stem, error, max_rank, log_scale, ell=8):
         secondary_label=None,
         output_path=f"{stem}_time.pdf",
         ell=ell,
-        show_max_rank=max_rank,
+        annotate_pairs=annotate_pairs,
         log_scale=log_scale,
         show_legend=False
     )
@@ -241,8 +258,8 @@ def run_rq3(df, stem, error, max_rank, log_scale, ell=8):
         secondary_label=None,
         output_path=f"{stem}_memory.pdf",
         ell=ell,
-        show_max_rank=False,  # max_rank not meaningful for memory plot
-        log_scale=False,
+        annotate_pairs=None,  # max_rank not meaningful for memory plot
+        log_scale=log_scale,
         show_legend=False
     )
     save_legend(h, l, f"{stem}_legend.pdf")
@@ -255,8 +272,9 @@ def main():
                         help="Output stem (e.g. rq1)")
     parser.add_argument("--error",    action="store_true",
                         help="Show min/max error bands")
-    parser.add_argument("--max-rank", action="store_true",
-                        help="Annotate each point with its max_rank value")
+    parser.add_argument("--max-rank", nargs="+", type=ell_d_pair, default=None,
+                        metavar="ell:d",
+                        help="Annotate points with max_rank for given (ell,d) pairs (e.g. --max-rank 5:0 8:3)")
     parser.add_argument("--log-scale", action="store_true",
                         help="Use log scale on y-axis")
     args = parser.parse_args()
@@ -266,12 +284,14 @@ def main():
     df   = load(args.input)
     stem = str(Path(args.output).with_suffix(""))  # strip extension if given
 
+    annotate_pairs = set(args.max_rank) if args.max_rank is not None else None
+
     if args.rq == "rq1":
-        run_rq1(df, stem, args.error, args.max_rank, args.log_scale)
+        run_rq1(df, stem, args.error, annotate_pairs, args.log_scale)
     elif args.rq == "rq2":
-        run_rq2(df, stem, args.error, args.max_rank, args.log_scale)
+        run_rq2(df, stem, args.error, annotate_pairs, args.log_scale)
     elif args.rq == "rq3":
-        run_rq3(df, stem, args.error, args.max_rank, args.log_scale)
+        run_rq3(df, stem, args.error, annotate_pairs, args.log_scale)
 
 if __name__ == "__main__":
     main()
