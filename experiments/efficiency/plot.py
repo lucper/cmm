@@ -39,15 +39,12 @@ def d_groups(ell):
         (f"d{half}_{ell-1}", list(range(half, ell))),
     ]
 
-def save_legend(handles, labels, output_path, ncol=None):
-    """Save a standalone legend PDF, shared between time and memory plots."""
-    if ncol is None:
-        ncol = len(labels)
-    fig = plt.figure(figsize=(ncol * 1.3, 0.6))
-    fig.legend(handles, labels, loc="center", ncol=ncol,
+def save_legend(handles, labels, output_path, max_cols=4):
+    fig = plt.figure(figsize=(11, 0.6))  # wide enough for 4 long entries
+    fig.legend(handles, labels, loc="center", ncol=min(len(labels), max_cols),
                fontsize=18, frameon=False, handlelength=2.5,
                columnspacing=1.5)
-    fig.savefig(output_path, format="pdf", bbox_inches="tight")
+    fig.savefig(output_path, format="pdf")  # no bbox_inches
     plt.close(fig)
     print(f"Saved: {output_path}")
 
