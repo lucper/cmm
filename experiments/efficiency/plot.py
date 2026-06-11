@@ -179,8 +179,8 @@ def run_rq1(df, stem, error, annotate_pairs, log_scale):
                 secondary_label="$N$",
                 output_path=f"{base}_memory.pdf",
                 ell=ell,
-                annotate_pairs=annotate_pairs,
-                log_scale=log_scale,
+                annotate_pairs=None,
+                log_scale=False,
                 show_legend=False
             )
             save_legend(h, l, f"{base}_legend.pdf")
@@ -220,8 +220,8 @@ def run_rq2(df, stem, error, annotate_pairs, log_scale):
                 secondary_label=None,
                 output_path=f"{base}_memory.pdf",
                 ell=ell,
-                annotate_pairs=annotate_pairs,
-                log_scale=log_scale,
+                annotate_pairs=None,
+                log_scale=False,
                 show_legend=False
             )
             save_legend(h, l, f"{base}_legend.pdf")
@@ -258,8 +258,8 @@ def run_rq3(df, stem, error, annotate_pairs, log_scale, ell=8):
         secondary_label=None,
         output_path=f"{stem}_memory.pdf",
         ell=ell,
-        annotate_pairs=None,  # max_rank not meaningful for memory plot
-        log_scale=log_scale,
+        annotate_pairs=None,
+        log_scale=False,
         show_legend=False
     )
     save_legend(h, l, f"{stem}_legend.pdf")
