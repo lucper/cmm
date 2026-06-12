@@ -18,6 +18,8 @@ names cannot contain colons.
 import argparse
 import matplotlib.pyplot as plt
 from matplotlib.ticker import PercentFormatter
+from matplotlib.patches import Patch
+from matplotlib.lines import Line2D
 import pandas as pd
 import numpy as np
 import seaborn as sns
@@ -148,7 +150,7 @@ def normalize_against_baseline(df, baseline_method):
 
 
 def plot_box(df, datasets, methods, output_path, score_label,
-             reference_line=None):
+             reference_line=None, baseline_label=None):
     n_datasets = len(datasets)
     n_methods  = len(methods)
 
@@ -178,7 +180,17 @@ def plot_box(df, datasets, methods, output_path, score_label,
     ax.tick_params(axis="both", labelsize=18)
     ax.tick_params(axis="x", rotation=30)
     ax.grid(axis="y", linestyle="--", linewidth=0.6, alpha=0.5)
-    if n_methods > 1:
+
+    # Legend: when a baseline is shown, build a custom legend that names both
+    # the box color(s) and the red reference line. Otherwise fall back to the
+    # default per-method legend (or remove it entirely for a single method).
+    if baseline_label is not None:
+        handles = [Patch(facecolor=palette[i], edgecolor="black", label=m)
+                   for i, m in enumerate(methods)]
+        handles.append(Line2D([0], [0], color="red", linestyle="--",
+                              linewidth=2.0, label=baseline_label))
+        ax.legend(handles=handles, fontsize=14, loc="best")
+    elif n_methods > 1:
         ax.legend(fontsize=14, loc="best")
     elif ax.get_legend() is not None:
         ax.get_legend().remove()
@@ -230,7 +242,8 @@ def main():
     plot_box(df, datasets, methods,
              output_path=f"{stem}.pdf",
              score_label=args.score_label,
-             reference_line=reference_line)
+             reference_line=reference_line,
+             baseline_label=args.baseline)
 
 
 if __name__ == "__main__":
