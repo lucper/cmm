@@ -9,7 +9,7 @@ D=3
 K_SLIDER=10000
 K_TOP=1000
 # set to 0 for stricter evaluation
-H=${ELL}
+H=0
 THRESHOLD=70
 
 ## (trials, time) cells: RQ1 (vary time, trials=5) + RQ2 (vary trials, time=5).
@@ -93,6 +93,25 @@ do
         make -C 030-eval \
             DATASET=${ds} R=${r} T=${t} ELL=${ELL} D=${D} K_TOP=${K_TOP} H=${H} \
             "${ds}/${ds}.slider++.l${ELL}d${D}.agg.trials${r}.min${t}.k${K_TOP}.h${H}.dedup.tsv"
+    done
+done
+
+echo "=== Stage 035-recall: Recall against exact ===" >&2
+## 035-recall consumes 030-eval at h=0 regardless of the H used in stage
+## 030-eval above. Force the h=0 dedup tsv to exist before recall.
+for ds in "${DATASETS[@]}"
+do
+    for cell in "${EXP_CELLS[@]}"
+    do
+        r=${cell%:*}; t=${cell#*:}
+
+        make -C 030-eval \
+            DATASET=${ds} R=${r} T=${t} ELL=${ELL} D=${D} K_TOP=${K_TOP} H=0 \
+            "${ds}/${ds}.slider++.l${ELL}d${D}.agg.trials${r}.min${t}.k${K_TOP}.h0.dedup.tsv"
+
+        make -C 035-recall \
+            DATASET=${ds} R=${r} T=${t} ELL=${ELL} D=${D} K_TOP=${K_TOP} \
+            "${ds}/${ds}.recall.l${ELL}d${D}.trials${r}.min${t}.tsv"
     done
 done
 
