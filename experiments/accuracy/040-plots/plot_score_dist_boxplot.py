@@ -17,6 +17,7 @@ names cannot contain colons.
 
 import argparse
 import matplotlib.pyplot as plt
+from matplotlib.ticker import PercentFormatter
 import pandas as pd
 import numpy as np
 import seaborn as sns
@@ -163,12 +164,14 @@ def plot_box(df, datasets, methods, output_path, score_label,
                            "markeredgecolor": "black", "markersize": 5})
 
     if reference_line is not None:
-        ax.axhline(reference_line, color="black", linestyle="--",
-                   linewidth=0.6, alpha=0.5, zorder=0)
+        ax.axhline(reference_line, color="red", linestyle="--",
+                   linewidth=2.0, alpha=0.8, zorder=0)
         # Keep 0 and the reference line visible even when all data is below.
         ymin, ymax = ax.get_ylim()
         ax.set_ylim(bottom=min(ymin, 0),
                     top=max(ymax, reference_line * 1.05))
+        # Y ticks formatted as percentages (0%, 20%, ..., 100%).
+        ax.yaxis.set_major_formatter(PercentFormatter(xmax=100, decimals=0))
 
     ax.set_xlabel("")
     ax.set_ylabel(score_label, fontsize=20)
