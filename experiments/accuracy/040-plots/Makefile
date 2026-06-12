@@ -110,29 +110,29 @@ rq1_boxplot.pdf: $(RQ1_BOX_FILES) | $(VENV_DIR)/bin/activate
 	$(PYTHON) plot_score_dist_boxplot.py \
 		--input $(RQ1_BOX_INPUTS) \
 		--output $@ \
-		--score-label '$$f_{\chi^2}$$' \
-		--log-scale
+		--score-label 'Normalized $$f_{\chi^2}$$' \
+		--baseline cmm
 
 rq1_boxplot.dedup.pdf: $(RQ1_BOX_FILES_DEDUP) | $(VENV_DIR)/bin/activate
 	$(PYTHON) plot_score_dist_boxplot.py \
 		--input $(RQ1_BOX_INPUTS_DEDUP) \
 		--output $@ \
-		--score-label '$$f_{\chi^2}$$' \
-		--log-scale
+		--score-label 'Normalized $$f_{\chi^2}$$' \
+		--baseline cmm
 
 rq2_boxplot.pdf: $(RQ2_BOX_FILES) | $(VENV_DIR)/bin/activate
 	$(PYTHON) plot_score_dist_boxplot.py \
 		--input $(RQ2_BOX_INPUTS) \
 		--output $@ \
-		--score-label '$$f_{\chi^2}$$' \
-		--log-scale
+		--score-label 'Normalized $$f_{\chi^2}$$' \
+		--baseline cmm
 
 rq2_boxplot.dedup.pdf: $(RQ2_BOX_FILES_DEDUP) | $(VENV_DIR)/bin/activate
 	$(PYTHON) plot_score_dist_boxplot.py \
 		--input $(RQ2_BOX_INPUTS_DEDUP) \
 		--output $@ \
-		--score-label '$$f_{\chi^2}$$' \
-		--log-scale
+		--score-label 'Normalized $$f_{\chi^2}$$' \
+		--baseline cmm
 
 $(VENV_DIR)/bin/activate: requirements.txt
 	python3 -m venv $(VENV_DIR)
