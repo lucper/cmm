@@ -299,8 +299,6 @@ void write_best_match_table(const std::string& path,
     if (!out.is_open())
         throw std::runtime_error("Cannot open output file: " + path);
 
-    out << "rank\tX\tY\tscore\tbest_X\tbest_Y\tbest_score\tsimilarity\n";
-
     char row[1024];
     for (size_t i = 0; i < soln_self.size(); ++i) {
         const auto& self  = soln_self[i];
