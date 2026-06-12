@@ -75,7 +75,6 @@ Each motif will have length 5 and 2 wildcard symbols (`x`).
 
 This command yields the following output:
 ```text
-X Y x2
 MLHxx TQTxx 0,17
 MLHxx QTFxx 0,17
 MLHxx TFIxx 0,17
