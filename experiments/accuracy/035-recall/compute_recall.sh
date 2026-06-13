@@ -21,7 +21,7 @@ then
     exit 1
 fi
 
-matches=$(awk -v k="${baseline_set}" '$1 <= k && $8 == 1' "${eval_tsv}" | wc -l)
+matches=$(awk -v k="${baseline_set}" '$1 <= k && $8 + 0 == 1' "${eval_tsv}" | wc -l)
 competitor_set_trunc=$(( competitor_set < baseline_set ? competitor_set : baseline_set ))
 recall=$(awk -v m="${matches}" -v k="${baseline_set}" 'BEGIN{printf "%.4f", m/k}')
 
