@@ -32,8 +32,9 @@ import pandas as pd
 import seaborn as sns
 from pathlib import Path
 
-EXPECTED_COLS = {"rank", "X", "Y", "score",
-                 "best_X", "best_Y", "best_score", "similarity"}
+## expected columns from output TSV of 030-eval
+COLS = ["rank", "X", "Y", "score",
+        "best_X", "best_Y", "best_score", "similarity"]
 
 def parse_input_spec(spec):
     """Split 'dataset:x:path' on the first two colons. Path may contain ':'.
@@ -49,13 +50,6 @@ def parse_input_spec(spec):
     if x == int(x):
         x = int(x)  # keep tidy integer formatting on the x-axis
     return dataset, x, path
-
-def load(path):
-    df = pd.read_csv(path, sep="\t")
-    missing = EXPECTED_COLS - set(df.columns)
-    if missing:
-        raise ValueError(f"{path}: TSV missing expected columns: {sorted(missing)}")
-    return df
 
 def compute_recall(df, top_n, threshold):
     """Take the first top_n rows of df, return fraction whose 'similarity'
@@ -73,7 +67,7 @@ def plot(specs, output_path, top_n, threshold, log_scale, x_label):
     # Group by dataset, preserving first-seen order in specs.
     by_dataset = {}
     for dataset, x, path in specs:
-        df = load(path)
+        df = pd.read_csv(path, sep="\t", header=None, names=COLS)
         r = compute_recall(df, top_n, threshold)
         by_dataset.setdefault(dataset, []).append((x, r))
         print(f"{dataset} x={x}: {100*r:.1f}% from {path}")
