@@ -13,22 +13,31 @@ INPUT := ../020-agg/$(DATASET)
 
 .PHONY: usage
 usage:
-	@echo "Usage: make DATASET=<dataset name>"
-	@echo "            R=<number of runs>           (slider dedup only)"
-	@echo "            T=<max convergence time>     (slider dedup only)"
-	@echo "            ELL=<motif length>"
-	@echo "            D=<number of wildcards>"
-	@echo "            K_TOP=<top motif pairs>      (slider dedup only)"
-	@echo "            <target>"
+	@echo "Usage: make all"
+	@echo "       DATASET=<dataset name>"
+	@echo "       R=<number of runs>           (SLIDER dedup only)"
+	@echo "       T=<max convergence time>     (SLIDER dedup only)"
+	@echo "       L=<motif length>"
+	@echo "       D=<number of wildcards>"
+	@echo "       K_TOP=<top motif pairs>      (SLIDER dedup only)"
 
 .DELETE_ON_ERROR:
 
+.PHONY: all
+all: $(DATASET)/$(DATASET).seq_slider.l$(L)d$(D).agg.trials$(R).min$(T).k$(K_TOP).dedup.out \
+	 $(DATASET)/$(DATASET).m_slider.l$(L)d$(D).agg.trials$(R).min$(T).k$(K_TOP).dedup.out \
+	 $(DATASET)/$(DATASET).cmm.l$(L)d$(D).k$(K_TOP).dedup.out
+
 ## Dedup SLIDER's top-K aggregates.
-$(DATASET)/$(DATASET).slider++.l$(ELL)d$(D).agg.trials$(R).min$(T).k$(K_TOP).dedup.out: $(INPUT)/$(DATASET).slider++.l$(ELL)d$(D).agg.trials$(R).min$(T).k$(K_TOP).out $(FASTA) $(INTS)
+$(DATASET)/$(DATASET).seq_slider.l$(L)d$(D).agg.trials$(R).min$(T).k$(K_TOP).dedup.out: $(FASTA) $(INTS) $(INPUT)/$(DATASET).seq_slider.l$(L)d$(D).agg.trials$(R).min$(T).k$(K_TOP).out
 	mkdir -p $(@D)
-	$(CMM_DEDUP) $(FASTA) $(INTS) $< 0 $@
+	$(CMM_DEDUP) $^ 0 $@
+
+$(DATASET)/$(DATASET).m_slider.l$(L)d$(D).agg.trials$(R).min$(T).k$(K_TOP).dedup.out: $(FASTA) $(INTS) $(INPUT)/$(DATASET).m_slider.l$(L)d$(D).agg.trials$(R).min$(T).k$(K_TOP).out
+	mkdir -p $(@D)
+	$(CMM_DEDUP) $^ 0 $@
 
 ## Dedup exact solution.
-$(DATASET)/$(DATASET).cmm.l$(ELL)d$(D).k$(K_TOP).dedup.out: $(EXACT_DIR)/$(DATASET).cmm.l$(ELL)d$(D).k$(K_TOP).out $(FASTA) $(INTS)
+$(DATASET)/$(DATASET).cmm.l$(L)d$(D).k$(K_TOP).dedup.out: $(FASTA) $(INTS) $(EXACT_DIR)/$(DATASET).cmm.l$(L)d$(D).k$(K_TOP).out
 	mkdir -p $(@D)
-	$(CMM_DEDUP) $(FASTA) $(INTS) $< 0 $@
+	$(CMM_DEDUP) $^ 0 $@
