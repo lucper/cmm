@@ -33,9 +33,9 @@ cmm: $(DATASET)/$(DATASET).cmm.l$(L)d$(D).k$(K_TOP).dedup.out
 ## Dedup SLIDER's top-K aggregates.
 $(DATASET)/$(DATASET).%.l$(L)d$(D).agg.trials$(R).min$(T).k$(K_TOP).dedup.out: $(FASTA) $(INTS) $(INPUT)/$(DATASET).%.l$(L)d$(D).agg.trials$(R).min$(T).k$(K_TOP).out
 	mkdir -p $(@D)
-	$(CMM_DEDUP) $^ 0 $@
+	$(CMM_DEDUP) $^ 0 /dev/stdout | LC_ALL=C sort -k3 -gr > $@
 
 ## Dedup exact solution.
 $(DATASET)/$(DATASET).cmm.l$(L)d$(D).k$(K_TOP).dedup.out: $(FASTA) $(INTS) $(EXACT_DIR)/$(DATASET).cmm.l$(L)d$(D).k$(K_TOP).out
 	mkdir -p $(@D)
-	$(CMM_DEDUP) $^ 0 $@
+	$(CMM_DEDUP) $^ 0 /dev/stdout | LC_ALL=C sort -k3 -gr > $@
