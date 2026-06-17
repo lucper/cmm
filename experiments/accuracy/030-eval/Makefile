@@ -2,17 +2,14 @@ SHELL    := /usr/bin/bash
 
 CMM_EVAL := ../cmm_eval
 
-## change this
-DATA     := ../../string_data_cleaned
-FASTA    := $(DATA)/$(DATASET).s700.cleaned.fa
-INTS     := $(DATA)/$(DATASET).s700.cleaned.int
-
 INPUT    := ../025-dedup/$(DATASET)
 
 .PHONY: usage
 usage:
 	@echo "Usage: make all"
 	@echo "       DATASET=<dataset name>"
+	@echo "       FASTA=<fasta file>"
+	@echo "       INTS=<interactions file>"
 	@echo "       R=<number of runs>"
 	@echo "       T=<max convergence time>"
 	@echo "       L=<l>"

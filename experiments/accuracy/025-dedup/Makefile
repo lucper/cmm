@@ -1,20 +1,19 @@
-SHELL     := /usr/bin/bash
+SHELL       := /usr/bin/bash
+.SHELLFLAGS := -o pipefail -c
 
-CMM_DEDUP := ../cmm_dedup
+CMM_DEDUP   := ../cmm_dedup
 
-## change these
-DATA      := ../../string_data_cleaned
-EXACT_DIR := ../cmm_out
+## change
+EXACT_DIR   := ../cmm_out
 
-FASTA     := $(DATA)/$(DATASET).s700.cleaned.fa
-INTS      := $(DATA)/$(DATASET).s700.cleaned.int
-
-INPUT     := ../020-agg/$(DATASET)
+INPUT       := ../020-agg/$(DATASET)
 
 .PHONY: usage
 usage:
 	@echo "Usage: make [slider|cmm]"
 	@echo "       DATASET=<dataset name>"
+	@echo "       FASTA=<fasta file>"
+	@echo "       INTS=<interactions file>"
 	@echo "       R=<number of runs>           (SLIDER dedup only)"
 	@echo "       T=<max convergence time>     (SLIDER dedup only)"
 	@echo "       L=<motif length>"

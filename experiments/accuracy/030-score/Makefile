@@ -1,6 +1,7 @@
-SHELL := /usr/bin/bash
+SHELL       := /usr/bin/bash
+.SHELLFLAGS := -o pipefail -c
 
-INPUT := ../025-dedup/$(DATASET)
+INPUT       := ../025-dedup/$(DATASET)
 
 .PHONY: usage
 usage:
