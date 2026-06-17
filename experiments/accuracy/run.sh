@@ -46,7 +46,7 @@ echo "=== Stage 020-agg: Aggregation ===" >&2
 for cell in "${EXP_CELLS[@]}"
 do
     r=${cell%:*}; t=${cell#*:}
-    make -C 020-agg all DATASET=${DATASET} R=${r} T=${t} L=${L} D=${D} K=${K} K_TOP=${K_TOP} -n
+    make -C 020-agg all DATASET=${DATASET} R=${r} T=${t} L=${L} D=${D} K=${K} K_TOP=${K_TOP}
 done
 
 echo "=== Stage 025-dedup: Deduplication ===" >&2
@@ -54,18 +54,17 @@ echo "=== Stage 025-dedup: Deduplication ===" >&2
 for cell in "${EXP_CELLS[@]}"
 do
     r=${cell%:*}; t=${cell#*:}
-    make -C 025-dedup slider DATASET=${DATASET} FASTA=${FASTA} INTS=${INTS} R=${r} T=${t} L=${L} D=${D} K_TOP=${K_TOP} -n
+    make -C 025-dedup slider DATASET=${DATASET} FASTA=${FASTA} INTS=${INTS} R=${r} T=${t} L=${L} D=${D} K_TOP=${K_TOP}
 done
 ## dedup Exact
-make -C 025-dedup cmm DATASET=${DATASET} L=${L} D=${D} K_TOP=${K_TOP} -n
-
+make -C 025-dedup cmm DATASET=${DATASET} FASTA=${FASTA} INTS=${INTS} L=${L} D=${D} K_TOP=${K_TOP}
 
 echo "=== Stage 030-score: Score evaluation ===" >&2
 for cell in "${EXP_CELLS[@]}"
 do
     r=${cell%:*}; t=${cell#*:}
 
-    make -C 030-score all DATASET=${DATASET} R=${r} T=${t} L=${L} D=${D} K_TOP=${K_TOP} -n
+    make -C 030-score all DATASET=${DATASET} R=${r} T=${t} L=${L} D=${D} K_TOP=${K_TOP}
 done
 
 echo "=== Stage 030-eval: Similarity evaluation ===" >&2
@@ -73,7 +72,7 @@ for cell in "${EXP_CELLS[@]}"
 do
     r=${cell%:*}; t=${cell#*:}
 
-    make -C 030-eval all DATASET=${DATASET} FASTA=${FASTA} INTS=${INTS} R=${r} T=${t} L=${L} D=${D} K_TOP=${K_TOP} H=${H} -n
+    make -C 030-eval all DATASET=${DATASET} FASTA=${FASTA} INTS=${INTS} R=${r} T=${t} L=${L} D=${D} K_TOP=${K_TOP} H=${H}
 done
 
 echo "=== Stage 035-eval-recall: Recall against exact ===" >&2
@@ -81,7 +80,7 @@ for cell in "${EXP_CELLS[@]}"
 do
     r=${cell%:*}; t=${cell#*:}
 
-    make -C 035-eval-recall all DATASET=${DATASET} R=${r} T=${t} L=${L} D=${D} K_TOP=${K_TOP} H=${H} C=${C} -n
+    make -C 035-eval-recall all DATASET=${DATASET} R=${r} T=${t} L=${L} D=${D} K_TOP=${K_TOP} H=${H} C=${C}
 done
 
 #echo "=== Stage 040-plots: Plotting ===" >&2
