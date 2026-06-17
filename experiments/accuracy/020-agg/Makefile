@@ -6,7 +6,6 @@ INPUT := ../010-soln/$(DATASET)
 usage:
 	@echo "Usage: make all"
 	@echo "       DATASET=<dataset name>"
-	@echo "       METHOD=<m_slider or seq_slider>"
 	@echo "       R=<number of runs>"
 	@echo "       T=<max convergence time>"
 	@echo "       L=<l>"
@@ -17,10 +16,11 @@ usage:
 .DELETE_ON_ERROR:
 
 .PHONY: all
-all: $(DATASET)/$(DATASET).$(METHOD).l$(L)d$(D).agg.trials$(R).min$(T).k$(K_TOP).out
+all: $(DATASET)/$(DATASET).seq_slider.l$(L)d$(D).agg.trials$(R).min$(T).k$(K_TOP).out \
+     $(DATASET)/$(DATASET).m_slider.l$(L)d$(D).agg.trials$(R).min$(T).k$(K_TOP).out
 
 ## RQ1 cells: R=5, T in {5, 10, 15, 20, 25, 30}
 ## RQ2 cells: T=5, R in {5, 10, 15, 20, 25, 30}
-$(DATASET)/$(DATASET).$(METHOD).l$(L)d$(D).agg.trials$(R).min$(T).k$(K_TOP).out: $(foreach r,$(shell seq 1 $(R)),$(INPUT)/$(DATASET).$(METHOD).l$(L)d$(D).trial$(r).min$(T).k$(K).out)
+$(DATASET)/$(DATASET).%.l$(L)d$(D).agg.trials$(R).min$(T).k$(K_TOP).out: $(foreach r,$(shell seq 1 $(R)),$(INPUT)/$(DATASET).%.l$(L)d$(D).trial$(r).min$(T).k$(K).out)
 	mkdir -p $(@D)
 	cat $^ | sort -u | sort -k3 -gr | awk -v n=$(K_TOP) 'NR<=n' > $@

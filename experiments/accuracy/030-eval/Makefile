@@ -19,7 +19,6 @@ usage:
 	@echo "       D=<d>"
 	@echo "       K_TOP=<number of top motif pairs to keep>"
 	@echo "       H=<similarity parameter>"
-	@echo "       EXACT_SOL=<path to exact solution file>"
 
 .DELETE_ON_ERROR:
 
@@ -27,10 +26,6 @@ usage:
 all: $(DATASET)/$(DATASET).seq_slider.l$(L)d$(D).agg.trials$(R).min$(T).k$(K_TOP).h$(H).dedup.tsv \
 	 $(DATASET)/$(DATASET).m_slider.l$(L)d$(D).agg.trials$(R).min$(T).k$(K_TOP).h$(H).dedup.tsv
 
-$(DATASET)/$(DATASET).seq_slider.l$(L)d$(D).agg.trials$(R).min$(T).k$(K_TOP).h$(H).dedup.tsv: $(FASTA) $(INTS) $(INPUT)/$(DATASET).seq_slider.l$(L)d$(D).agg.trials$(R).min$(T).k$(K_TOP).dedup.out $(INPUT)/$(DATASET).cmm.l$(L)d$(D).k$(K_TOP).dedup.out
-	mkdir -p $(@D)
-	$(CMM_EVAL) $^ $(H) /dev/null $@
-
-$(DATASET)/$(DATASET).m_slider.l$(L)d$(D).agg.trials$(R).min$(T).k$(K_TOP).h$(H).dedup.tsv: $(FASTA) $(INTS) $(INPUT)/$(DATASET).m_slider.l$(L)d$(D).agg.trials$(R).min$(T).k$(K_TOP).dedup.out $(INPUT)/$(DATASET).cmm.l$(L)d$(D).k$(K_TOP).dedup.out
+$(DATASET)/$(DATASET).%.l$(L)d$(D).agg.trials$(R).min$(T).k$(K_TOP).h$(H).dedup.tsv: $(FASTA) $(INTS) $(INPUT)/$(DATASET).%.l$(L)d$(D).agg.trials$(R).min$(T).k$(K_TOP).dedup.out $(INPUT)/$(DATASET).cmm.l$(L)d$(D).k$(K_TOP).dedup.out
 	mkdir -p $(@D)
 	$(CMM_EVAL) $^ $(H) /dev/null $@
