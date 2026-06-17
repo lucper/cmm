@@ -24,7 +24,8 @@ EOF
 
 DATASET="" FASTA="" INTS="" R="" T="" L="" D_WC="" K="" K_TOP="" H="" C=""
 
-while getopts "D:f:i:r:t:l:d:k:K:H:c:h" opt; do
+while getopts "D:f:i:r:t:l:d:k:K:H:c:h" opt
+do
     case ${opt} in
         D) DATASET=${OPTARG} ;;
         f) FASTA=${OPTARG} ;;
