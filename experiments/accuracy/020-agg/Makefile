@@ -23,4 +23,4 @@ all: $(DATASET)/$(DATASET).seq_slider.l$(L)d$(D).agg.trials$(R).min$(T).k$(K_TOP
 ## RQ2 cells: T=5, R in {5, 10, 15, 20, 25, 30}
 $(DATASET)/$(DATASET).%.l$(L)d$(D).agg.trials$(R).min$(T).k$(K_TOP).out: $(foreach r,$(shell seq 1 $(R)),$(INPUT)/$(DATASET).%.l$(L)d$(D).trial$(r).min$(T).k$(K).out)
 	mkdir -p $(@D)
-	cat $^ | sort -u | sort -k3 -gr | awk -v n=$(K_TOP) 'NR<=n' > $@
+	export LC_ALL=C; cat $^ | sort -u | sort -k3 -gr | awk -v n=$(K_TOP) 'NR<=n' > $@
