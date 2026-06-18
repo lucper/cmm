@@ -124,9 +124,13 @@ def plot_box(df, datasets, methods, output_path, score_label,
                    for i, m in enumerate(methods)]
         handles.append(Line2D([0], [0], color="red", linestyle="--",
                               linewidth=2.0, label=reference_label))
-        ax.legend(handles=handles, fontsize=14, loc="best")
+        ax.legend(handles=handles, fontsize=14, ncol=len(handles),
+                  loc="lower center", bbox_to_anchor=(0.5, 1.02),
+                  frameon=False)
     elif n_methods > 1:
-        ax.legend(fontsize=14, loc="best")
+        ax.legend(fontsize=14, ncol=n_methods,
+                  loc="lower center", bbox_to_anchor=(0.5, 1.02),
+                  frameon=False)
     elif ax.get_legend() is not None:
         ax.get_legend().remove()
     sns.despine(ax=ax)
