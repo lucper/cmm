@@ -27,6 +27,8 @@ stats ARG1 using 1 nooutput
 ND = STATS_max
 methods = system("awk -F'\t' '!(\$3 in s){s[\$3]; printf \"%s \", \$3}' ".ARG1)
 NM = words(methods)
+set for [i=1:ND-1] arrow from (i+0.5),graph 0 to (i+0.5),graph 1 \
+    nohead lc rgb "#bbbbbb" dashtype 3 lw 1 back
 
 bw = 0.30
 sep = 0.36
