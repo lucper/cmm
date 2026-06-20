@@ -53,6 +53,17 @@ H2PT  = 8           # open triangle
 H1PS  = 0.45
 H2PS  = 0.5         # triangles read smaller; nudge up
 
+# Round v to `sig` significant figures; up=1 rounds toward +inf (ceil), up=0 down.
+round_sig(v, sig, up) = (v == 0) ? 0 : ( \
+    (up ? ceil (v / (10.0**(floor(log10(abs(v)))-sig+1))) \
+        : floor(v / (10.0**(floor(log10(abs(v)))-sig+1)))) \
+    * (10.0**(floor(log10(abs(v)))-sig+1)) )
+
+# SI label: k for >=1e3, M for >=1e6, plain otherwise; %g trims trailing zeros.
+silab(v) = (abs(v) >= 1e6) ? sprintf("%gM", v/1e6) : \
+           (abs(v) >= 1e3) ? sprintf("%gk", v/1e3) : \
+           sprintf("%g", v)
+
 # Pull the two heuristic display names from the CSV, in file order, skipping the
 # exact KEY. Emits one display name per line.
 heur_names = system( \
@@ -81,28 +92,28 @@ if (mode eq "legend") {
 } else {
     # --- panel: real scatter, key OFF (shared legend lives elsewhere) ---
     # stats MUST come before any set yrange/xrange: stats honors active ranges
-    # and miscounts/filters otherwise (documented gotcha). Derive a coarse x-tick
-    # interval from the data so ~3 ticks show regardless of panel size or range.
+    # and miscounts/filters otherwise (documented gotcha). Show ONLY two x-ticks:
+    # the data min and max, each rounded to 2 significant figures and labeled with
+    # an SI suffix (k/M). Range is set to those rounded endpoints so the two ticks
+    # sit exactly at the left and right edges -> regular across all panels.
     set datafile separator "\t"
     stats f1 using 4 nooutput
-    xmax_1 = STATS_max
+    xmin_1 = STATS_min ; xmax_1 = STATS_max
     stats f2 using 4 nooutput
+    xmin = (STATS_min < xmin_1) ? STATS_min : xmin_1
     xmax = (STATS_max > xmax_1) ? STATS_max : xmax_1
-    raw_step = xmax / 3.0
-    pow10 = 10.0 ** floor(log10(raw_step))
-    norm = raw_step / pow10
-    nice = (norm <= 1) ? 1 : (norm <= 2) ? 2 : (norm <= 5) ? 5 : 10
-    xstep = nice * pow10
+    xlo = round_sig(xmin, 2, 0)   # round min DOWN to 2 sig figs
+    xhi = round_sig(xmax, 2, 1)   # round max UP   to 2 sig figs
 
     set xlabel '\normalsize $f_{\chi^2}$ ('.exact_name.')'
-    set ylabel '\normalsize dist. to nearest'
+    set ylabel '\normalsize dist.\ to nearest$'
 
     set yrange [0:1.04]
     set ytics nomirror 0.5
     set border 3
-    set xtics nomirror
-    set format x '%.0s%c'
-    set xtics xstep
+    set xrange [xlo : xhi]
+    # two explicit ticks, rounded value as position, SI string as label
+    set xtics nomirror (silab(xlo) xlo, silab(xhi) xhi)
     unset key
 
     plot \
