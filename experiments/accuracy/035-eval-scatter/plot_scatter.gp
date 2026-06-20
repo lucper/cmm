@@ -48,8 +48,8 @@ set datafile separator "\t"
 # Two heuristics: distinct hue AND distinct shape so they separate under overplot.
 H1COL = "#1f6fb3"   # blue   -> heuristic 1
 H2COL = "#c14a3d"   # red    -> heuristic 2
-H1PT  = 7           # filled circle
-H2PT  = 9           # filled triangle
+H1PT  = 6           # open circle
+H2PT  = 8           # open triangle
 H1PS  = 0.45
 H2PS  = 0.5         # triangles read smaller; nudge up
 
@@ -80,17 +80,29 @@ if (mode eq "legend") {
       '+' using (2):(2) with points pt H2PT ps H2PS lc rgb H2COL title N2
 } else {
     # --- panel: real scatter, key OFF (shared legend lives elsewhere) ---
-    set xlabel '\normalsize '.exact_name.' score $f_{\chi^2}$'
-    set ylabel '\normalsize dist.\ to nearest pair $1-s$'
+    # stats MUST come before any set yrange/xrange: stats honors active ranges
+    # and miscounts/filters otherwise (documented gotcha). Derive a coarse x-tick
+    # interval from the data so ~3 ticks show regardless of panel size or range.
+    set datafile separator "\t"
+    stats f1 using 4 nooutput
+    xmax_1 = STATS_max
+    stats f2 using 4 nooutput
+    xmax = (STATS_max > xmax_1) ? STATS_max : xmax_1
+    raw_step = xmax / 3.0
+    pow10 = 10.0 ** floor(log10(raw_step))
+    norm = raw_step / pow10
+    nice = (norm <= 1) ? 1 : (norm <= 2) ? 2 : (norm <= 5) ? 5 : 10
+    xstep = nice * pow10
+
+    set xlabel '\normalsize $f_{\chi^2}$ ('.exact_name.')'
+    set ylabel '\normalsize dist. to nearest'
 
     set yrange [0:1.04]
     set ytics nomirror 0.5
     set border 3
     set xtics nomirror
-    # Scores run to ~30000; raw labels collide. Compact SI format (16000->"16k")
-    # plus an explicit coarse interval so spacing is deterministic across datasets.
     set format x '%.0s%c'
-    set xtics 5000
+    set xtics xstep
     unset key
 
     plot \
