@@ -84,7 +84,7 @@ if (mode eq "legend") {
       '+' using (2):(1) with boxes fs solid 1.0 lc rgb H2FILL title N2
 } else {
     # --- panel: 10-bin count histogram, two translucent overlaid series ---
-    set xlabel '\normalsize dist.\ to nearest pair $1-s$'
+    set xlabel '\normalsize dist.\ to closest'
     set ylabel '\normalsize \# motif pairs'
 
     set xrange [0:1]
@@ -122,7 +122,7 @@ if (mode eq "legend") {
 
     # --- threshold line + percentage label (only if thr in (0,1]) ---
     if (thr > 0) {
-        pct = sprintf("%d\\%%", int(thr*100 + 0.5))
+        pct = sprintf("\\footnotesize %d\\%%", int(thr*100 + 0.5))
         # vertical dashed black line at thr (no head)
         set arrow from thr, graph 0 to thr, graph 1 nohead dt 2 lw 1.5 lc rgb "black" front
         # percentage centred ABOVE the line, lifted clear of the plot top so it
