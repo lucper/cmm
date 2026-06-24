@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Normalize one dataset's ranked score files into a tidy TSV on stdout.
 
-Usage: transform.py <exact_token> <methods.csv> <file>...
-  e.g. transform.py exact methods.csv score/ecoli/ecoli.*l8d3*dat > tidy/ecoli.tsv
+Usage: glob.py <exact_token> <methods.csv> <file>...
+  e.g. glob.py exact methods.csv score/ecoli/ecoli.*l8d3*dat > tidy/ecoli.tsv
 
 Each input line:  COL1 COL2 score   (already sorted, best first)
 methods.csv:      raw,"Proper"
@@ -14,7 +14,7 @@ exact_token = sys.argv[1]
 methods_csv = sys.argv[2]
 files       = sys.argv[3:]
 if not files:
-    sys.exit("usage: transform.py <exact_token> <methods.csv> <file>...")
+    sys.exit("usage: glob.py <exact_token> <methods.csv> <file>...")
 
 mname = {}
 with open(methods_csv, newline="") as fh:
