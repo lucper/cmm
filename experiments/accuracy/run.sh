@@ -88,10 +88,6 @@ make -C 025-dedup slider \
 make -C 025-dedup cmm \
     DATASET=${DATASET} FASTA=${FASTA} INTS=${INTS} L=${L} D=${D_WC} K_TOP=${K_TOP}
 
-echo "=== Stage 030-score: Score evaluation ===" >&2
-make -C 030-score all \
-    DATASET=${DATASET} R=${R} T=${T} L=${L} D=${D_WC} K_TOP=${K_TOP}
-
 echo "=== Stage 030-eval: Similarity evaluation ===" >&2
 make -C 030-eval all \
     DATASET=${DATASET} FASTA=${FASTA} INTS=${INTS} R=${R} T=${T} L=${L} D=${D_WC} K_TOP=${K_TOP} H=${H}
