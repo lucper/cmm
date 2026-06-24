@@ -5,8 +5,12 @@ EXACT_LABEL := Exact
 EXACT_PROG  := cmm
 METHODS_CSV := ../methods.csv
 METHODS     := $(shell awk -F, '{print $$1}' $(METHODS_CSV))
-WIDTH       := 3.8
-HEIGHT      := 3.2
+
+## dimensions for plot and legend
+PLOT_W      := 3.8
+PLOT_H      := 3.2
+LEGEND_W    := 7
+LEGEND_H    := 1.1
 
 .PHONY: usage
 usage:
@@ -23,13 +27,13 @@ usage:
 .PHONY: all
 all: $(DATASET)/curve.$(DATASET).l$(L)d$(D).dedup.tex curve_legend.tex
 
-curve_legend.tex: ../methods.csv
-	gnuplot -c plot_curve.gp legend $< curve_legend $(EXACT_LABEL) 7 1.1
+curve_legend.tex: $(METHODS_CSV)
+	gnuplot -c plot_curve.gp legend $< curve_legend $(EXACT_LABEL) $(LEGEND_W) $(LEGEND_H)
 
 $(DATASET)/curve.%.tex: $(DATASET)/%.dat
-	gnuplot -c plot_curve.gp plot $< $(DATASET)/curve.$* $(EXACT_LABEL) $(WIDTH) $(HEIGHT)
+	gnuplot -c plot_curve.gp plot $< $(DATASET)/curve.$* $(EXACT_LABEL) $(PLOT_W) $(PLOT_H)
 
-$(DATASET)/$(DATASET).l$(L)d$(D).dedup.dat: ../methods.csv \
+$(DATASET)/$(DATASET).l$(L)d$(D).dedup.dat: $(METHODS_CSV) \
 	$(INPUT)/$(DATASET).*.l$(L)d$(D).agg.trials$(R).min$(T).k$(K_TOP).dedup.out \
 	$(INPUT)/$(DATASET).$(EXACT_PROG).l$(L)d$(D).k$(K_TOP).dedup.out
 	mkdir -p $(@D)
