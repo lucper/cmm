@@ -28,13 +28,21 @@ usage:
 all: $(DATASET)/curve.$(DATASET).l$(L)d$(D).dedup.tex curve_legend.tex
 
 curve_legend.tex: $(METHODS_CSV)
-	gnuplot -c plot_curve.gp legend $< curve_legend $(EXACT_LABEL) $(LEGEND_W) $(LEGEND_H)
+	gnuplot -c plot_curve.gp legend \
+		$< \
+		curve_legend \
+		$(EXACT_LABEL) \
+		$(LEGEND_W) $(LEGEND_H)
 
 $(DATASET)/curve.%.tex: $(DATASET)/%.dat
-	gnuplot -c plot_curve.gp plot $< $(DATASET)/curve.$* $(EXACT_LABEL) $(PLOT_W) $(PLOT_H)
+	gnuplot -c plot_curve.gp plot \
+		$< \
+		$(DATASET)/curve.$* \
+		$(EXACT_LABEL) \
+		$(PLOT_W) $(PLOT_H)
 
-$(DATASET)/$(DATASET).l$(L)d$(D).dedup.dat: $(METHODS_CSV) \
+$(DATASET)/$(DATASET).l$(L)d$(D).dedup.dat: \
 	$(INPUT)/$(DATASET).*.l$(L)d$(D).agg.trials$(R).min$(T).k$(K_TOP).dedup.out \
 	$(INPUT)/$(DATASET).$(EXACT_PROG).l$(L)d$(D).k$(K_TOP).dedup.out
 	mkdir -p $(@D)
-	./glob.py $(EXACT_PROG) $^ > $@
+	./glob.py $(EXACT_PROG) $(METHODS_CSV) $^ > $@
