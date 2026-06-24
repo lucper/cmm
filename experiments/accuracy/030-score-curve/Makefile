@@ -1,7 +1,6 @@
 SHELL       := /usr/bin/bash
 
 INPUT       := ../025-dedup/$(DATASET)
-EXACT_LABEL := Exact
 EXACT_PROG  := cmm
 METHODS_CSV := ../methods.csv
 METHODS     := $(shell awk -F, '{print $$1}' $(METHODS_CSV))
@@ -29,16 +28,17 @@ all: $(DATASET)/curve.$(DATASET).l$(L)d$(D).dedup.tex curve_legend.tex
 
 curve_legend.tex: $(METHODS_CSV)
 	gnuplot -c plot_curve.gp legend \
-		$< \
+		$(METHODS_CSV) \
 		curve_legend \
-		$(EXACT_LABEL) \
+		$(EXACT_PROG) \
 		$(LEGEND_W) $(LEGEND_H)
 
 $(DATASET)/curve.%.tex: $(DATASET)/%.dat
 	gnuplot -c plot_curve.gp plot \
+		$(METHODS_CSV) \
 		$< \
 		$(DATASET)/curve.$* \
-		$(EXACT_LABEL) \
+		$(EXACT_PROG) \
 		$(PLOT_W) $(PLOT_H)
 
 $(DATASET)/$(DATASET).l$(L)d$(D).dedup.dat: \

@@ -1,24 +1,50 @@
 #!/usr/bin/env gnuplot
 # Quality-profile curves, with a separate legend-only mode for shared legends.
 #
-# Usage:
-#   Panel (no key):    gnuplot -c curve.gp plot   <data.tsv> <out> <exact-name> <width_cm> [height_cm]
-#   Legend only:       gnuplot -c curve.gp legend <methods.csv> <out> <exact-name> <width_cm> [height_cm]
+# Unified interface (matches plot_hist.gp): the argument after <mode> is always
+# <methods.csv>, and the exact method is identified by its KEY in that CSV
+# (e.g. cmm), not its display name. Each script derives display names from the
+# CSV itself.
 #
-#   data.tsv : cols  rank <tab> proper_method <tab> normscore
-#   out      : output basename (may include dir, e.g. img/curve_ecoli)
-#   exact    : the exact method's PROPER name, exactly as in the data
+# Usage:
+#   Panel (no key):  gnuplot -c plot_curve.gp plot   <methods.csv> <data.tsv> <out> <exact-key> <width_cm> [height_cm]
+#   Legend only:     gnuplot -c plot_curve.gp legend <methods.csv>             <out> <exact-key> <width_cm> [height_cm]
+#
+#   methods.csv : lines of  key,"Display Name"  (must include the exact key)
+#   data.tsv    : cols  rank <tab> proper_method <tab> normscore
+#                 (col 2 holds DISPLAY names, e.g. "Exact", "M-SLIDER")
+#   out         : output basename (may include dir, e.g. img/curve_ecoli)
+#   exact-key   : the exact method's KEY in methods.csv (e.g. cmm)
 #   width/height in cm. Produces <out>.tex + <out>.pdf.
 #
 # In 'plot' mode the per-panel key is OFF (legend is shared, drawn separately).
 # In 'legend' mode only the key renders: no axes, border, data, or labels.
 
 mode  = ARG1
-data  = ARG2
-out   = ARG3
-exact = ARG4
-W     = ARG5 + 0
-H     = (ARGC >= 6) ? (ARG6 + 0) : (W * 0.72)
+csv   = ARG2
+
+# Argument layout differs by mode only in whether a data file precedes <out>:
+#   plot:    mode csv data out exact W [H]   -> ARGC 7 or 8
+#   legend:  mode csv      out exact W [H]   -> ARGC 6 or 7
+if (mode eq "legend") {
+    data  = ""
+    out   = ARG3
+    exact = ARG4
+    W     = ARG5 + 0
+    H     = (ARGC >= 6) ? (ARG6 + 0) : (W * 0.72)
+} else {
+    data  = ARG3
+    out   = ARG4
+    exact = ARG5
+    W     = ARG6 + 0
+    H     = (ARGC >= 7) ? (ARG7 + 0) : (W * 0.72)
+}
+
+# Resolve the exact method's DISPLAY name from its key via methods.csv. The
+# data TSV's column 2 holds display names, so we match against this resolved
+# name (and use it as the exact legend title).
+exact_name = system( \
+  "awk -F, -v k=\"".exact."\" '$1==k {n=$2; gsub(/\"/,\"\",n); print n; exit}' ".csv)
 
 eval sprintf("set terminal cairolatex pdf input color size %gcm,%gcm font ',9'", W, H)
 set output out . '.tex'
@@ -26,7 +52,7 @@ set datafile separator "\t"
 
 # ---- shared styling (identical in both modes so legend matches panels) ----
 # Colours keyed by METHOD NAME (not position) so they match the histogram:
-#   M-SLIDER -> blue, SEQ-SLIDER -> red. Exact baseline -> green (was red).
+#   M-SLIDER -> blue, SEQ-SLIDER -> red. Exact baseline -> green.
 # Unknown names fall back to a neutral grey.
 H1COL   = "#1f6fb3"   # blue  -> M-SLIDER   (matches histogram)
 H2COL   = "#c14a3d"   # red   -> SEQ-SLIDER (matches histogram)
@@ -43,8 +69,9 @@ methcol(name) = (name eq "M-SLIDER")   ? H1COL : \
 
 if (mode eq "legend") {
     # --- legend-only: hide everything but the key ---
-    # method names come from methods.csv (col 2, quoted), excluding the exact name
-    methods = system("awk -F, -v ex=\"".exact."\" '{n=$2; gsub(/\"/,\"\",n)} n!=ex && !(n in s){s[n]; printf \"%s\\n\", n}' ".data)
+    # heuristic display names come from methods.csv (col 2, quoted), excluding
+    # the exact KEY (col 1).
+    methods = system("awk -F, -v ex=\"".exact."\" '$1!=ex {n=$2; gsub(/\"/,\"\",n); print n}' ".csv)
     NM = words(methods)
     unset border
     unset xtics
@@ -59,11 +86,11 @@ if (mode eq "legend") {
     plot \
       for [i=1:NM] '+' using (2):(2) with lines lw LW_HEUR dashtype 2 \
          lc rgb methcol(word(methods,i)) title word(methods,i), \
-      '+' using (2):(2) with lines lw LW_EXACT lc rgb EXCOL title exact
+      '+' using (2):(2) with lines lw LW_EXACT lc rgb EXCOL title exact_name
 } else {
     # --- panel: real plot, key OFF (shared legend lives elsewhere) ---
-    # method names come from the TSV (col 2, tab), excluding the exact name
-    methods = system("awk -F'\t' -v ex=\"".exact."\" '\$2!=ex && !(\$2 in s){s[\$2]; printf \"%s\\n\", \$2}' ".data)
+    # method names come from the TSV (col 2, tab), excluding the exact display name
+    methods = system("awk -F'\t' -v ex=\"".exact_name."\" '\$2!=ex && !(\$2 in s){s[\$2]; printf \"%s\\n\", \$2}' ".data)
     NM = words(methods)
     set xlabel '\normalsize rank'
     set ylabel '\normalsize norm. $f_{\chi^2}$'
@@ -78,6 +105,6 @@ if (mode eq "legend") {
     plot \
       for [i=1:NM] data using 1:(strcol(2) eq word(methods,i) ? $3 : 1/0) \
          with lines lw LW_HEUR dashtype 2 lc rgb methcol(word(methods,i)) notitle, \
-      data using 1:(strcol(2) eq exact ? $3 : 1/0) \
+      data using 1:(strcol(2) eq exact_name ? $3 : 1/0) \
          with lines lw LW_EXACT lc rgb EXCOL notitle
 }
