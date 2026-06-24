@@ -60,9 +60,11 @@ H2COL  = "#c14a3d"     # red,  opaque       -> heuristic 2 count label
 # Ten fixed bins of width 0.1, both series at the SAME bin centre (overlaid).
 BINW = 0.1
 BOXW = 0.09           # slightly under bin width for a thin gap between bins
-# Quantize distance d in [0,1] to bin centre (0.05,0.15,...,0.95); d==1.0 -> 0.95
-# (last bin closed) instead of spilling into a phantom 11th bin.
-binc(d) = (d >= 1.0 ? 0.95 : (floor(d / BINW) + 0.5) * BINW)
+# Quantize distance d in [0,1] to bin centre (0.05,0.15,...,0.95). Clamp d to
+# just under 1.0 FIRST so distance==1.0 flows through the same floor path as
+# 0.99 and lands in the identical 0.95 bin -- otherwise a separately-computed
+# 0.95 produces a second, distinct bin at the same spot (duplicate last bar).
+binc(d) = (floor((d >= 1.0 ? 0.999999 : d) / BINW) + 0.5) * BINW
 
 # Heuristic display names from the CSV (file order, skipping the exact key).
 heur_names = system( \
@@ -70,13 +72,13 @@ heur_names = system( \
 N1 = word(heur_names, 1)
 N2 = word(heur_names, 2)
 
-set style fill solid 1.0 border lt -1
+set style fill solid 1.0 noborder
 
 if (mode eq "legend") {
     # --- legend-only: hide everything but the key ---
     unset border ; unset xtics ; unset ytics ; unset xlabel ; unset ylabel
     set yrange [0:1] ; set xrange [0:1]
-    set key center center horizontal maxrows 1 samplen 2 width 4 spacing 1.5 noenhanced
+    set key center center horizontal maxrows 1 samplen 2 width 6 spacing 1.5 noenhanced
     # boxes drawn out of range (x=2) so only the key swatches show
     set boxwidth BOXW
     plot \
