@@ -92,6 +92,10 @@ echo "=== Stage 030-eval: Similarity evaluation ===" >&2
 make -C 030-eval all \
     DATASET=${DATASET} FASTA=${FASTA} INTS=${INTS} R=${R} T=${T} L=${L} D=${D_WC} K_TOP=${K_TOP} H=${H}
 
+echo "=== Stage 035-score-curve: Score curve ===" >&2
+make -C 035-score-curve all \
+    DATASET=${DATASET} R=${R} T=${T} L=${L} D=${D} K_TOP=${K_TOP}
+
 echo "=== Stage 035-eval-recall: Recall against exact ===" >&2
 make -C 035-eval-recall all \
     DATASET=${DATASET} R=${R} T=${T} L=${L} D=${D_WC} K_TOP=${K_TOP} H=${H} C=${C}
