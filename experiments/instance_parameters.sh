@@ -16,6 +16,7 @@ awk '
             exists[current_id] = 1
         } else if (current_id != "") {
             total_chars += length($0)
+            seqlen[current_id] += length($0)  # per-sequence length (multi-line safe)
         }
         next
     }
@@ -45,6 +46,31 @@ awk '
             if (deg > max) max = deg
         }
 
+        # Label-length statistics over per-sequence lengths.
+        len_min = 0
+        len_max = 0
+        len_mean = 0
+        len_sd = 0
+        len_sum = 0
+        len_sumsq = 0
+        len_count = 0
+        for (id in seqlen) {
+            L = seqlen[id]
+            if (len_count == 0) len_min = L   # seed min on first sequence
+            len_count++
+            len_sum += L
+            len_sumsq += L * L
+            if (L < len_min) len_min = L
+            if (L > len_max) len_max = L
+        }
+        if (len_count > 0) {
+            len_mean = len_sum / len_count
+            # Population standard deviation.
+            len_var = len_sumsq / len_count - len_mean * len_mean
+            if (len_var < 0) len_var = 0   # guard tiny negative from rounding
+            len_sd = sqrt(len_var)
+        }
+
         ed = (1.0 * edges) / ((vertex_count * (vertex_count - 1)) / 2)
 
         if (vertex_count == 0) {
@@ -57,7 +83,10 @@ awk '
             printf "Number of edges (E)      %d\n", edges
             printf "    Edge density         %.3f\n", ed
             printf "Total label length (N)   %d\n", total_chars
-            printf "    Avg label length     %.2f\n", total_chars / vertex_count
+            printf "    Min label length     %d\n", len_min
+            printf "    Max label length     %d\n", len_max
+            printf "    Avg label length     %.2f\n", len_mean
+            printf "    Std label length     %.2f\n", len_sd
         }
     }
 ' "$NODE_FILE" "$EDGE_FILE"
