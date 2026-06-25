@@ -59,13 +59,22 @@ H2COL   = "#c14a3d"   # red   -> SEQ-SLIDER (matches histogram)
 EXCOL   = "#2c8a3d"   # green -> exact baseline
 FALLBK  = "#7f7f7f"   # grey  -> any other method name
 
-# Line widths: thicker so the dashed heuristics are visible without zooming.
-LW_HEUR  = 3.5
-LW_EXACT = 5.0
+# Line widths: thin connecting lines now that markers carry the disambiguation.
+LW_HEUR  = 1.2
+LW_EXACT = 1.6
+PTSIZE   = 0.35       # marker size (multiplier of the terminal's default point size)
+NMARK    = 12         # ~ this many markers per curve (pointinterval derived from data)
 
 # Map a method's display name to its colour.
 methcol(name) = (name eq "M-SLIDER")   ? H1COL : \
                 (name eq "SEQ-SLIDER") ? H2COL : FALLBK
+
+# Map a method's display name to a POINT SHAPE (pointtype). Open variants:
+#   4 = open square, 6 = open circle, 8 = open triangle.
+# Keyed by name (not loop position) so the panel and legend always agree.
+methpt(name) = (name eq "M-SLIDER")   ? 4 : \
+               (name eq "SEQ-SLIDER") ? 6 : 8
+EXPT = 8              # exact baseline -> open triangle
 
 if (mode eq "legend") {
     # --- legend-only: hide everything but the key ---
@@ -82,11 +91,15 @@ if (mode eq "legend") {
     set xrange [0:1]
     # key centered, horizontal row; this is the only thing that renders
     set key center center horizontal maxrows 1 samplen 3 width 6 spacing 1.5
-    # plot the series OUT OF RANGE (x=2, beyond [0:1]) so only key samples show
+    # plot the series OUT OF RANGE (x=2, beyond [0:1]) so only key samples show.
+    # Must mirror the panel style (linespoints + same shapes) so the shared
+    # legend faithfully represents the curves.
     plot \
-      for [i=1:NM] '+' using (2):(2) with lines lw LW_HEUR dashtype 2 \
-         lc rgb methcol(word(methods,i)) title word(methods,i), \
-      '+' using (2):(2) with lines lw LW_EXACT lc rgb EXCOL title exact_name
+      for [i=1:NM] '+' using (2):(2) with linespoints lw LW_HEUR \
+         lc rgb methcol(word(methods,i)) pt methpt(word(methods,i)) ps PTSIZE \
+         title word(methods,i), \
+      '+' using (2):(2) with linespoints lw LW_EXACT lc rgb EXCOL \
+         pt EXPT ps PTSIZE title exact_name
 } else {
     # --- panel: real plot, key OFF (shared legend lives elsewhere) ---
     # method names come from the TSV (col 2, tab), excluding the exact display name
@@ -102,9 +115,13 @@ if (mode eq "legend") {
     set xtics (1, STATS_max)
     set ytics nomirror 0.5
     unset key
+    # Marker every PI-th point so dense curves don't smear; ~NMARK markers total.
+    PI = (STATS_max > NMARK) ? int(STATS_max / NMARK) : 1
     plot \
       for [i=1:NM] data using 1:(strcol(2) eq word(methods,i) ? $3 : 1/0) \
-         with lines lw LW_HEUR dashtype 2 lc rgb methcol(word(methods,i)) notitle, \
+         with linespoints lw LW_HEUR lc rgb methcol(word(methods,i)) \
+         pt methpt(word(methods,i)) ps PTSIZE pi PI notitle, \
       data using 1:(strcol(2) eq exact_name ? $3 : 1/0) \
-         with lines lw LW_EXACT lc rgb EXCOL notitle
+         with linespoints lw LW_EXACT lc rgb EXCOL \
+         pt EXPT ps PTSIZE pi PI notitle
 }
