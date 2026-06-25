@@ -24,7 +24,7 @@ usage:
 .DELETE_ON_ERROR:
 
 .PHONY: all
-all: $(DATASET)/curve.$(DATASET).l$(L)d$(D).dedup.tex curve_legend.tex
+all: curve.$(DATASET).l$(L)d$(D).dedup.tex curve_legend.tex
 
 curve_legend.tex: $(METHODS_CSV)
 	gnuplot -c plot_curve.gp legend \
@@ -33,16 +33,15 @@ curve_legend.tex: $(METHODS_CSV)
 		$(EXACT_PROG) \
 		$(LEGEND_W) $(LEGEND_H)
 
-$(DATASET)/curve.%.tex: $(DATASET)/%.dat
+curve.%.tex: %.dat
 	gnuplot -c plot_curve.gp plot \
 		$(METHODS_CSV) \
 		$< \
-		$(DATASET)/curve.$* \
+		curve.$* \
 		$(EXACT_PROG) \
 		$(PLOT_W) $(PLOT_H)
 
-$(DATASET)/$(DATASET).l$(L)d$(D).dedup.dat: \
+$(DATASET).l$(L)d$(D).dedup.dat: \
 	$(INPUT)/$(DATASET).*.l$(L)d$(D).agg.trials$(R).min$(T).k$(K_TOP).dedup.out \
 	$(INPUT)/$(DATASET).$(EXACT_PROG).l$(L)d$(D).k$(K_TOP).dedup.out
-	mkdir -p $(@D)
 	./glob.py $(EXACT_PROG) $(METHODS_CSV) $^ > $@
