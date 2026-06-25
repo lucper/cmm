@@ -28,18 +28,16 @@ usage:
 .DELETE_ON_ERROR:
 
 .PHONY: all
-all: $(DATASET)/hist.$(DATASET).l$(L)d$(D).dedup.tex hist_legend.tex
+all: hist.$(DATASET).l$(L)d$(D).dedup.tex hist_legend.tex
 
 hist_legend.tex: $(METHODS_CSV)
-	## why EXACT_PROG?
 	gnuplot -c plot_hist.gp legend \
 		$< \
 		hist_legend \
 		$(EXACT_PROG) \
 		$(LEGEND_W) $(LEGEND_H)
 
-$(DATASET)/hist.%.l$(L)d$(D).dedup.tex: $(INPUT)/%.*.l$(L)d$(D).agg.trials$(R).min$(T).k$(K_TOP).h$(H).dedup.out
-	mkdir -p $(@D)
+hist.%.l$(L)d$(D).dedup.tex: $(INPUT)/%.*.l$(L)d$(D).agg.trials$(R).min$(T).k$(K_TOP).h$(H).dedup.out
 	gnuplot -c plot_hist.gp plot \
 		$(METHODS_CSV) \
 		hist.$*.l$(L)d$(D).dedup \
