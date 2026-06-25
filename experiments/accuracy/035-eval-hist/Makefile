@@ -23,6 +23,7 @@ usage:
 	@echo "       L=<motif length>"
 	@echo "       D=<number of wildcards>"
 	@echo "       K_TOP=<top motif pairs>"
+	@echo "       H=<similarity parameter>"
 	@echo "       THR=<threshold line for plot>"
 
 .DELETE_ON_ERROR:
@@ -37,7 +38,7 @@ hist_legend.tex: $(METHODS_CSV)
 		$(EXACT_PROG) \
 		$(LEGEND_W) $(LEGEND_H)
 
-hist.%.l$(L)d$(D).dedup.tex: $(INPUT)/%.*.l$(L)d$(D).agg.trials$(R).min$(T).k$(K_TOP).h$(H).dedup.out
+hist.%.l$(L)d$(D).dedup.tex: $(INPUT)/%.*.l$(L)d$(D).agg.trials$(R).min$(T).k$(K_TOP).h$(H).dedup.tsv
 	gnuplot -c plot_hist.gp plot \
 		$(METHODS_CSV) \
 		hist.$*.l$(L)d$(D).dedup \
