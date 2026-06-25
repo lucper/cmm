@@ -122,7 +122,6 @@ int main(int argc, char* argv[]) {
                              sol_path.string().c_str());
             } else {
                 sol_out << std::fixed << std::setprecision(3);
-                sol_out << (range_given ? "c d_u d_v X Y x2\n" : "X Y x2\n");
                 for (const auto& mp : solution.motif_pairs) {
                     if (range_given)
                         sol_out << mp.cell_c << " " << mp.cell_du << " " << mp.cell_dv << " ";

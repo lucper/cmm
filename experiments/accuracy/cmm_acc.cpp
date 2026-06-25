@@ -192,7 +192,6 @@ void write_solution_file(const std::string& path,
     if (!out.is_open())
         throw std::runtime_error("Cannot open solution file for writing: " + path);
 
-    out << "X Y x2\n";
     char row[1024];
     for (const auto& mp : soln) {
         std::snprintf(row, sizeof(row), "%s %s %.3f\n",
@@ -299,8 +298,6 @@ void write_best_match_table(const std::string& path,
     std::ofstream out(path);
     if (!out.is_open())
         throw std::runtime_error("Cannot open output file: " + path);
-
-    out << "rank\tX\tY\tscore\tbest_X\tbest_Y\tbest_score\tsimilarity\n";
 
     char row[1024];
     for (size_t i = 0; i < soln_self.size(); ++i) {

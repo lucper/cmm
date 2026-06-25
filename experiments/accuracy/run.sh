@@ -2,180 +2,104 @@
 
 set -euo pipefail
 
-DATASETS=(ecoli yeast fly plant) # add human
-ELL=8
-D=3
-K_SLIDER=10000
-K_TOP=1000
-H_VALUES=(0 ${ELL})
+usage() {
+    cat >&2 <<EOF
+Usage: $0 -D <dataset> -f <fasta> -i <ints> -r <R> -t <T> -l <L> -d <D> -k <K> -K <K_TOP> -H <h> -c <C>
 
-DEDUP=${DEDUP:-0}                # off by default, override at the call site with: DEDUP=1 ./run.sh
-SEQ_DIR="../string_data_cleaned" # change this
-CMM_DIR="cmm_out"                # change this
-OUT_DIR="slider_out"             # change this
+Options:
+  -D <name>  dataset name
+  -f <path>  FASTA file
+  -i <path>  interactions file
+  -r <int>   number of trials/runs
+  -t <int>   max convergence time (min)
+  -l <int>   motif length
+  -d <int>   number of wildcards
+  -k <int>   SLIDER output size K
+  -K <int>   kept top pairs after aggregation
+  -H <int>   similarity proximity h
+  -c <int>   recall cutoff C in [0,100]
+  -h         show this help and exit
+EOF
+}
 
-CMM_EVAL=./cmm_eval
-CMM_DEDUP=./cmm_dedup
-SLIDER_JAR="../competitors/SliderLight/dist/SliderLight.jar"
+DATASET="" FASTA="" INTS="" R="" T="" L="" D_WC="" K="" K_TOP="" H="" C=""
 
-## Sanity checks
-[ -x "${CMM_EVAL}" ] || { echo "Error: ${CMM_EVAL} not found or not executable" >&2; exit 1; }
-[ -f "${SLIDER_JAR}" ] || { echo "Error: SliderLight jar not found at ${SLIDER_JAR}" >&2; exit 1; }
-if [ ${DEDUP} -eq 1 ]
+while getopts "D:f:i:r:t:l:d:k:K:H:c:h" opt
+do
+    case ${opt} in
+        D) DATASET=${OPTARG} ;;
+        f) FASTA=${OPTARG} ;;
+        i) INTS=${OPTARG} ;;
+        r) R=${OPTARG} ;;
+        t) T=${OPTARG} ;;
+        l) L=${OPTARG} ;;
+        d) D_WC=${OPTARG} ;;
+        k) K=${OPTARG} ;;
+        K) K_TOP=${OPTARG} ;;
+        H) H=${OPTARG} ;;
+        c) C=${OPTARG} ;;
+        h) usage; exit 0 ;;
+        *) usage; exit 1 ;;
+    esac
+done
+
+declare -A FLAG=(
+    [DATASET]=-D [FASTA]=-f [INTS]=-i [R]=-r [T]=-t [L]=-l
+    [D_WC]=-d [K]=-k [K_TOP]=-K [H]=-H [C]=-c
+)
+missing=""
+for var in DATASET FASTA INTS R T L D_WC K K_TOP H C
+do
+    [ -z "${!var}" ] && missing="${missing} ${FLAG[$var]}"
+done
+if [ -n "${missing}" ]
 then
-    [ -x "${CMM_DEDUP}" ] || { echo "Error: ${CMM_DEDUP} not found or not executable" >&2; exit 1; }
+    echo "Error: missing required option(s):${missing}" >&2
+    usage
+    exit 1
 fi
-
-for ds in "${DATASETS[@]}"
+for var in R T L D_WC K K_TOP H C
 do
-    for ext in fa int
-    do
-        f="${SEQ_DIR}/${ds}.s700.cleaned.${ext}"
-        [ -f "${f}" ] || { echo "Error: ${f} not found" >&2; exit 1; }
-    done
-    f="${CMM_DIR}/${ds}.cmm.out"
-    [ -f "${f}" ] || { echo "Error: ${f} (EXACT solution) not found" >&2; exit 1; }
+    if ! [[ "${!var}" =~ ^[0-9]+$ ]]
+    then
+        echo "Error: ${FLAG[$var]} must be a non-negative integer, got '${!var}'." >&2
+        exit 1
+    fi
 done
 
-for ds in "${DATASETS[@]}"
-do
-    mkdir -p "${OUT_DIR}/${ds}" "${OUT_DIR}/${ds}/agg" "${OUT_DIR}/${ds}/eval"
+FASTA=$(realpath "${FASTA}")
+INTS=$(realpath "${INTS}")
+
+echo "=== Running experiment with parameters: DATASET=${DATASET} R=${R} T=${T} L=${L} D=${D_WC} K=${K} K_TOP=${K_TOP} H=${H} C=${C} ===" >&2
+
+echo "=== Stage 010-soln: SLIDER runs ===" >&2
+for i in $(seq 1 ${R}); do
+    make -C 010-soln all \
+        DATASET=${DATASET} FASTA=${FASTA} INTS=${INTS} I=${i} T=${T} L=${L} D=${D_WC} K=${K}
 done
 
-run_slider() {
-    local ds=$1
-    local trial=$2
-    local t=$3
+echo "=== Stage 020-agg: Aggregation ===" >&2
+make -C 020-agg all \
+    DATASET=${DATASET} R=${R} T=${T} L=${L} D=${D_WC} K=${K} K_TOP=${K_TOP}
 
-    local out="${OUT_DIR}/${ds}/${ds}.slider++.trial${trial}.min${t}.k${K_SLIDER}.out"
-    if [ -f "${out}" ]
-    then
-        echo "Skipping SLIDER ${ds} trial${trial} min${t} -- already done" >&2
-        return
-    fi
+echo "=== Stage 025-dedup: Deduplication ===" >&2
+make -C 025-dedup slider \
+    DATASET=${DATASET} FASTA=${FASTA} INTS=${INTS} R=${R} T=${T} L=${L} D=${D_WC} K_TOP=${K_TOP}
+make -C 025-dedup cmm \
+    DATASET=${DATASET} FASTA=${FASTA} INTS=${INTS} L=${L} D=${D_WC} K_TOP=${K_TOP}
 
-    echo "Running SLIDER ${ds} trial${trial} min${t}" >&2
-    local fa="${SEQ_DIR}/${ds}.s700.cleaned.fa"
-    local int="${SEQ_DIR}/${ds}.s700.cleaned.int"
-    local raw="${out}.raw"
-    java -cp "${SLIDER_JAR}" Framework.Framework \
-        -l ${ELL} -d ${D} \
-        -seq "${fa}" \
-        -int "${int}" \
-        -o "${raw}" \
-        -m slider++ -a ${K_SLIDER} -st x2 -min ${t}
-    tr '-' ' ' < "${raw}.txt" > "${out}.tmp"
-    mv "${out}.tmp" "${out}"
-    rm "${raw}.txt"
-}
+echo "=== Stage 030-score-curve: Score curve ===" >&2
+make -C 030-score-curve all \
+    DATASET=${DATASET} R=${R} T=${T} L=${L} D=${D_WC} K_TOP=${K_TOP}
 
-agg_and_eval() {
-    local ds=$1
-    local t=$2
-    local r=$3
+echo "=== Stage 030-eval: Similarity evaluation ===" >&2
+make -C 030-eval all \
+    DATASET=${DATASET} FASTA=${FASTA} INTS=${INTS} R=${R} T=${T} L=${L} D=${D_WC} K_TOP=${K_TOP} H=${H}
 
-    local fa="${SEQ_DIR}/${ds}.s700.cleaned.fa"
-    local int="${SEQ_DIR}/${ds}.s700.cleaned.int"
-    local exact="${CMM_DIR}/${ds}.cmm.out"
+echo "=== Stage 035-eval-hist: Similarity histogram ===" >&2
+make -C 035-eval-hist all \
+    DATASET=${DATASET} R=${R} T=${T} L=${L} D=${D_WC} K_TOP=${K_TOP} H=${H}
 
-    ## Merge+sort top K of r trials at time t.
-    local agg="${OUT_DIR}/${ds}/agg/${ds}.slider++.agg.min${t}.trials${r}.k${K_TOP}.out"
-    if [ ! -f "${agg}" ]
-    then
-        echo "Aggregating ${ds} min${t} trials${r}" >&2
-        local trial_files=()
-        for i in $(seq 1 ${r})
-        do
-            trial_files+=("${OUT_DIR}/${ds}/${ds}.slider++.trial${i}.min${t}.k${K_SLIDER}.out")
-        done
-        cat "${trial_files[@]}" | sort -k3 -gr | awk -v n=${K_TOP} 'NR<=n' > "${agg}.tmp"
-        mv "${agg}.tmp" "${agg}"
-    else
-        echo "Skipping agg ${ds} min${t} trials${r} -- already done" >&2
-    fi
-
-    ## No-dedup eval at each h.
-    for h in "${H_VALUES[@]}"
-    do
-        local tsv="${OUT_DIR}/${ds}/eval/${ds}.slider++.agg.min${t}.trials${r}.k${K_TOP}.h${h}.tsv"
-        if [ ! -f "${tsv}" ]
-        then
-            echo "Evaluating ${ds} min${t} trials${r} h${h} no-dedup" >&2
-            ${CMM_EVAL} "${fa}" "${int}" \
-                "${agg}" "${exact}" \
-                ${h} "${tsv}.tmp" /dev/null
-            mv "${tsv}.tmp" "${tsv}"
-        else
-            echo "Skipping eval ${ds} min${t} trials${r} h${h} no-dedup -- already done" >&2
-        fi
-    done
-
-    ## Optional: dedup the top K and eval the dedup'd version at each h.
-    if [ ${DEDUP} -ne 1 ]
-    then
-        return
-    fi
-
-    local agg_dedup="${OUT_DIR}/${ds}/agg/${ds}.slider++.agg.min${t}.trials${r}.k${K_TOP}.dedup.out"
-    if [ ! -f "${agg_dedup}" ]
-    then
-        echo "Deduping ${ds} min${t} trials${r}" >&2
-        ${CMM_DEDUP} "${fa}" "${int}" "${agg}" 0 "${agg_dedup}.tmp"
-        mv "${agg_dedup}.tmp" "${agg_dedup}"
-    else
-        echo "Skipping dedup ${ds} min${t} trials${r} -- already done" >&2
-    fi
-
-    for h in "${H_VALUES[@]}"
-    do
-        local tsv="${OUT_DIR}/${ds}/eval/${ds}.slider++.agg.min${t}.trials${r}.k${K_TOP}.h${h}.dedup.tsv"
-        if [ ! -f "${tsv}" ]
-        then
-            echo "Evaluating ${ds} min${t} trials${r} h${h} dedup" >&2
-            ${CMM_EVAL} "${fa}" "${int}" \
-                "${agg_dedup}" "${exact}" \
-                ${h} "${tsv}.tmp" /dev/null
-            mv "${tsv}.tmp" "${tsv}"
-        else
-            echo "Skipping eval ${ds} min${t} trials${r} h${h} dedup -- already done" >&2
-        fi
-    done
-}
-
-## RQ1: vary max time (trials fixed at 5)
-echo "Running experiment for RQ1..." >&2
-TRIALS=5
-TIMES=(5 10 15 20 25 30)
-for ds in "${DATASETS[@]}"
-do
-    for trial in $(seq 1 ${TRIALS})
-    do
-        for t in "${TIMES[@]}"
-        do
-            run_slider ${ds} ${trial} ${t}
-        done
-    done
-    for t in "${TIMES[@]}"
-    do
-        agg_and_eval ${ds} ${t} ${TRIALS}
-    done
-done
-
-## RQ2: vary number of trials (max time fixed at 5)
-echo "Running experiment for RQ2..." >&2
-TIME=5
-TRIAL_COUNTS=(5 10 15 20 25 30)
-MAX_TRIALS=30
-for ds in "${DATASETS[@]}"
-do
-    for trial in $(seq 1 ${MAX_TRIALS})
-    do
-        run_slider ${ds} ${trial} ${TIME}
-    done
-    for r in "${TRIAL_COUNTS[@]}"
-    do
-        agg_and_eval ${ds} ${TIME} ${r}
-    done
-done
-
-echo "All experiments done." >&2
+echo "=== Stage 035-eval-recall: Recall against exact ===" >&2
+make -C 035-eval-recall all \
+    DATASET=${DATASET} R=${R} T=${T} L=${L} D=${D_WC} K_TOP=${K_TOP} H=${H} C=${C}

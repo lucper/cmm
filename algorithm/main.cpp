@@ -88,9 +88,6 @@ int main(int argc, char* argv[]) {
         long peak_ram_kb = usage.ru_maxrss;
         std::fprintf(stderr, "Peak RAM: %ld KB\n", peak_ram_kb);
 
-
-        std::fprintf(stdout, "X Y x2\n");
-
         for (auto &mp : solution) {
             double f = 0.0;
             if (supp_func == "E") f = mp.countE;
