@@ -8,7 +8,7 @@ METHODS     := $(shell awk -F, '{print $$1}' $(METHODS_CSV))
 ## dimensions for plot and legend
 PLOT_W      := 3.8
 PLOT_H      := 3.2
-LEGEND_W    := 7
+LEGEND_W    := 13
 LEGEND_H    := 1.1
 
 .PHONY: usage
@@ -26,7 +26,7 @@ usage:
 .PHONY: all
 all: curve.$(DATASET).l$(L)d$(D).dedup.tex curve_legend.tex
 
-curve_legend.tex: $(METHODS_CSV)
+curve_legend.tex:
 	gnuplot -c plot_curve.gp legend \
 		$(METHODS_CSV) \
 		curve_legend \

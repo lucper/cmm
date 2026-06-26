@@ -9,7 +9,7 @@ METHODS     := $(shell awk -F, '{print $$1}' $(METHODS_CSV))
 ## dimensions for plot and legend
 PLOT_W      := 3.8
 PLOT_H      := 3.2
-LEGEND_W    := 7
+LEGEND_W    := 9
 LEGEND_H    := 1.1
 
 THR         := 0.7
@@ -31,9 +31,9 @@ usage:
 .PHONY: all
 all: hist.$(DATASET).l$(L)d$(D).dedup.tex hist_legend.tex
 
-hist_legend.tex: $(METHODS_CSV)
+hist_legend.tex:
 	gnuplot -c plot_hist.gp legend \
-		$< \
+		$(METHODS_CSV) \
 		hist_legend \
 		$(EXACT_PROG) \
 		$(LEGEND_W) $(LEGEND_H)
