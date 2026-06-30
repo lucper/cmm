@@ -81,7 +81,8 @@ if (mode eq "legend") {
     set xtics nomirror ("0" 0, "0.5" 0.5, "1" 1)
     set border 3
     set yrange [0:*]          # autoscale; densities are comparable across panels
-    set ytics nomirror 0.5    # coarse interval: normalized density ~0..2, avoids crowding
+    set ytics nomirror 1 scale 0.5   # sparse labeled ticks, short marks, no minors
+    unset mytics                      # no minor tick marks cluttering the axis
     unset key
 
     # --- threshold line + percentage label (only if thr in (0,1]) ---
@@ -97,12 +98,10 @@ if (mode eq "legend") {
     stats f1 using (1-$8) nooutput ; N1c = STATS_records
     stats f2 using (1-$8) nooutput ; N2c = STATS_records
 
-    # Each series: faint filled area under the normalized KDE, then coloured line.
-    # Fill alpha comes from the colour's leading byte (#40..) so the two areas
-    # blend where they overlap; do not override with a solid density here.
+    # Each series: only the faint filled area under the normalized KDE, NO border
+    # line (matches the borderless histogram style). Fill alpha comes from the
+    # colour's leading byte (#40..) so the two areas blend where they overlap.
     plot \
       f1 using (1-$8):(1.0/N1c) smooth kdensity with filledcurves y1=0 lc rgb H1FILL notitle, \
-      f2 using (1-$8):(1.0/N2c) smooth kdensity with filledcurves y1=0 lc rgb H2FILL notitle, \
-      f1 using (1-$8):(1.0/N1c) smooth kdensity with lines lw LW lc rgb H1COL notitle, \
-      f2 using (1-$8):(1.0/N2c) smooth kdensity with lines lw LW lc rgb H2COL notitle
+      f2 using (1-$8):(1.0/N2c) smooth kdensity with filledcurves y1=0 lc rgb H2FILL notitle
 }
