@@ -11,7 +11,7 @@
 #   exact       : the exact method's KEY in methods.csv (e.g. cmm) -- used only
 #                 to pick the two heuristic display names for the legend.
 #   f1, f2      : the two heuristics' b2a TSVs (cmm_eval output); similarity is
-#                 column 8, so distance is (1 - $8).
+#                 column 8 is similarity s, used directly on the x-axis.
 #   thr         : (optional) threshold in {0.1,0.2,...,1.0}. If given, draws a
 #                 black dashed vertical line there, labels it with the position
 #                 as a percentage centered above the line, and prints+annotates
@@ -86,7 +86,7 @@ if (mode eq "legend") {
       '+' using (2):(1) with boxes fs solid 1.0 lc rgb H2FILL title N2
 } else {
     # --- panel: 10-bin count histogram, two translucent overlaid series ---
-    set xlabel '\normalsize dist.\ to closest'
+    set xlabel '\normalsize similarity'
     set ylabel '\normalsize \# motif pairs'
 
     set xrange [0:1]
@@ -101,10 +101,10 @@ if (mode eq "legend") {
     tmp1 = out . '.b1.dat'
     tmp2 = out . '.b2.dat'
     set table tmp1
-      plot f1 using (binc(1-$8)):(1) smooth freq
+      plot f1 using (binc($8)):(1) smooth freq
     unset table
     set table tmp2
-      plot f2 using (binc(1-$8)):(1) smooth freq
+      plot f2 using (binc($8)):(1) smooth freq
     unset table
 
     # Max bar height across both series -> "nice" y-tick interval (~3 ticks).
@@ -134,8 +134,8 @@ if (mode eq "legend") {
 
     # Overlaid translucent bars at the SAME bin centre.
     plot \
-      f1 using (binc(1-$8)):(1) smooth freq with boxes \
+      f1 using (binc($8)):(1) smooth freq with boxes \
          fs solid 1.0 lc rgb H1FILL notitle, \
-      f2 using (binc(1-$8)):(1) smooth freq with boxes \
+      f2 using (binc($8)):(1) smooth freq with boxes \
          fs solid 1.0 lc rgb H2FILL notitle
 }
