@@ -11,7 +11,7 @@
 #   exact       : the exact method's KEY in methods.csv (e.g. cmm) -- used only
 #                 to pick the two heuristic display names for the legend.
 #   f1, f2      : the two heuristics' b2a TSVs (cmm_eval output); similarity is
-#                 column 8, so distance is (1 - $8).
+#                 column 8 is similarity s, used directly on the x-axis.
 #   thr         : (optional) threshold in (0,1]. Draws a black dashed vertical
 #                 line there with the position as a percentage above it. Omit for none.
 #   Produces <out>.tex + <out>.pdf.
@@ -74,15 +74,13 @@ if (mode eq "legend") {
       '+' using (2):(1) with lines lw LW lc rgb H2COL title N2
 } else {
     # --- panel: normalized KDE of distance, two overlaid series ---
-    set xlabel '\normalsize dist.\ to closest'
+    set xlabel '\normalsize similarity'
     set ylabel '\normalsize density'
 
     set xrange [0:1]
     set xtics nomirror ("0" 0, "0.5" 0.5, "1" 1)
     set border 3
-    set yrange [0:*]          # autoscale; densities are comparable across panels
-    set ytics nomirror 1 scale 0.5   # sparse labeled ticks, short marks, no minors
-    unset mytics                      # no minor tick marks cluttering the axis
+    set ytics nomirror        # y-range and two-tick labels set later (after peak calc)
     unset key
 
     # --- threshold line + percentage label (only if thr in (0,1]) ---
@@ -95,13 +93,37 @@ if (mode eq "legend") {
     # Per-series sample size N, so each KDE can be weighted by 1/N -> area = 1
     # (a normalized probability density, comparable across panels regardless of
     # count). 'smooth kdensity' uses gnuplot's default bandwidth.
-    stats f1 using (1-$8) nooutput ; N1c = STATS_records
-    stats f2 using (1-$8) nooutput ; N2c = STATS_records
+    stats f1 using ($8) nooutput ; N1c = STATS_records
+    stats f2 using ($8) nooutput ; N2c = STATS_records
+
+    # Find the peak density (max over both curves) by writing each KDE to a temp
+    # table and statting its y-column. Needed to label only the top of the y-axis.
+    t1 = out . '.k1.dat'
+    t2 = out . '.k2.dat'
+    set table t1
+      plot f1 using ($8):(1.0/N1c) smooth kdensity
+    unset table
+    set table t2
+      plot f2 using ($8):(1.0/N2c) smooth kdensity
+    unset table
+    set datafile separator whitespace
+    stats t1 using 2 nooutput ; p1 = STATS_max
+    stats t2 using 2 nooutput ; p2 = STATS_max
+    set datafile separator "\t"
+    ypk = (p1 > p2) ? p1 : p2
+
+    # Round the peak to 2 significant figures for a clean top label.
+    ypow = 10.0 ** (floor(log10(ypk)) - 1)
+    ytop = ceil(ypk / ypow) * ypow
+
+    set yrange [0:ytop]
+    # Only two y labels (0 and the peak), no tick dashes (scale 0).
+    set ytics (sprintf("%g", 0) 0, sprintf("%g", ytop) ytop) scale 0
 
     # Each series: only the faint filled area under the normalized KDE, NO border
     # line (matches the borderless histogram style). Fill alpha comes from the
     # colour's leading byte (#40..) so the two areas blend where they overlap.
     plot \
-      f1 using (1-$8):(1.0/N1c) smooth kdensity with filledcurves y1=0 lc rgb H1FILL notitle, \
-      f2 using (1-$8):(1.0/N2c) smooth kdensity with filledcurves y1=0 lc rgb H2FILL notitle
+      f1 using ($8):(1.0/N1c) smooth kdensity with filledcurves y1=0 lc rgb H1FILL notitle, \
+      f2 using ($8):(1.0/N2c) smooth kdensity with filledcurves y1=0 lc rgb H2FILL notitle
 }
