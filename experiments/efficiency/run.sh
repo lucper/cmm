@@ -8,9 +8,9 @@ CMM_PERF="./cmm_perf"
 VENV="venv"
 SEED=42
 
-OUT_RQ1="rq1_out.tsv"
-OUT_RQ2="rq2_out.tsv"
 OUT_RQ3="rq3_out.tsv"
+OUT_RQ4="rq4_out.tsv"
+OUT_RQ5="rq5_out.tsv"
 
 MAX_THREADS=64
 TRIALS=5
@@ -72,8 +72,8 @@ run_cmm_perf() {
         | awk -v trial=${trial} '{print trial "\t" $0}' >> ${tsv}
 }
 
-## RQ1
-echo "Running experiment for RQ1..." >&2
+## RQ3
+echo "Running experiment for RQ3..." >&2
 ED=05
 for trial in $(seq 1 ${TRIALS})
 do
@@ -85,19 +85,19 @@ do
         ell=5
         for d in 0 1 2 3 4
         do
-            run_cmm_perf ${OUT_RQ1} ${trial} ${fa} ${int} ${ell} ${d} ${MAX_THREADS}
+            run_cmm_perf ${OUT_RQ3} ${trial} ${fa} ${int} ${ell} ${d} ${MAX_THREADS}
         done
 
         ell=8
         for d in 0 1 2 3 4 5 6 7
         do
-            run_cmm_perf ${OUT_RQ1} ${trial} ${fa} ${int} ${ell} ${d} ${MAX_THREADS}
+            run_cmm_perf ${OUT_RQ3} ${trial} ${fa} ${int} ${ell} ${d} ${MAX_THREADS}
         done
     done
 done
 
-## RQ2
-echo "Running experiment for RQ2..." >&2
+## RQ4
+echo "Running experiment for RQ4..." >&2
 V=3200
 for trial in $(seq 1 ${TRIALS})
 do
@@ -109,19 +109,19 @@ do
         ell=5
         for d in 0 1 2 3 4
         do
-            run_cmm_perf ${OUT_RQ2} ${trial} ${fa} ${int} ${ell} ${d} ${MAX_THREADS}
+            run_cmm_perf ${OUT_RQ4} ${trial} ${fa} ${int} ${ell} ${d} ${MAX_THREADS}
         done
 
         ell=8
         for d in 0 1 2 3 4 5 6 7
         do
-            run_cmm_perf ${OUT_RQ2} ${trial} ${fa} ${int} ${ell} ${d} ${MAX_THREADS}
+            run_cmm_perf ${OUT_RQ4} ${trial} ${fa} ${int} ${ell} ${d} ${MAX_THREADS}
         done
     done
 done
 
-## RQ3
-echo "Running experiment for RQ3..." >&2
+## RQ5
+echo "Running experiment for RQ5..." >&2
 ED=05
 V=3200
 ELL=5
@@ -132,7 +132,7 @@ do
     do
         fa="instances/ed${ED}/sampled_human_V${V}_ed${ED}.fa"
         int="instances/ed${ED}/sampled_human_V${V}_ed${ED}.int"
-        run_cmm_perf ${OUT_RQ3} ${trial} ${fa} ${int} ${ELL} ${D} ${t}
+        run_cmm_perf ${OUT_RQ5} ${trial} ${fa} ${int} ${ELL} ${D} ${t}
     done
 done
 
