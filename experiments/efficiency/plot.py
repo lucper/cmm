@@ -144,7 +144,7 @@ def plot_one(df_ell, x_col, x_label, y_col, y_label, title,
 
     return handles, labels
 
-def run_rq1(df, stem, error, annotate_pairs, log_scale):
+def run_rq3(df, stem, error, annotate_pairs, log_scale):
     v2n = v_to_n(df)
     for ell in ELLS:
         for group_name, ds in d_groups(ell):
@@ -185,7 +185,7 @@ def run_rq1(df, stem, error, annotate_pairs, log_scale):
             )
             save_legend(h, l, f"{base}_legend.pdf")
 
-def run_rq2(df, stem, error, annotate_pairs, log_scale):
+def run_rq4(df, stem, error, annotate_pairs, log_scale):
     df["edge_density_pct"] = (df["edge_density"] * 100).round().astype(int)
     for ell in ELLS:
         for group_name, ds in d_groups(ell):
@@ -226,7 +226,7 @@ def run_rq2(df, stem, error, annotate_pairs, log_scale):
             )
             save_legend(h, l, f"{base}_legend.pdf")
 
-def run_rq3(df, stem, error, annotate_pairs, log_scale, ell=8):
+def run_rq5(df, stem, error, annotate_pairs, log_scale, ell=8):
     req2spawned = req_to_spawned(df)
 
     h, l = plot_one(
@@ -267,9 +267,9 @@ def run_rq3(df, stem, error, annotate_pairs, log_scale, ell=8):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--input",    required=True)
-    parser.add_argument("--rq",       required=True, choices=["rq1", "rq2", "rq3"])
+    parser.add_argument("--rq",       required=True, choices=["rq3", "rq4", "rq5"])
     parser.add_argument("--output",   required=True,
-                        help="Output stem (e.g. rq1)")
+                        help="Output stem (e.g. rq3)")
     parser.add_argument("--error",    action="store_true",
                         help="Show min/max error bands")
     parser.add_argument("--max-rank", nargs="+", type=ell_d_pair, default=None,
@@ -286,12 +286,12 @@ def main():
 
     annotate_pairs = set(args.max_rank) if args.max_rank is not None else None
 
-    if args.rq == "rq1":
-        run_rq1(df, stem, args.error, annotate_pairs, args.log_scale)
-    elif args.rq == "rq2":
-        run_rq2(df, stem, args.error, annotate_pairs, args.log_scale)
-    elif args.rq == "rq3":
+    if args.rq == "rq3":
         run_rq3(df, stem, args.error, annotate_pairs, args.log_scale)
+    elif args.rq == "rq4":
+        run_rq4(df, stem, args.error, annotate_pairs, args.log_scale)
+    elif args.rq == "rq5":
+        run_rq5(df, stem, args.error, annotate_pairs, args.log_scale)
 
 if __name__ == "__main__":
     main()
