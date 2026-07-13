@@ -1,7 +1,3 @@
-//
-// Created by Ben on 04/03/2026.
-//
-
 #ifndef BPM_DATAIMPORT_H
 #define BPM_DATAIMPORT_H
 
