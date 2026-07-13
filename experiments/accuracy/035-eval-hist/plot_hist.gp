@@ -1,29 +1,4 @@
 #!/usr/bin/env gnuplot
-# Histogram of distance-to-nearest-heuristic-pair (1 - similarity) over S_B,
-# with a separate legend-only mode for a shared legend atop a grid.
-#
-# Usage:
-#   Panel (no key):  gnuplot -c plot_hist.gp plot   <methods.csv> <out> <exact-key> <width_cm> <height_cm> <f1> <f2> [thr]
-#   Legend only:     gnuplot -c plot_hist.gp legend <methods.csv> <out> <exact-key> <width_cm> [height_cm]
-#
-#   methods.csv : lines of  key,"Display Name"
-#   out         : output basename (may include dir, e.g. img/hist_ecoli)
-#   exact       : the exact method's KEY in methods.csv (e.g. cmm) -- used only
-#                 to pick the two heuristic display names for the legend.
-#   f1, f2      : the two heuristics' b2a TSVs (cmm_eval output); similarity is
-#                 column 8 is similarity s, used directly on the x-axis.
-#   thr         : (optional) threshold in {0.1,0.2,...,1.0}. If given, draws a
-#                 black dashed vertical line there, labels it with the position
-#                 as a percentage centered above the line, and prints+annotates
-#                 the count of pairs with distance >= thr for each series (in the
-#                 series colour, to the right of the line). Omit for no line.
-#   Produces <out>.tex + <out>.pdf.
-#
-# Fixed 10 bins over the [0,1] distance domain:
-#   [0,0.1) [0.1,0.2) ... [0.9,1.0]   (last CLOSED at 1.0)
-# y-axis is raw COUNT (no normalization); each panel autoscales its own y.
-# Two heuristics OVERLAID at the same bin centres with solid translucent fills
-# (cairo blends solid alpha; patterns are not used so transparency works).
 
 mode  = ARG1
 csv   = ARG2

@@ -1,26 +1,4 @@
 #!/usr/bin/env gnuplot
-# Kernel density estimate of distance-to-nearest-heuristic-pair (1 - similarity)
-# over S_B, with a separate legend-only mode for a shared legend atop a grid.
-#
-# Usage:
-#   Panel (no key):  gnuplot -c plot_density.gp plot   <methods.csv> <out> <exact-key> <width_cm> <height_cm> <f1> <f2> [thr]
-#   Legend only:     gnuplot -c plot_density.gp legend <methods.csv> <out> <exact-key> <width_cm> [height_cm]
-#
-#   methods.csv : lines of  key,"Display Name"
-#   out         : output basename (may include dir, e.g. img/dens_ecoli)
-#   exact       : the exact method's KEY in methods.csv (e.g. cmm) -- used only
-#                 to pick the two heuristic display names for the legend.
-#   f1, f2      : the two heuristics' b2a TSVs (cmm_eval output); similarity is
-#                 column 8 is similarity s, used directly on the x-axis.
-#   thr         : (optional) threshold in (0,1]. Draws a black dashed vertical
-#                 line there with the position as a percentage above it. Omit for none.
-#   Produces <out>.tex + <out>.pdf.
-#
-# y-axis is a NORMALIZED density (gnuplot 'smooth kdensity', default bandwidth):
-# the area under each curve integrates to 1, so panels with different total
-# counts are directly comparable in SHAPE. The two heuristics are NOT comparable
-# in magnitude (each integrates to 1 independently). Domain is [0,1]; with the
-# default kernel the curve near the boundaries is a smoothed estimate.
 
 mode  = ARG1
 csv   = ARG2

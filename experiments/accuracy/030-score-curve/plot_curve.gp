@@ -1,24 +1,4 @@
 #!/usr/bin/env gnuplot
-# Quality-profile curves, with a separate legend-only mode for shared legends.
-#
-# Unified interface (matches plot_hist.gp): the argument after <mode> is always
-# <methods.csv>, and the exact method is identified by its KEY in that CSV
-# (e.g. cmm), not its display name. Each script derives display names from the
-# CSV itself.
-#
-# Usage:
-#   Panel (no key):  gnuplot -c plot_curve.gp plot   <methods.csv> <data.tsv> <out> <exact-key> <width_cm> [height_cm]
-#   Legend only:     gnuplot -c plot_curve.gp legend <methods.csv>             <out> <exact-key> <width_cm> [height_cm]
-#
-#   methods.csv : lines of  key,"Display Name"  (must include the exact key)
-#   data.tsv    : cols  rank <tab> proper_method <tab> normscore
-#                 (col 2 holds DISPLAY names, e.g. "Exact", "M-SLIDER")
-#   out         : output basename (may include dir, e.g. img/curve_ecoli)
-#   exact-key   : the exact method's KEY in methods.csv (e.g. cmm)
-#   width/height in cm. Produces <out>.tex + <out>.pdf.
-#
-# In 'plot' mode the per-panel key is OFF (legend is shared, drawn separately).
-# In 'legend' mode only the key renders: no axes, border, data, or labels.
 
 mode  = ARG1
 csv   = ARG2
