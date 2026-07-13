@@ -6,7 +6,7 @@
 #include <cstring>
 #include "libsais64.h"
 
-#define SEP '$'
+#define SEP 0
 
 struct esa_t {
     int64_t *SA;
