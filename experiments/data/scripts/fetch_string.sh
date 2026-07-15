@@ -1,50 +1,71 @@
 #!/usr/bin/env bash
 #
-# For each organism (NCBI taxon ID), this script:
+# For each organism given on the command line (NCBI taxon ID + name), this
+# script:
 #   1. downloads the protein sequences (.fa.gz) and links (.links.txt.gz),
 #   2. decompresses both,
-#   3. for each score cutoff, writes:
+#   3. for the given score cutoff, writes:
 #        a) an unweighted undirected edge list (.int):
-#             - skips the header,
-#             - drops links with combined_score < cutoff,
-#             - keeps each undirected edge once (collapses A B / B A),
-#             - emits two tab-separated columns "u v" (no score);
 #        b) a matching FASTA (.fa) containing only proteins that still have
 #           at least one edge at this cutoff (isolated nodes removed).
 #
-# Because raising the cutoff removes edges but not proteins, each cutoff has
-# its own node set, so the FASTA is filtered per cutoff to stay consistent
-# with its edge list. Pair the .fa and .int sharing the same sNNN suffix.
-#
-# Everything is written into string_data/<taxid>_<name>/ alongside the originals.
+# Everything is written into <outdir>/<taxid>_<name>/ alongside the originals.
 #
 # STRING combined scores are scaled 0-1000:
 #   150 = low, 400 = medium, 700 = high, 900 = highest confidence.
 #   See https://string-db.org/help/scores/ and https://string-db.org/help/faq/
 #
 # Usage:
-#   ./fetch_string.sh <threshold>
-#   ./fetch_string.sh 700
-#   OUTDIR=mydir ./fetch_string.sh 400
+#   ./fetch_string.sh <threshold> <taxid:name> [<taxid:name> ...]
+#
+# Examples:
+#   ./fetch_string.sh 700 9606:Homo_sapiens
+#   ./fetch_string.sh 700 9606:Homo_sapiens 4932:Saccharomyces_cerevisiae
+#   OUTDIR=string_data ./fetch_string.sh 400 9606:Homo_sapiens
 
 set -euo pipefail
 
 VERSION="v12.0"
 BASE="https://stringdb-static.org/download"
 OUTDIR="${OUTDIR:-string_data}"
-ORGANISMS=(
-    "9606    Homo_sapiens"
-    "3702    Arabidopsis_thaliana"
-    "4932    Saccharomyces_cerevisiae"
-    "511145  Escherichia_coli_K12_MG1655"
-    "7227    Drosophila_melanogaster"
-)
-if [ "$#" -ne 1 ]; then
-    echo "Usage: $0 <threshold>" >&2
-    echo "  threshold: edge weight cutoff (0-1000), e.g. 150, 400, 700, 900" >&2
+
+usage() {
+    echo "Usage: $0 <threshold> <taxid:name> [<taxid:name> ...]" >&2
+    echo "  threshold  : STRING combined_score cutoff (0-1000), e.g. 150, 400, 700, 900" >&2
+    echo "  taxid:name : NCBI taxon ID and organism name, e.g. 9606:Homo_sapiens" >&2
+    echo "" >&2
+    echo "Example: $0 700 9606:Homo_sapiens 4932:Saccharomyces_cerevisiae" >&2
     exit 1
+}
+
+if [ "$#" -lt 2 ]; then
+    usage
 fi
+
 THRESHOLD="$1"
+# drop first arg so that, from here, $@ contains the organisms only
+shift
+
+# Validate THRESHOLD
+case "${THRESHOLD}" in
+    ''|*[!0-9]*) echo "Error: threshold must be an integer in [0,1000]." >&2; exit 1 ;;
+esac
+[ "${THRESHOLD}" -le 1000 ] || { echo "Error: threshold must be <= 1000." >&2; exit 1; }
+
+# Validate taxid:name pairs
+ORGANISMS=("$@")
+for entry in "${ORGANISMS[@]}"; do
+    case "${entry}" in
+        *:*) ;;
+        *) echo "Error: organism must be given as 'taxid:name', got: ${entry}" >&2; exit 1 ;;
+    esac
+    taxid="${entry%%:*}"
+    name="${entry#*:}"
+    case "${taxid}" in
+        ''|*[!0-9]*) echo "Error: taxid must be numeric, got: ${taxid}" >&2; exit 1 ;;
+    esac
+    [ -n "${name}" ] || { echo "Error: empty organism name in: ${entry}" >&2; exit 1; }
+done
 
 # Downloader: prefer wget, fall back to curl.
 if command -v wget >/dev/null 2>&1; then
@@ -59,8 +80,8 @@ fi
 mkdir -p "${OUTDIR}"
 
 for entry in "${ORGANISMS[@]}"; do
-    taxid=$(echo "${entry}" | awk '{print $1}')
-    name=$(echo "${entry}" | awk '{print $2}')
+    taxid="${entry%%:*}"
+    name="${entry#*:}"
 
     echo "=== ${name} (taxid ${taxid}) ===" >&2
 
@@ -83,19 +104,18 @@ for entry in "${ORGANISMS[@]}"; do
     [ -s "${seq_fa}" ]    || { echo "  extracting sequences ..." >&2; gunzip -kf "${seq_gz}"; }
     [ -s "${links_txt}" ] || { echo "  extracting links ..."     >&2; gunzip -kf "${links_gz}"; }
 
-    # 3. Build the unweighted undirected edge list AND a matching FASTA containing
-    # only the proteins that still have at least one edge.
-    thr="${THRESHOLD}"
-    int_out="${org_dir}/${taxid}.links.s${thr}.int"
-    fa_out="${org_dir}/${taxid}.sequences.s${thr}.fa"
- 
+    # 3. Build the unweighted undirected edge list AND a matching FASTA
+    # containing only the proteins that still have at least one edge.
+    int_out="${org_dir}/${taxid}.links.s${THRESHOLD}.int"
+    fa_out="${org_dir}/${taxid}.sequences.s${THRESHOLD}.fa"
+
     if [ -s "${int_out}" ] && [ -s "${fa_out}" ]; then
-        echo "  cutoff ${thr}: already done, skipping" >&2
+        echo "  cutoff ${THRESHOLD}: already done, skipping" >&2
         continue
     fi
- 
-    echo "  cutoff ${thr}: building edge list ..." >&2
-    awk -v min="${thr}" '
+
+    echo "  cutoff ${THRESHOLD}: building edge list ..." >&2
+    awk -v min="${THRESHOLD}" '
         NR == 1  { next }                       # header
         NF < 3   { next }                       # malformed
         $3 < min { next }                       # below cutoff
@@ -105,11 +125,11 @@ for entry in "${ORGANISMS[@]}"; do
             key = u SUBSEP v;
             if (key in seen) next;              # collapse A B / B A
             seen[key] = 1;
-            print u "\t" v;
+            print u " " v;
         }
     ' "${links_txt}" > "${int_out}"
- 
-    echo "  cutoff ${thr}: filtering FASTA to non-isolated nodes ..." >&2
+
+    echo "  cutoff ${THRESHOLD}: filtering FASTA to non-isolated nodes ..." >&2
     # First pass: collect the set of node IDs that appear in the edge list.
     # Second pass: stream the FASTA, keeping a record only if its header ID
     # is in that set.
@@ -123,15 +143,15 @@ for entry in "${ORGANISMS[@]}"; do
         }
         { if (emit) print; }                             # sequence lines
     ' "${int_out}" "${seq_fa}" > "${fa_out}"
- 
+
     n_edges=$(wc -l < "${int_out}")
     n_nodes=$(grep -c '^>' "${fa_out}" || true)
-    echo "    cutoff ${thr}: ${n_nodes} nodes, ${n_edges} edges" >&2
+    echo "    cutoff ${THRESHOLD}: ${n_nodes} nodes, ${n_edges} edges" >&2
 done
 
 echo "" >&2
 echo "Done. Each organism has its own directory under ./${OUTDIR}/ :" >&2
 echo "  ${OUTDIR}/<taxid>_<name>/" >&2
-echo "    {taxid}.sequences.sNNN.fa   (nodes, isolated proteins removed, per cutoff)" >&2
-echo "    {taxid}.links.sNNN.int      (unweighted undirected edges, per cutoff)" >&2
+echo "    {taxid}.sequences.s${THRESHOLD}.fa   (nodes, isolated proteins removed)" >&2
+echo "    {taxid}.links.s${THRESHOLD}.int      (unweighted undirected edges)" >&2
 echo "Pair the .fa and .int sharing the same sNNN suffix." >&2
