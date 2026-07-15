@@ -277,6 +277,8 @@ def main():
                         help="Annotate points with max_rank for given (ell,d) pairs (e.g. --max-rank 5:0 8:3)")
     parser.add_argument("--log-scale", action="store_true",
                         help="Use log scale on y-axis")
+    parser.add_argument("--rq5-ell", type=int, default=5,
+                        help="Motif length used for the RQ5 thread-scaling run (default: 5)")
     args = parser.parse_args()
 
     sns.set_theme(style="white", font_scale=1.0)
@@ -291,7 +293,7 @@ def main():
     elif args.rq == "rq4":
         run_rq4(df, stem, args.error, annotate_pairs, args.log_scale)
     elif args.rq == "rq5":
-        run_rq5(df, stem, args.error, annotate_pairs, args.log_scale)
+        run_rq5(df, stem, args.error, annotate_pairs, args.log_scale, args.rq5_ell)
 
 if __name__ == "__main__":
     main()
