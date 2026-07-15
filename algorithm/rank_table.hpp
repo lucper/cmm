@@ -6,7 +6,6 @@
 #include <vector>
 #include <algorithm>
 #include <stdexcept>
-#include "utils.hpp"
 #include "esa.hpp"
 
 class rank_table_t {
