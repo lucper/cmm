@@ -12,7 +12,6 @@
 #include <cstdint>
 #include <random>
 #include "indicators.hpp"
-#include "utils.hpp"
 #include "rank_table.hpp"
 #include "esa.hpp"
 
