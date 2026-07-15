@@ -35,8 +35,8 @@ def parse_fasta(path):
                 chunks.append("".join(line.split()))
     yield from emit()
 
-def remove_dubious_nodes(fasta_in, int_in, fasta_out, int_out, uppercase=False,
-          keep_isolated=False):
+def remove_dubious_nodes(fasta_in, int_in, fasta_out, int_out,
+                         uppercase=False, keep_isolated=False):
     # Validate sequences. Buffer records that pass so we can later filter out
     # any that become isolated; remember insertion order.
     valid_records = [] # list of (header, seq_id, seq)
