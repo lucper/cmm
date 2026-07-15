@@ -1,8 +1,9 @@
 #!/usr/bin/bash
 #
-# 1. fetch_string.sh   downloads STRING sequences + links at a score cutoff
-# 2. clean_dataset.py  drops non-amino-acid records, dangling edges, isolates
-# 3. generate_instance.py  samples artificial instances at target densities
+# Layout produced under this directory:
+#   string_data/<taxid>_<name>/   raw + per-cutoff .fa/.int (from fetch_string.sh)
+#   real_instances/               cleaned .fa/.int, one pair per organism
+#   artificial_instances/ed<NN>/  sampled instances
 #
 # Usage:
 #   ./run.sh
@@ -13,63 +14,110 @@ cd "$(dirname "$0")"
 
 ## Parameters
 THRESHOLD=700
-TAXID=9606
-ORGANISM=Homo_sapiens
 SEED=42
+
+# Organisms to fetch and clean, as "taxid:name" (passed through to fetch_string.sh).
+# Instances are generated from INSTANCE_TAXID only.
+ORGANISMS=(
+    "9606:Homo_sapiens"
+    "3702:Arabidopsis_thaliana"
+    "4932:Saccharomyces_cerevisiae"
+    "511145:Escherichia_coli_K12_MG1655"
+    "7227:Drosophila_melanogaster"
+)
+
+INSTANCE_TAXID=9606
+INSTANCE_NAME=human
 DENSITIES="05 10 15 20 25 30"
 NODE_COUNTS="50 100 200 400 800 1600 3200"
 
-FETCH="./scripts/fetch_string.sh"
-CLEAN="./scripts/clean_dataset.py"
-GENERATE="./scripts/generate_instance.py"
+SCRIPT_DIR="scripts"
+FETCH="${SCRIPT_DIR}/fetch_string.sh"
+CLEAN="${SCRIPT_DIR}/clean_dataset.py"
+GENERATE="${SCRIPT_DIR}/generate_instance.py"
 
-STRING_DIR="string_data/${TAXID}_${ORGANISM}"
-RAW_FA="${STRING_DIR}/${TAXID}.sequences.s${THRESHOLD}.fa"
-RAW_INT="${STRING_DIR}/${TAXID}.links.s${THRESHOLD}.int"
-
+STRING_DIR="string_data"
 CLEAN_DIR="real_instances"
-CLEAN_FA="${CLEAN_DIR}/${TAXID}.sequences.s${THRESHOLD}.clean.fa"
-CLEAN_INT="${CLEAN_DIR}/${TAXID}.links.s${THRESHOLD}.clean.int"
-
 INSTANCE_DIR="artificial_instances"
 
-## 1. Fetch raw data from STRING
+# Path helpers, so the layout is defined in exactly one place.
+raw_fa()    { echo "${STRING_DIR}/$1_$2/$1.sequences.s${THRESHOLD}.fa"; }
+raw_int()   { echo "${STRING_DIR}/$1_$2/$1.links.s${THRESHOLD}.int"; }
+clean_fa()  { echo "${CLEAN_DIR}/$1.sequences.s${THRESHOLD}.clean.fa"; }
+clean_int() { echo "${CLEAN_DIR}/$1.links.s${THRESHOLD}.clean.int"; }
+
+## 1. Fetch raw data from STRING (all organisms)
 echo "Fetching STRING data (cutoff ${THRESHOLD})..." >&2
-if [ ! -s "${RAW_FA}" ] || [ ! -s "${RAW_INT}" ]
+need_fetch=0
+for entry in "${ORGANISMS[@]}"
+do
+    taxid="${entry%%:*}"
+    name="${entry#*:}"
+    if [ ! -s "$(raw_fa ${taxid} ${name})" ] || [ ! -s "$(raw_int ${taxid} ${name})" ]
+    then
+        need_fetch=1
+        break
+    fi
+done
+
+if [ ${need_fetch} -eq 1 ]
 then
-    ${FETCH} ${THRESHOLD}
+    OUTDIR="${STRING_DIR}" ${FETCH} ${THRESHOLD} "${ORGANISMS[@]}"
 else
-    echo "  ${RAW_FA} already present, skipping" >&2
+    echo "  all organisms already fetched, skipping" >&2
 fi
 
-## 2. Clean: drop dubious sequences, dangling edges, isolated nodes
-echo "Cleaning dataset..." >&2
+## 2. Clean each organism: drop dubious sequences, dangling edges, isolated nodes
+echo "Cleaning datasets..." >&2
 mkdir -p ${CLEAN_DIR}
-if [ ! -s "${CLEAN_FA}" ] || [ ! -s "${CLEAN_INT}" ]
-then
+for entry in "${ORGANISMS[@]}"
+do
+    taxid="${entry%%:*}"
+    name="${entry#*:}"
+
+    fa_in=$(raw_fa ${taxid} ${name})
+    int_in=$(raw_int ${taxid} ${name})
+    fa_out=$(clean_fa ${taxid})
+    int_out=$(clean_int ${taxid})
+
+    if [ -s "${fa_out}" ] && [ -s "${int_out}" ]
+    then
+        echo "  ${name}: already cleaned, skipping" >&2
+        continue
+    fi
+
+    echo "  ${name} (taxid ${taxid}):" >&2
     ${CLEAN} \
-        --fasta ${RAW_FA} \
-        --edges ${RAW_INT} \
-        --out-nodes ${CLEAN_FA} \
-        --out-edges ${CLEAN_INT}
-else
-    echo "  ${CLEAN_FA} already present, skipping" >&2
+        --fasta ${fa_in} \
+        --edges ${int_in} \
+        --out-nodes ${fa_out} \
+        --out-edges ${int_out}
+done
+
+## 3. Generate artificial instances (Homo sapiens only)
+echo "Generating instances from taxid ${INSTANCE_TAXID}..." >&2
+INSTANCE_SOURCE=$(clean_fa ${INSTANCE_TAXID})
+
+num_seqs=$(grep -c '^>' "${INSTANCE_SOURCE}")
+max_v=$(echo ${NODE_COUNTS} | tr ' ' '\n' | sort -n | tail -1)
+if [ "${num_seqs}" -lt "${max_v}" ]
+then
+    echo "Error: ${INSTANCE_SOURCE} has ${num_seqs} sequences, but NODE_COUNTS needs ${max_v}." >&2
+    exit 1
 fi
 
-## 3. Generate artificial instances from cleaned data
-echo "Generating instances..." >&2
 for ed in ${DENSITIES}
 do
     mkdir -p ${INSTANCE_DIR}/ed${ed}
     for v in ${NODE_COUNTS}
     do
-        fa="${INSTANCE_DIR}/ed${ed}/sampled_human_V${v}_ed${ed}.fa"
-        int="${INSTANCE_DIR}/ed${ed}/sampled_human_V${v}_ed${ed}.int"
+        fa="${INSTANCE_DIR}/ed${ed}/sampled_${INSTANCE_NAME}_V${v}_ed${ed}.fa"
+        int="${INSTANCE_DIR}/ed${ed}/sampled_${INSTANCE_NAME}_V${v}_ed${ed}.int"
         if [ ! -f "${fa}" ] || [ ! -f "${int}" ]
         then
             echo "  V=${v} ed=0.${ed}" >&2
             ${GENERATE} \
-                --fasta ${CLEAN_FA} \
+                --fasta ${INSTANCE_SOURCE} \
                 --n ${v} --density 0.${ed} --seed ${SEED} \
                 --out-nodes ${fa} \
                 --out-edges ${int}
@@ -77,4 +125,6 @@ do
     done
 done
 
-echo "Done. Instances written to ${INSTANCE_DIR}/ed<NN>/" >&2
+echo "Done." >&2
+echo "  cleaned data (all organisms): ${CLEAN_DIR}/" >&2
+echo "  instances (${INSTANCE_NAME}):  ${INSTANCE_DIR}/ed<NN>/" >&2
