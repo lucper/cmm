@@ -54,7 +54,7 @@ rq5_thread_counts() {
 }
 
 # Points annotated with max_rank in the time plots, as ell:d.
-ANNOTATE="5:0 8:3"
+ANNOTATE="5:1 5:2 5:4 8:1 8:3 8:4 8:7"
 
 case "${MAX_THREADS}" in
     ''|*[!0-9]*) echo "Error: MAX_THREADS must be a positive integer." >&2; exit 1 ;;
