@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import argparse
+import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
@@ -16,6 +17,43 @@ COLS = [
 
 ELLS = [5, 8]
 MARKERS = ["o", "s", "^", "D", "v", "P", "X", "*"]
+
+# Appearance of the fitted power-law reference lines.
+FIT_STYLE = dict(
+    linestyle=(0, (6, 3)),  # long dash
+    linewidth=1.4,
+    color="0.25",           # dark gray, stays neutral against the tab10 palette
+    alpha=0.9,
+    zorder=1.5,             # data lines default to ~2
+)
+
+# Appearance of the exponent label sitting on the fitted line.
+FIT_LABEL_STYLE = dict(
+    fontsize=14,
+    color="0.25",
+    fontfamily="monospace",
+    ha="center",
+    va="bottom",
+    bbox=dict(boxstyle="round,pad=0.2", facecolor="white",
+              edgecolor="none", alpha=0.75),
+)
+
+def fit_power_law(x, y):
+    """Fit log2(y) = a*log2(x) + b, i.e. y = (2**b) * x**a.
+
+    Returns (a, b) or None if the data cannot support a fit (fewer than two
+    distinct x values, or any non-positive value, which the logs reject).
+    """
+    x = np.asarray(x, dtype=float)
+    y = np.asarray(y, dtype=float)
+
+    ok = (x > 0) & (y > 0)
+    x, y = x[ok], y[ok]
+    if len(x) < 2 or len(np.unique(x)) < 2:
+        return None
+
+    a, b = np.polyfit(np.log2(x), np.log2(y), 1)
+    return a, b
 
 def load(path):
     df = pd.read_csv(path, sep="\t", header=None, names=COLS)
@@ -65,9 +103,14 @@ def save_legend(handles, labels, output_path, max_cols=4):
 def plot_one(df_ell, x_col, x_label, y_col, y_label, title,
              error, secondary_map, secondary_label, output_path,
              ell=None, annotate_pairs=None, log_scale=False,
-             show_legend=True):
+             show_legend=True, fit_pairs=None):
     """Plot one (ell, x, y) view with lines per d.
     annotate_pairs: set of (ell, d) tuples to annotate with max_rank, or None.
+    fit_pairs: set of (ell, d) tuples to overlay a fitted power law on, or None.
+      The fit is log2(y) = a*log2(x) + b against the true x values, so the
+      exponent a is independent of how the axis happens to be spaced. The line
+      is drawn through x_to_pos so it follows the plotted geometry, and is
+      labelled with a. Styling lives in FIT_STYLE / FIT_LABEL_STYLE.
     """
     ds      = sorted(df_ell["d"].unique())
     palette = sns.color_palette("tab10", n_colors=len(ds))
@@ -109,6 +152,30 @@ def plot_one(df_ell, x_col, x_label, y_col, y_label, title,
                     fontfamily="monospace"
                 )
 
+        if fit_pairs is not None and ell is not None and (ell, d) in fit_pairs:
+            fit = fit_power_law(sub[x_col], sub["median"])
+            if fit is None:
+                print(f"  fit skipped (ell={ell}, d={d}): needs >=2 positive points")
+            else:
+                a, b = fit
+                # Evaluate on the true x values, then place via x_to_pos so the
+                # line follows whatever spacing the axis uses.
+                xf = np.asarray(sub[x_col], dtype=float)
+                yf = (2.0 ** b) * xf ** a
+                ax.plot([x_to_pos[v] for v in sub[x_col]], yf,
+                        label="_nolegend_", **FIT_STYLE)
+
+                # Label at the midpoint of the fitted line.
+                mid = len(xf) // 2
+                ax.annotate(
+                    f"$a$={a:.2f}",
+                    xy=(x_to_pos[sub[x_col].iloc[mid]], yf[mid]),
+                    xytext=(0, 8),
+                    textcoords="offset points",
+                    **FIT_LABEL_STYLE
+                )
+                print(f"  fit (ell={ell}, d={d}): a={a:.4f}, b={b:.4f}")
+
     ax.set_xticks(x_positions)
     ax.set_xticklabels([str(v) for v in x_vals], fontsize=18)
     ax.set_xlim(-0.5, len(x_vals) - 0.5)
@@ -144,7 +211,7 @@ def plot_one(df_ell, x_col, x_label, y_col, y_label, title,
 
     return handles, labels
 
-def run_rq3(df, stem, error, annotate_pairs, log_scale):
+def run_rq3(df, stem, error, annotate_pairs, log_scale, fit_pairs=None):
     v2n = v_to_n(df)
     for ell in ELLS:
         for group_name, ds in d_groups(ell):
@@ -165,14 +232,15 @@ def run_rq3(df, stem, error, annotate_pairs, log_scale):
                 ell=ell,
                 annotate_pairs=annotate_pairs,
                 log_scale=log_scale,
-                show_legend=False
+                show_legend=False,
+                fit_pairs=fit_pairs
             )
             plot_one(
                 df_ell=sub,
                 x_col="V",
                 x_label="$V$",
                 y_col="peak_ram_mb",
-                y_label="Peak RAM (MB)",
+                y_label="Peak RAM (MB) per thread",
                 title="",
                 error=error,
                 secondary_map=v2n,
@@ -185,7 +253,7 @@ def run_rq3(df, stem, error, annotate_pairs, log_scale):
             )
             save_legend(h, l, f"{base}_legend.pdf")
 
-def run_rq4(df, stem, error, annotate_pairs, log_scale):
+def run_rq4(df, stem, error, annotate_pairs, log_scale, fit_pairs=None):
     df["edge_density_pct"] = (df["edge_density"] * 100).round().astype(int)
     for ell in ELLS:
         for group_name, ds in d_groups(ell):
@@ -206,14 +274,15 @@ def run_rq4(df, stem, error, annotate_pairs, log_scale):
                 ell=ell,
                 annotate_pairs=annotate_pairs,
                 log_scale=log_scale,
-                show_legend=False
+                show_legend=False,
+                fit_pairs=fit_pairs
             )
             plot_one(
                 df_ell=sub,
                 x_col="edge_density_pct",
                 x_label="Edge density (%)",
                 y_col="peak_ram_mb",
-                y_label="Peak RAM (MB)",
+                y_label="Peak RAM (MB) per thread",
                 title="",
                 error=error,
                 secondary_map=None,
@@ -226,7 +295,7 @@ def run_rq4(df, stem, error, annotate_pairs, log_scale):
             )
             save_legend(h, l, f"{base}_legend.pdf")
 
-def run_rq5(df, stem, error, annotate_pairs, log_scale, ell=8):
+def run_rq5(df, stem, error, annotate_pairs, log_scale, ell=8, fit_pairs=None):
     req2spawned = req_to_spawned(df)
 
     h, l = plot_one(
@@ -243,7 +312,8 @@ def run_rq5(df, stem, error, annotate_pairs, log_scale, ell=8):
         ell=ell,
         annotate_pairs=annotate_pairs,
         log_scale=log_scale,
-        show_legend=False
+        show_legend=False,
+        fit_pairs=fit_pairs
     )
 
     plot_one(
@@ -277,6 +347,11 @@ def main():
                         help="Annotate points with max_rank for given (ell,d) pairs (e.g. --max-rank 5:0 8:3)")
     parser.add_argument("--log-scale", action="store_true",
                         help="Use log scale on y-axis")
+    parser.add_argument("--fit", nargs="+", type=ell_d_pair, default=None,
+                        metavar="ell:d",
+                        help="Overlay a fitted power law log2(T)=a*log2(x)+b for the "
+                             "given (ell,d) pairs and label it with the exponent a "
+                             "(e.g. --fit 8:3). Fitted exponents are printed to stdout.")
     parser.add_argument("--rq5-ell", type=int, default=5,
                         help="Motif length used for the RQ5 thread-scaling run (default: 5)")
     args = parser.parse_args()
@@ -287,13 +362,14 @@ def main():
     stem = str(Path(args.output).with_suffix(""))  # strip extension if given
 
     annotate_pairs = set(args.max_rank) if args.max_rank is not None else None
+    fit_pairs      = set(args.fit) if args.fit is not None else None
 
     if args.rq == "rq3":
-        run_rq3(df, stem, args.error, annotate_pairs, args.log_scale)
+        run_rq3(df, stem, args.error, annotate_pairs, args.log_scale, fit_pairs)
     elif args.rq == "rq4":
-        run_rq4(df, stem, args.error, annotate_pairs, args.log_scale)
+        run_rq4(df, stem, args.error, annotate_pairs, args.log_scale, fit_pairs)
     elif args.rq == "rq5":
-        run_rq5(df, stem, args.error, annotate_pairs, args.log_scale, args.rq5_ell)
+        run_rq5(df, stem, args.error, annotate_pairs, args.log_scale, args.rq5_ell, fit_pairs)
 
 if __name__ == "__main__":
     main()
