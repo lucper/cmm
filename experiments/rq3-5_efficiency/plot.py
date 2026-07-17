@@ -34,8 +34,6 @@ FIT_LABEL_STYLE = dict(
     fontfamily="monospace",
     ha="center",
     va="bottom",
-    bbox=dict(boxstyle="round,pad=0.2", facecolor="white",
-              edgecolor="none", alpha=0.75),
 )
 
 def fit_power_law(x, y):
@@ -188,7 +186,7 @@ def plot_one(df_ell, x_col, x_label, y_col, y_label, title,
                 # Label at the midpoint of the drawn line, so it sits on the fit.
                 mid = len(pos_line) // 2
                 ax.annotate(
-                    f"$a$={a:.2f}",
+                    f"{a:.2f}",
                     xy=(pos_line[mid], y_line[mid]),
                     xytext=(0, 8),
                     textcoords="offset points",
@@ -272,7 +270,7 @@ def run_rq3(df, stem, error, annotate_pairs, log_scale, fit_pairs=None):
                 x_col="V",
                 x_label="$V$",
                 y_col="peak_ram_mb",
-                y_label="Peak RAM (MB)",
+                y_label="Peak RAM (MB) per thread",
                 title="",
                 error=error,
                 secondary_map=v2n,
@@ -314,7 +312,7 @@ def run_rq4(df, stem, error, annotate_pairs, log_scale, fit_pairs=None):
                 x_col="edge_density_pct",
                 x_label="Edge density (%)",
                 y_col="peak_ram_mb",
-                y_label="Peak RAM (MB)",
+                y_label="Peak RAM (MB) per thread",
                 title="",
                 error=error,
                 secondary_map=None,
