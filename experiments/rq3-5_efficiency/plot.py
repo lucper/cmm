@@ -36,14 +36,13 @@ FIT_LABEL_STYLE = dict(
     va="bottom",
 )
 
-# Appearance of the per-point speedup labels (RQ5). Mirrors the max_rank
-# annotation style but offset below the marker so the two can coexist.
+# Appearance of the per-point speedup labels (RQ5).
 SPEEDUP_LABEL_STYLE = dict(
     fontsize=13,
     color="gray",
     fontfamily="monospace",
     ha="center",
-    va="top",
+    va="bottom",
 )
 
 def fit_power_law(x, y):
@@ -183,7 +182,7 @@ def plot_one(df_ell, x_col, x_label, y_col, y_label, title,
                     ax.annotate(
                         f"{sp:.1f}x",
                         xy=(x, y),
-                        xytext=(0, -8),
+                        xytext=(0, 8),
                         textcoords="offset points",
                         **SPEEDUP_LABEL_STYLE
                     )
