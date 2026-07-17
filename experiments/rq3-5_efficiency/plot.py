@@ -36,6 +36,16 @@ FIT_LABEL_STYLE = dict(
     va="bottom",
 )
 
+# Appearance of the per-point speedup labels (RQ5). Mirrors the max_rank
+# annotation style but offset below the marker so the two can coexist.
+SPEEDUP_LABEL_STYLE = dict(
+    fontsize=13,
+    color="gray",
+    fontfamily="monospace",
+    ha="center",
+    va="top",
+)
+
 def fit_power_law(x, y):
     """Fit log2(y) = a*log2(x) + b, i.e. y = (2**b) * x**a.
 
@@ -101,7 +111,7 @@ def save_legend(handles, labels, output_path, max_cols=4):
 def plot_one(df_ell, x_col, x_label, y_col, y_label, title,
              error, secondary_map, secondary_label, output_path,
              ell=None, annotate_pairs=None, log_scale=False,
-             show_legend=True, fit_pairs=None):
+             show_legend=True, fit_pairs=None, speedup=False):
     """Plot one (ell, x, y) view with lines per d.
     annotate_pairs: set of (ell, d) tuples to annotate with max_rank, or None.
     fit_pairs: set of (ell, d) tuples to overlay a fitted power law on, or None.
@@ -109,6 +119,9 @@ def plot_one(df_ell, x_col, x_label, y_col, y_label, title,
       exponent a is independent of how the axis happens to be spaced. The line
       is drawn through x_to_pos so it follows the plotted geometry, and is
       labelled with a. Styling lives in FIT_STYLE / FIT_LABEL_STYLE.
+    speedup: if True, label each point with its speedup relative to the
+      smallest x value in its own series (so the leftmost point reads 1.0x).
+      Only meaningful when x is a thread count and y is a time.
     """
     ds      = sorted(df_ell["d"].unique())
     palette = sns.color_palette("tab10", n_colors=len(ds))
@@ -160,6 +173,22 @@ def plot_one(df_ell, x_col, x_label, y_col, y_label, title,
                     fontsize=14, color="gray",
                     fontfamily="monospace"
                 )
+
+        if speedup:
+            med = np.asarray(sub["median"], dtype=float)
+            # Baseline is this series' own smallest x (sub is sorted by x_col).
+            base = med[0]
+            if base > 0 and np.all(med > 0):
+                for x, y, sp in zip(xs, med, base / med):
+                    ax.annotate(
+                        f"{sp:.1f}x",
+                        xy=(x, y),
+                        xytext=(0, -8),
+                        textcoords="offset points",
+                        **SPEEDUP_LABEL_STYLE
+                    )
+            else:
+                print(f"  speedup skipped (ell={ell}, d={d}): non-positive times")
 
         if fit_pairs is not None and ell is not None and (ell, d) in fit_pairs:
             fit = fit_power_law(sub[x_col], sub["median"])
@@ -330,7 +359,7 @@ def run_rq4(df, stem, error, annotate_pairs, log_scale, fit_pairs=None,
             save_legend(h, l, f"{base}_legend.pdf")
 
 def run_rq5(df, stem, error, annotate_pairs, log_scale, ell=8, fit_pairs=None,
-            log_scale_mem=False, fit_pairs_mem=None):
+            log_scale_mem=False, fit_pairs_mem=None, speedup=False):
     req2spawned = req_to_spawned(df)
 
     h, l = plot_one(
@@ -348,7 +377,8 @@ def run_rq5(df, stem, error, annotate_pairs, log_scale, ell=8, fit_pairs=None,
         annotate_pairs=annotate_pairs,
         log_scale=log_scale,
         show_legend=False,
-        fit_pairs=fit_pairs
+        fit_pairs=fit_pairs,
+        speedup=speedup
     )
 
     plot_one(
@@ -395,6 +425,9 @@ def main():
                         metavar="ell:d",
                         help="As --fit-time, but for the memory plots (e.g. --fit-mem 8:3). "
                              "Linear memory gives an exponent a near 1.")
+    parser.add_argument("--speedup", action="store_true",
+                        help="Label each point on the RQ5 time plot with its speedup "
+                             "relative to the fewest-threads run of the same series")
     parser.add_argument("--rq5-ell", type=int, default=5,
                         help="Motif length used for the RQ5 thread-scaling run (default: 5)")
     args = parser.parse_args()
@@ -416,7 +449,7 @@ def main():
                 args.log_scale_mem, fit_pairs_mem)
     elif args.rq == "rq5":
         run_rq5(df, stem, args.error, annotate_pairs, args.log_scale_time, args.rq5_ell, fit_pairs,
-                args.log_scale_mem, fit_pairs_mem)
+                args.log_scale_mem, fit_pairs_mem, args.speedup)
 
 if __name__ == "__main__":
     main()
