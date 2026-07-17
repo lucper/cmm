@@ -72,8 +72,8 @@ if (mode eq "legend") {
     # method names come from the TSV (col 2, tab), excluding the exact display name
     methods = system("awk -F'\t' -v ex=\"".exact_name."\" '\$2!=ex && !(\$2 in s){s[\$2]; printf \"%s\\n\", \$2}' ".data)
     NM = words(methods)
-    set xlabel '\normalsize rank'
-    set ylabel '\normalsize norm. $f_{\chi^2}$'
+    set xlabel '\normalsize Score rank'
+    set ylabel '\normalsize Norm. $f_{\chi^2}$'
     stats data using 1 nooutput
     set yrange [0:1.03]
     set xrange [1:STATS_max]

@@ -52,8 +52,8 @@ if (mode eq "legend") {
       '+' using (2):(1) with lines lw LW lc rgb H2COL title N2
 } else {
     # --- panel: normalized KDE of distance, two overlaid series ---
-    set xlabel '\normalsize similarity'
-    set ylabel '\normalsize density'
+    set xlabel '\normalsize Similarity'
+    set ylabel '\normalsize Density'
 
     set xrange [0:1]
     set xtics nomirror ("0" 0, "0.5" 0.5, "1" 1)
