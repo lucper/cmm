@@ -34,7 +34,7 @@ all: density.$(DATASET).l$(L)d$(D).h$(H).dedup.tex density_legend.tex
 density_legend.tex:
 	gnuplot -c plot_density.gp legend \
 		$(METHODS_CSV) \
-		hist_legend \
+		density_legend \
 		$(EXACT_PROG) \
 		$(LEGEND_W) $(LEGEND_H)
 
