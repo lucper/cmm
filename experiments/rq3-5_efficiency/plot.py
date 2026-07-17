@@ -28,11 +28,12 @@ FIT_STYLE = dict(
 )
 
 # Appearance of the exponent label sitting on the fitted line.
+FIT_LABEL_POS = 0.9
 FIT_LABEL_STYLE = dict(
     fontsize=14,
     color="0.25",
     fontfamily="monospace",
-    ha="center",
+    ha="right",
     va="bottom",
 )
 
@@ -211,12 +212,14 @@ def plot_one(df_ell, x_col, x_label, y_col, y_label, title,
                 y_line     = 2.0 ** (a * log2x_line + b)
                 ax.plot(pos_line, y_line, label="_nolegend_", **FIT_STYLE)
 
-                # Label at the midpoint of the drawn line, so it sits on the fit.
-                mid = len(pos_line) // 2
+                # Label near the upper end of the drawn line. FIT_LABEL_POS is the
+                # fraction along the line (0=left end, 1=right end); the label is
+                # nudged up and to the left so it clears the line and the axis edge.
+                idx = int(np.clip(FIT_LABEL_POS, 0.0, 1.0) * (len(pos_line) - 1))
                 ax.annotate(
                     f"$a$={a:.2f}",
-                    xy=(pos_line[mid], y_line[mid]),
-                    xytext=(0, 8),
+                    xy=(pos_line[idx], y_line[idx]),
+                    xytext=(-6, 8),
                     textcoords="offset points",
                     zorder=5,
                     **FIT_LABEL_STYLE
