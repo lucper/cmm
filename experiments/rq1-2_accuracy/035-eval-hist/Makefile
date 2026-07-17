@@ -29,19 +29,19 @@ usage:
 .DELETE_ON_ERROR:
 
 .PHONY: all
-all: hist.$(DATASET).l$(L)d$(D).dedup.tex hist_legend.tex
+all: density.$(DATASET).l$(L)d$(D).h$(H).dedup.tex density_legend.tex
 
-hist_legend.tex:
-	gnuplot -c plot_hist.gp legend \
+density_legend.tex:
+	gnuplot -c plot_density.gp legend \
 		$(METHODS_CSV) \
 		hist_legend \
 		$(EXACT_PROG) \
 		$(LEGEND_W) $(LEGEND_H)
 
-hist.%.l$(L)d$(D).dedup.tex: $(INPUT)/%.*.l$(L)d$(D).agg.trials$(R).min$(T).k$(K_TOP).h$(H).dedup.tsv
-	gnuplot -c plot_hist.gp plot \
+density.%.l$(L)d$(D).h$(H).dedup.tex: $(INPUT)/%.*.l$(L)d$(D).agg.trials$(R).min$(T).k$(K_TOP).h$(H).dedup.tsv
+	gnuplot -c plot_density.gp plot \
 		$(METHODS_CSV) \
-		hist.$*.l$(L)d$(D).dedup \
+		density.$*.l$(L)d$(D).h$(H).dedup \
 		$(EXACT_PROG) \
 		$(PLOT_W) $(PLOT_H) \
 		$^ \
