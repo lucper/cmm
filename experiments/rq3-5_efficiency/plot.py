@@ -214,7 +214,7 @@ def plot_one(df_ell, x_col, x_label, y_col, y_label, title,
                 # Label at the midpoint of the drawn line, so it sits on the fit.
                 mid = len(pos_line) // 2
                 ax.annotate(
-                    f"{a:.2f}",
+                    f"$a$={a:.2f}",
                     xy=(pos_line[mid], y_line[mid]),
                     xytext=(0, 8),
                     textcoords="offset points",
@@ -229,7 +229,6 @@ def plot_one(df_ell, x_col, x_label, y_col, y_label, title,
 
     if log_scale:
         ax.set_yscale("log")
-        y_label = y_label.replace(")", ", log scale)")
 
     # Fits are extrapolated to the plot borders, which would otherwise stretch
     # the y-axis and squash the data. Clip the view back to the data extent.
@@ -280,7 +279,7 @@ def run_rq3(df, stem, error, annotate_pairs, log_scale, fit_pairs=None,
             h, l = plot_one(
                 df_ell=sub,
                 x_col="V",
-                x_label="$V$",
+                x_label="$|V|$",
                 y_col="time_s",
                 y_label="Time (s)",
                 title="",
@@ -297,7 +296,7 @@ def run_rq3(df, stem, error, annotate_pairs, log_scale, fit_pairs=None,
             plot_one(
                 df_ell=sub,
                 x_col="V",
-                x_label="$V$",
+                x_label="$|V|$",
                 y_col="peak_ram_mb",
                 y_label="Peak RAM (MB)",
                 title="",
