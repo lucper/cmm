@@ -164,7 +164,7 @@ def plot_one(df_ell, x_col, x_label, y_col, y_label, title,
         if fit_pairs is not None and ell is not None and (ell, d) in fit_pairs:
             fit = fit_power_law(sub[x_col], sub["median"])
             if fit is None:
-                print(f"  fit skipped (ell={ell}, d={d}): needs >=2 positive points")
+                print(f"  fit [{y_col}] skipped (ell={ell}, d={d}): needs >=2 positive points")
             else:
                 a, b = fit
                 pos_known   = np.array([x_to_pos[v] for v in sub[x_col]], dtype=float)
@@ -193,7 +193,7 @@ def plot_one(df_ell, x_col, x_label, y_col, y_label, title,
                     zorder=5,
                     **FIT_LABEL_STYLE
                 )
-                print(f"  fit (ell={ell}, d={d}): a={a:.4f}, b={b:.4f}")
+                print(f"  fit [{y_col}] (ell={ell}, d={d}): a={a:.4f}, b={b:.4f}")
 
     ax.set_xticks(x_positions)
     ax.set_xticklabels([str(v) for v in x_vals], fontsize=18)
@@ -241,7 +241,8 @@ def plot_one(df_ell, x_col, x_label, y_col, y_label, title,
 
     return handles, labels
 
-def run_rq3(df, stem, error, annotate_pairs, log_scale, fit_pairs=None):
+def run_rq3(df, stem, error, annotate_pairs, log_scale, fit_pairs=None,
+            log_scale_mem=False, fit_pairs_mem=None):
     v2n = v_to_n(df)
     for ell in ELLS:
         for group_name, ds in d_groups(ell):
@@ -270,7 +271,7 @@ def run_rq3(df, stem, error, annotate_pairs, log_scale, fit_pairs=None):
                 x_col="V",
                 x_label="$V$",
                 y_col="peak_ram_mb",
-                y_label="Peak RAM (MB) per thread",
+                y_label="Peak RAM (MB)",
                 title="",
                 error=error,
                 secondary_map=v2n,
@@ -278,12 +279,14 @@ def run_rq3(df, stem, error, annotate_pairs, log_scale, fit_pairs=None):
                 output_path=f"{base}_memory.pdf",
                 ell=ell,
                 annotate_pairs=None,
-                log_scale=False,
-                show_legend=False
+                log_scale=log_scale_mem,
+                show_legend=False,
+                fit_pairs=fit_pairs_mem
             )
             save_legend(h, l, f"{base}_legend.pdf")
 
-def run_rq4(df, stem, error, annotate_pairs, log_scale, fit_pairs=None):
+def run_rq4(df, stem, error, annotate_pairs, log_scale, fit_pairs=None,
+            log_scale_mem=False, fit_pairs_mem=None):
     df["edge_density_pct"] = (df["edge_density"] * 100).round().astype(int)
     for ell in ELLS:
         for group_name, ds in d_groups(ell):
@@ -312,7 +315,7 @@ def run_rq4(df, stem, error, annotate_pairs, log_scale, fit_pairs=None):
                 x_col="edge_density_pct",
                 x_label="Edge density (%)",
                 y_col="peak_ram_mb",
-                y_label="Peak RAM (MB) per thread",
+                y_label="Peak RAM (MB)",
                 title="",
                 error=error,
                 secondary_map=None,
@@ -320,12 +323,14 @@ def run_rq4(df, stem, error, annotate_pairs, log_scale, fit_pairs=None):
                 output_path=f"{base}_memory.pdf",
                 ell=ell,
                 annotate_pairs=None,
-                log_scale=False,
-                show_legend=False
+                log_scale=log_scale_mem,
+                show_legend=False,
+                fit_pairs=fit_pairs_mem
             )
             save_legend(h, l, f"{base}_legend.pdf")
 
-def run_rq5(df, stem, error, annotate_pairs, log_scale, ell=8, fit_pairs=None):
+def run_rq5(df, stem, error, annotate_pairs, log_scale, ell=8, fit_pairs=None,
+            log_scale_mem=False, fit_pairs_mem=None):
     req2spawned = req_to_spawned(df)
 
     h, l = plot_one(
@@ -359,8 +364,9 @@ def run_rq5(df, stem, error, annotate_pairs, log_scale, ell=8, fit_pairs=None):
         output_path=f"{stem}_memory.pdf",
         ell=ell,
         annotate_pairs=None,
-        log_scale=False,
-        show_legend=False
+        log_scale=log_scale_mem,
+        show_legend=False,
+        fit_pairs=fit_pairs_mem
     )
     save_legend(h, l, f"{stem}_legend.pdf")
 
@@ -375,13 +381,20 @@ def main():
     parser.add_argument("--max-rank", nargs="+", type=ell_d_pair, default=None,
                         metavar="ell:d",
                         help="Annotate points with max_rank for given (ell,d) pairs (e.g. --max-rank 5:0 8:3)")
-    parser.add_argument("--log-scale", action="store_true",
-                        help="Use log scale on y-axis")
-    parser.add_argument("--fit", nargs="+", type=ell_d_pair, default=None,
+    parser.add_argument("--log-scale-time", action="store_true",
+                        help="Use log scale on the y-axis of the time plots")
+    parser.add_argument("--fit-time", nargs="+", type=ell_d_pair, default=None,
                         metavar="ell:d",
-                        help="Overlay a fitted power law log2(T)=a*log2(x)+b for the "
-                             "given (ell,d) pairs and label it with the exponent a "
-                             "(e.g. --fit 8:3). Fitted exponents are printed to stdout.")
+                        help="Overlay a fitted power law log2(T)=a*log2(x)+b on the time "
+                             "plots for the given (ell,d) pairs and label it with the "
+                             "exponent a (e.g. --fit-time 8:3). Fitted exponents are "
+                             "printed to stdout.")
+    parser.add_argument("--log-scale-mem", action="store_true",
+                        help="Use log scale on the y-axis of the memory plots")
+    parser.add_argument("--fit-mem", nargs="+", type=ell_d_pair, default=None,
+                        metavar="ell:d",
+                        help="As --fit-time, but for the memory plots (e.g. --fit-mem 8:3). "
+                             "Linear memory gives an exponent a near 1.")
     parser.add_argument("--rq5-ell", type=int, default=5,
                         help="Motif length used for the RQ5 thread-scaling run (default: 5)")
     args = parser.parse_args()
@@ -392,14 +405,18 @@ def main():
     stem = str(Path(args.output).with_suffix(""))  # strip extension if given
 
     annotate_pairs = set(args.max_rank) if args.max_rank is not None else None
-    fit_pairs      = set(args.fit) if args.fit is not None else None
+    fit_pairs      = set(args.fit_time) if args.fit_time is not None else None
+    fit_pairs_mem  = set(args.fit_mem) if args.fit_mem is not None else None
 
     if args.rq == "rq3":
-        run_rq3(df, stem, args.error, annotate_pairs, args.log_scale, fit_pairs)
+        run_rq3(df, stem, args.error, annotate_pairs, args.log_scale_time, fit_pairs,
+                args.log_scale_mem, fit_pairs_mem)
     elif args.rq == "rq4":
-        run_rq4(df, stem, args.error, annotate_pairs, args.log_scale, fit_pairs)
+        run_rq4(df, stem, args.error, annotate_pairs, args.log_scale_time, fit_pairs,
+                args.log_scale_mem, fit_pairs_mem)
     elif args.rq == "rq5":
-        run_rq5(df, stem, args.error, annotate_pairs, args.log_scale, args.rq5_ell, fit_pairs)
+        run_rq5(df, stem, args.error, annotate_pairs, args.log_scale_time, args.rq5_ell, fit_pairs,
+                args.log_scale_mem, fit_pairs_mem)
 
 if __name__ == "__main__":
     main()
