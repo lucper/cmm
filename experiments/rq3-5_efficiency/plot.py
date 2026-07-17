@@ -24,7 +24,7 @@ FIT_STYLE = dict(
     linewidth=1.4,
     color="0.25",           # dark gray, stays neutral against the tab10 palette
     alpha=0.9,
-    zorder=1.5,             # data lines default to ~2
+    zorder=4,               # above the data lines (~2) and their markers (~3)
 )
 
 # Appearance of the exponent label sitting on the fitted line.
@@ -121,6 +121,10 @@ def plot_one(df_ell, x_col, x_label, y_col, y_label, title,
 
     fig, ax = plt.subplots(figsize=(7, 5), constrained_layout=True)
 
+    # Track the extent of the plotted data (incl. error bands) so an
+    # extrapolated fit line cannot rescale the y-axis.
+    y_data_lim = None
+
     for i, (color, d) in enumerate(zip(palette, ds)):
         marker = MARKERS[i % len(MARKERS)]
         sub = df_ell[df_ell["d"] == d].groupby(x_col).agg(
@@ -140,6 +144,13 @@ def plot_one(df_ell, x_col, x_label, y_col, y_label, title,
             ax.fill_between(xs, sub["vmin"], sub["vmax"],
                             alpha=0.2, color=color)
 
+        seen_lo = float(min(sub["vmin"].min(), sub["median"].min()) if error
+                        else sub["median"].min())
+        seen_hi = float(max(sub["vmax"].max(), sub["median"].max()) if error
+                        else sub["median"].max())
+        y_data_lim = (seen_lo, seen_hi) if y_data_lim is None else (
+            min(y_data_lim[0], seen_lo), max(y_data_lim[1], seen_hi))
+
         if annotate_pairs is not None and ell is not None and (ell, d) in annotate_pairs:
             for x, y, r in zip(xs, sub["median"], sub["max_rank"]):
                 ax.annotate(
@@ -158,20 +169,30 @@ def plot_one(df_ell, x_col, x_label, y_col, y_label, title,
                 print(f"  fit skipped (ell={ell}, d={d}): needs >=2 positive points")
             else:
                 a, b = fit
-                # Evaluate on the true x values, then place via x_to_pos so the
-                # line follows whatever spacing the axis uses.
-                xf = np.asarray(sub[x_col], dtype=float)
-                yf = (2.0 ** b) * xf ** a
-                ax.plot([x_to_pos[v] for v in sub[x_col]], yf,
-                        label="_nolegend_", **FIT_STYLE)
+                pos_known   = np.array([x_to_pos[v] for v in sub[x_col]], dtype=float)
+                log2x_known = np.log2(np.asarray(sub[x_col], dtype=float))
+                pos_edges   = np.array([-0.5, len(x_vals) - 0.5], dtype=float)
 
-                # Label at the midpoint of the fitted line.
-                mid = len(xf) // 2
+                slope_lo = (log2x_known[1] - log2x_known[0]) / (pos_known[1] - pos_known[0])
+                slope_hi = (log2x_known[-1] - log2x_known[-2]) / (pos_known[-1] - pos_known[-2])
+                log2x_edges = np.array([
+                    log2x_known[0]  + slope_lo * (pos_edges[0] - pos_known[0]),
+                    log2x_known[-1] + slope_hi * (pos_edges[1] - pos_known[-1]),
+                ])
+
+                pos_line   = np.linspace(pos_edges[0], pos_edges[1], 100)
+                log2x_line = np.interp(pos_line, pos_edges, log2x_edges)
+                y_line     = 2.0 ** (a * log2x_line + b)
+                ax.plot(pos_line, y_line, label="_nolegend_", **FIT_STYLE)
+
+                # Label at the midpoint of the drawn line, so it sits on the fit.
+                mid = len(pos_line) // 2
                 ax.annotate(
                     f"$a$={a:.2f}",
-                    xy=(x_to_pos[sub[x_col].iloc[mid]], yf[mid]),
+                    xy=(pos_line[mid], y_line[mid]),
                     xytext=(0, 8),
                     textcoords="offset points",
+                    zorder=5,
                     **FIT_LABEL_STYLE
                 )
                 print(f"  fit (ell={ell}, d={d}): a={a:.4f}, b={b:.4f}")
@@ -183,6 +204,17 @@ def plot_one(df_ell, x_col, x_label, y_col, y_label, title,
     if log_scale:
         ax.set_yscale("log")
         y_label = y_label.replace(")", ", log scale)")
+
+    # Fits are extrapolated to the plot borders, which would otherwise stretch
+    # the y-axis and squash the data. Clip the view back to the data extent.
+    if fit_pairs and y_data_lim is not None:
+        lo_y, hi_y = y_data_lim
+        if log_scale:
+            pad = (hi_y / lo_y) ** 0.05
+            ax.set_ylim(lo_y / pad, hi_y * pad)
+        else:
+            pad = 0.05 * (hi_y - lo_y)
+            ax.set_ylim(lo_y - pad, hi_y + pad)
 
     ax.set_xlabel(x_label, fontsize=20)
     ax.set_ylabel(y_label, fontsize=20)
@@ -240,7 +272,7 @@ def run_rq3(df, stem, error, annotate_pairs, log_scale, fit_pairs=None):
                 x_col="V",
                 x_label="$V$",
                 y_col="peak_ram_mb",
-                y_label="Peak RAM (MB) per thread",
+                y_label="Peak RAM (MB)",
                 title="",
                 error=error,
                 secondary_map=v2n,
@@ -282,7 +314,7 @@ def run_rq4(df, stem, error, annotate_pairs, log_scale, fit_pairs=None):
                 x_col="edge_density_pct",
                 x_label="Edge density (%)",
                 y_col="peak_ram_mb",
-                y_label="Peak RAM (MB) per thread",
+                y_label="Peak RAM (MB)",
                 title="",
                 error=error,
                 secondary_map=None,
