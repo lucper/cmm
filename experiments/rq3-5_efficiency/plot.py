@@ -20,15 +20,15 @@ MARKERS = ["o", "s", "^", "D", "v", "P", "X", "*"]
 
 # Appearance of the fitted power-law reference lines.
 FIT_STYLE = dict(
-    linestyle=(0, (6, 3)),  # long dash
-    linewidth=1.4,
+    linestyle=(0, (6, 4)),  # long dash; gap widened to stay legible when thick
+    linewidth=2.2,
     color="0.25",           # dark gray, stays neutral against the tab10 palette
     alpha=0.9,
     zorder=4,               # above the data lines (~2) and their markers (~3)
 )
 
-# Appearance of the exponent label sitting on the fitted line.
-FIT_LABEL_POS = 0.9
+# Appearance of the exponent label for the fitted line.
+FIT_LABEL_XY = (0.97, 0.04)
 FIT_LABEL_STYLE = dict(
     fontsize=14,
     color="0.25",
@@ -212,15 +212,10 @@ def plot_one(df_ell, x_col, x_label, y_col, y_label, title,
                 y_line     = 2.0 ** (a * log2x_line + b)
                 ax.plot(pos_line, y_line, label="_nolegend_", **FIT_STYLE)
 
-                # Label near the upper end of the drawn line. FIT_LABEL_POS is the
-                # fraction along the line (0=left end, 1=right end); the label is
-                # nudged up and to the left so it clears the line and the axis edge.
-                idx = int(np.clip(FIT_LABEL_POS, 0.0, 1.0) * (len(pos_line) - 1))
                 ax.annotate(
                     f"$a$={a:.2f}",
-                    xy=(pos_line[idx], y_line[idx]),
-                    xytext=(-6, 8),
-                    textcoords="offset points",
+                    xy=FIT_LABEL_XY,
+                    xycoords="axes fraction",
                     zorder=5,
                     **FIT_LABEL_STYLE
                 )
