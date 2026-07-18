@@ -207,12 +207,22 @@ solution_report_t main_algo(const std::vector<std::string>& V,
                             while (a < nu && b < nv) {
                                 uint32_t ru = ranksY_in_node_u[a];
                                 uint32_t rv = ranksY_in_node_v[b];
-                                if (ru < rv)      { credit(ru); a++; }
-                                else if (rv < ru) { credit(rv); b++; }
-                                else              { credit(rv); a++; b++; }
+                                if (ru < rv) {
+                                    credit(ru);
+                                    a++;
+                                } else if (rv < ru) {
+                                    credit(rv);
+                                    b++;
+                                } else {
+                                    credit(rv);
+                                    a++;
+                                    b++;
+                                }
                             }
-                            while (a < nu) credit(ranksY_in_node_u[a++]);
-                            while (b < nv) credit(ranksY_in_node_v[b++]);
+                            while (a < nu)
+                                credit(ranksY_in_node_u[a++]);
+                            while (b < nv)
+                                credit(ranksY_in_node_v[b++]);
                         }
                 }
 
