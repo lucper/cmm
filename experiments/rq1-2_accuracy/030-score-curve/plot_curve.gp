@@ -61,7 +61,7 @@ if (mode eq "legend") {
     set yrange [0:1]
     set xrange [0:1]
     # key centered, horizontal row; this is the only thing that renders
-    set key center center horizontal maxrows 1 samplen 3 width 6 spacing 1.5
+    set key center center horizontal maxrows 1 samplen 2 width 1 spacing 1.5
     # plot the series OUT OF RANGE (x=2, beyond [0:1]) so only key samples show
     plot \
       for [i=1:NM] '+' using (2):(2) with lines lw LW_HEUR dashtype 2 \
