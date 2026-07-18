@@ -106,7 +106,11 @@ void rank_table_t::radix_pass_over_sSA(uint32_t max_rank_R2, uint32_t max_rank_R
         for (size_t i = 0; i < packed_ranks_sSA.size(); i++)
             counts[(src_key[i] >> shifts[p]) & 0xFFFFFFFF]++;
         size_t pos = 0;
-        for (size_t i = 0; i < bins; i++) { size_t c = counts[i]; counts[i] = pos; pos += c; }
+        for (size_t i = 0; i < bins; i++) {
+            size_t c = counts[i];
+            counts[i] = pos;
+            pos += c;
+        }
         for (size_t i = 0; i < packed_ranks_sSA.size(); i++) {
             uint32_t bucket = (src_key[i] >> shifts[p]) & 0xFFFFFFFF;
             uint32_t target = counts[bucket]++;
