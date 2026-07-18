@@ -7,12 +7,12 @@ METHODS_CSV := ../methods.csv
 METHODS     := $(shell awk -F, '{print $$1}' $(METHODS_CSV))
 
 ## dimensions for plot and legend
-PLOT_W      := 3.8
-PLOT_H      := 3.2
-LEGEND_W    := 9
-LEGEND_H    := 1.1
+PLOT_W      := 3.5
+PLOT_H      := 3.0
+LEGEND_W    := 7
+LEGEND_H    := 1.0
 
-THR         := 0.7
+THR         := 0 # default to no dashed line
 
 .PHONY: usage
 usage:
