@@ -63,9 +63,83 @@ def fit_power_law(x, y):
     a, b = np.polyfit(np.log2(x), np.log2(y), 1)
     return a, b
 
+def fit_polynomial(x, y, degree=2, relative=True):
+    """Fit y = c[0]*x^degree + ... + c[degree] (coeffs highest power first).
+
+    relative=True weights each point by 1/y, so points spanning several
+    decades contribute evenly (minimises relative rather than absolute
+    error). Without it, plain polyfit is dominated by the largest y values
+    and fits small inputs poorly.
+
+    Returns the coefficient array, or None if the data cannot support a fit
+    (fewer than degree+1 distinct x values, or non-positive y under relative
+    weighting).
+    """
+    x = np.asarray(x, dtype=float)
+    y = np.asarray(y, dtype=float)
+
+    ok = np.isfinite(x) & np.isfinite(y)
+    if relative:
+        ok &= (y > 0)
+    x, y = x[ok], y[ok]
+    if len(x) < degree + 1 or len(np.unique(x)) < degree + 1:
+        return None
+
+    w = 1.0 / y if relative else None
+    return np.polyfit(x, y, degree, w=w)
+
+def _fmt_coeff(v):
+    """Format a coefficient legibly: plain decimals for moderate magnitudes,
+    scientific (mantissa x 10^exp) only when the value is very small or very
+    large. Returns the magnitude string (sign is handled by the caller)."""
+    a = abs(v)
+    if a == 0:
+        return "0"
+    if 1e-3 <= a < 1e5:
+        # plain decimal, trimming trailing zeros; more decimals for small values
+        if a >= 100:
+            s = f"{a:.0f}"
+        elif a >= 1:
+            s = f"{a:.2f}"
+        else:
+            s = f"{a:.4f}"
+        return s.rstrip("0").rstrip(".") if "." in s else s
+    # scientific, rendered as m\times10^{e} for mathtext
+    exp = int(np.floor(np.log10(a)))
+    mant = a / 10**exp
+    mant_s = f"{mant:.2f}".rstrip("0").rstrip(".")
+    return f"{mant_s}\\times10^{{{exp}}}"
+
+def _format_poly(coeffs, var="V"):
+    """Render a coefficient array as a legible 'aV^2 + bV + c' mathtext string.
+
+    Signs are pulled out so terms read '... - 1.81V + 120' rather than
+    '... + -1.81V'. Magnitudes use plain decimals when readable and fall back
+    to m x 10^e only for extreme values. `var` is the axis variable name.
+    """
+    deg = len(coeffs) - 1
+    out = ""
+    for i, c in enumerate(coeffs):
+        p = deg - i
+        if c == 0:
+            continue
+        sign = "-" if c < 0 else "+"
+        mag = _fmt_coeff(c)
+        if p == 0:
+            term = mag
+        elif p == 1:
+            term = f"{mag}{var}"
+        else:
+            term = f"{mag}{var}^{{{p}}}"
+        if out == "":
+            out = (f"-{term}" if sign == "-" else term)   # leading sign only if negative
+        else:
+            out += f" {sign} {term}"
+    return out if out else "0"
+
+
 def load(path):
     df = pd.read_csv(path, sep="\t", header=None, names=COLS)
-    df = df[df["ell"].isin(ELLS)]
     df["time_s"]      = df["time_ms"] / 1000.0
     df["peak_ram_mb"] = df["peak_ram_kb"] / 1024.0
     return df
@@ -100,6 +174,8 @@ def save_legend(handles, labels, output_path, max_cols=4):
     Uses min(len(labels), max_cols) columns; the legend itself centers in
     the canvas so fewer entries cluster in the middle with whitespace.
     """
+    if not labels:
+        return
     fig = plt.figure(figsize=(11, 0.6))  # wide enough for 4 long entries
     fig.legend(handles, labels, loc="center", ncol=min(len(labels), max_cols),
                fontsize=18, frameon=False, handlelength=2.5,
@@ -111,7 +187,8 @@ def save_legend(handles, labels, output_path, max_cols=4):
 def plot_one(df_ell, x_col, x_label, y_col, y_label, title,
              error, secondary_map, secondary_label, output_path,
              ell=None, annotate_pairs=None, log_scale=False,
-             show_legend=True, fit_pairs=None, speedup=False):
+             show_legend=True, fit_pairs=None, speedup=False,
+             fit_poly_pairs=None, poly_degree=2):
     """Plot one (ell, x, y) view with lines per d.
     annotate_pairs: set of (ell, d) tuples to annotate with max_rank, or None.
     fit_pairs: set of (ell, d) tuples to overlay a fitted power law on, or None.
@@ -119,6 +196,11 @@ def plot_one(df_ell, x_col, x_label, y_col, y_label, title,
       exponent a is independent of how the axis happens to be spaced. The line
       is drawn through x_to_pos so it follows the plotted geometry, and is
       labelled with a. Styling lives in FIT_STYLE / FIT_LABEL_STYLE.
+    fit_poly_pairs: set of (ell, d) tuples to overlay a polynomial fit
+      (a*x^deg + ... + c) on, or None. Fit with 1/y weighting so it is not
+      dominated by large-y points; evaluated directly at each point's true x
+      (no log-axis interpolation), then plotted at that point's position.
+    poly_degree: degree of the polynomial fit (default 2).
     speedup: if True, label each point with its speedup relative to the
       smallest x value in its own series (so the leftmost point reads 1.0x).
       Only meaningful when x is a thread count and y is a time.
@@ -221,6 +303,51 @@ def plot_one(df_ell, x_col, x_label, y_col, y_label, title,
                 )
                 print(f"  fit [{y_col}] (ell={ell}, d={d}): a={a:.4f}, b={b:.4f}")
 
+        if fit_poly_pairs is not None and ell is not None and (ell, d) in fit_poly_pairs:
+            coeffs = fit_polynomial(sub[x_col], sub["median"], degree=poly_degree)
+            if coeffs is None:
+                print(f"  poly-fit [{y_col}] skipped (ell={ell}, d={d}): "
+                      f"needs >={poly_degree + 1} distinct positive points")
+            else:
+                # Evaluate at each point's OWN true x, placed at its OWN
+                # position -- no interpolation across the (possibly non-
+                # geometric) x spacing, so the curve tracks the fit exactly.
+                pos_known = np.array([x_to_pos[v] for v in sub[x_col]], dtype=float)
+                x_known   = np.asarray(sub[x_col], dtype=float)
+                y_poly    = np.polyval(coeffs, x_known)
+
+                # Extend to the borders by evaluating the polynomial at the
+                # x implied by the end segments' spacing.
+                pos_edges = np.array([-0.5, len(x_vals) - 0.5], dtype=float)
+                dx_lo = (x_known[1]  - x_known[0])  / (pos_known[1]  - pos_known[0])
+                dx_hi = (x_known[-1] - x_known[-2]) / (pos_known[-1] - pos_known[-2])
+                x_edges = np.array([
+                    x_known[0]  + dx_lo * (pos_edges[0]  - pos_known[0]),
+                    x_known[-1] + dx_hi * (pos_edges[1]  - pos_known[-1]),
+                ])
+                pos_line = np.concatenate([[pos_edges[0]], pos_known, [pos_edges[1]]])
+                x_line   = np.concatenate([[x_edges[0]],   x_known,   [x_edges[1]]])
+                y_line   = np.polyval(coeffs, x_line)
+
+                var_sym = {"V": "x", "edge_density_pct": "\\rho",
+                           "num_threads_requested": "t"}.get(x_col, "x")
+                ax.plot(pos_line, y_line, label="_nolegend_", **FIT_STYLE)
+                ax.annotate(
+                    f"${_format_poly(coeffs, var=var_sym)}$",
+                    xy=FIT_LABEL_XY,
+                    xycoords="axes fraction",
+                    zorder=5,
+                    **FIT_LABEL_STYLE
+                )
+                # Keep the extrapolated curve from rescaling the y-axis.
+                lo = float(min(y_poly.min(), sub["median"].min()))
+                hi = float(max(y_poly.max(), sub["median"].max()))
+                y_data_lim = (lo, hi) if y_data_lim is None else (
+                    min(y_data_lim[0], lo), max(y_data_lim[1], hi))
+                coeff_str = ", ".join(f"{c:.4e}" for c in coeffs)
+                print(f"  poly-fit [{y_col}] (ell={ell}, d={d}, deg={poly_degree}): "
+                      f"[{coeff_str}]")
+
     ax.set_xticks(x_positions)
     ax.set_xticklabels([str(v) for v in x_vals], fontsize=18)
     ax.set_xlim(-0.5, len(x_vals) - 0.5)
@@ -230,7 +357,7 @@ def plot_one(df_ell, x_col, x_label, y_col, y_label, title,
 
     # Fits are extrapolated to the plot borders, which would otherwise stretch
     # the y-axis and squash the data. Clip the view back to the data extent.
-    if fit_pairs and y_data_lim is not None:
+    if (fit_pairs or fit_poly_pairs) and y_data_lim is not None:
         lo_y, hi_y = y_data_lim
         if log_scale:
             pad = (hi_y / lo_y) ** 0.05
@@ -267,11 +394,14 @@ def plot_one(df_ell, x_col, x_label, y_col, y_label, title,
     return handles, labels
 
 def run_rq3(df, stem, error, annotate_pairs, log_scale, fit_pairs=None,
-            log_scale_mem=False, fit_pairs_mem=None):
+            log_scale_mem=False, fit_pairs_mem=None,
+            fit_poly_pairs=None, fit_poly_pairs_mem=None, poly_degree=2):
     v2n = v_to_n(df)
-    for ell in ELLS:
+    for ell in sorted(df["ell"].unique()):
         for group_name, ds in d_groups(ell):
             sub  = df[(df["ell"] == ell) & (df["d"].isin(ds))]
+            if sub.empty:
+                continue
             base = f"{stem}_ell{ell}_{group_name}"
 
             h, l = plot_one(
@@ -289,7 +419,9 @@ def run_rq3(df, stem, error, annotate_pairs, log_scale, fit_pairs=None,
                 annotate_pairs=annotate_pairs,
                 log_scale=log_scale,
                 show_legend=False,
-                fit_pairs=fit_pairs
+                fit_pairs=fit_pairs,
+                fit_poly_pairs=fit_poly_pairs,
+                poly_degree=poly_degree
             )
             plot_one(
                 df_ell=sub,
@@ -306,16 +438,20 @@ def run_rq3(df, stem, error, annotate_pairs, log_scale, fit_pairs=None,
                 annotate_pairs=None,
                 log_scale=log_scale_mem,
                 show_legend=False,
-                fit_pairs=fit_pairs_mem
+                fit_pairs=fit_pairs_mem,
+                fit_poly_pairs=fit_poly_pairs_mem,
+                poly_degree=poly_degree
             )
             save_legend(h, l, f"{base}_legend.pdf")
 
 def run_rq4(df, stem, error, annotate_pairs, log_scale, fit_pairs=None,
             log_scale_mem=False, fit_pairs_mem=None):
     df["edge_density_pct"] = (df["edge_density"] * 100).round().astype(int)
-    for ell in ELLS:
+    for ell in sorted(df["ell"].unique()):
         for group_name, ds in d_groups(ell):
             sub  = df[(df["ell"] == ell) & (df["d"].isin(ds))]
+            if sub.empty:
+                continue
             base = f"{stem}_ell{ell}_{group_name}"
 
             h, l = plot_one(
@@ -421,6 +557,17 @@ def main():
                         metavar="ell:d",
                         help="As --fit-time, but for the memory plots (e.g. --fit-mem 8:3). "
                              "Linear memory gives an exponent a near 1.")
+    parser.add_argument("--fit-poly-time", nargs="+", type=ell_d_pair, default=None,
+                        metavar="ell:d",
+                        help="Overlay a polynomial fit (a*x^deg + ... + c, degree set by "
+                             "--poly-degree) on the time plots for the given (ell,d) pairs. "
+                             "Fitted with 1/y weighting so it is not dominated by large-y "
+                             "points. Coefficients are printed to stdout. (e.g. --fit-poly-time 8:3)")
+    parser.add_argument("--fit-poly-mem", nargs="+", type=ell_d_pair, default=None,
+                        metavar="ell:d",
+                        help="As --fit-poly-time, but for the memory plots.")
+    parser.add_argument("--poly-degree", type=int, default=2,
+                        help="Degree of the polynomial fit (default: 2, i.e. a*x^2+b*x+c)")
     parser.add_argument("--speedup", action="store_true",
                         help="Label each point on the RQ5 time plot with its speedup "
                              "relative to the fewest-threads run of the same series")
@@ -433,13 +580,16 @@ def main():
     df   = load(args.input)
     stem = str(Path(args.output).with_suffix(""))  # strip extension if given
 
-    annotate_pairs = set(args.max_rank) if args.max_rank is not None else None
-    fit_pairs      = set(args.fit_time) if args.fit_time is not None else None
-    fit_pairs_mem  = set(args.fit_mem) if args.fit_mem is not None else None
+    annotate_pairs     = set(args.max_rank) if args.max_rank is not None else None
+    fit_pairs          = set(args.fit_time) if args.fit_time is not None else None
+    fit_pairs_mem      = set(args.fit_mem) if args.fit_mem is not None else None
+    fit_poly_pairs     = set(args.fit_poly_time) if args.fit_poly_time is not None else None
+    fit_poly_pairs_mem = set(args.fit_poly_mem) if args.fit_poly_mem is not None else None
 
     if args.rq == "rq3":
         run_rq3(df, stem, args.error, annotate_pairs, args.log_scale_time, fit_pairs,
-                args.log_scale_mem, fit_pairs_mem)
+                args.log_scale_mem, fit_pairs_mem,
+                fit_poly_pairs, fit_poly_pairs_mem, args.poly_degree)
     elif args.rq == "rq4":
         run_rq4(df, stem, args.error, annotate_pairs, args.log_scale_time, fit_pairs,
                 args.log_scale_mem, fit_pairs_mem)
