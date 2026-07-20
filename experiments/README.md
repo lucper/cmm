@@ -25,30 +25,16 @@ The script `data/run.sh` populates both `data/real_instances/` (used by RQ1-RQ2)
 ## RQ1 and RQ2 (accuracy experiment)
 
 Each `run.sh` invocation runs the experiment for **one parameter cell** on a real dataset.
-Pick a cleaned dataset from `data/real_instances/` (here taxon `9606`):
-
+For example, from `rq1-2_accuracy`:
+1. Pick a cleaned dataset from `data/real_instances/` (here taxon `9606`).
 ```bash
-cd rq1-2_accuracy
 FA=../data/real_instances/9606.sequences.s700.clean.fa
 INT=../data/real_instances/9606.links.s700.clean.int
 ```
-
-**RQ1 — vary convergence time $T$, fix runs $R=5$:**
-
+2. Run a parameter cell:
 ```bash
-for T in 5 10 15 20 25 30; do
-    ./run.sh -D human -f "$FA" -i "$INT" \
-             -r 5 -t "$T" -l 8 -d 3 -k 1000 -K 1000 -H 8 -c 70 -p 8
-done
-```
-
-**RQ2 — vary number of runs $R$, fix time $T=5$:**
-
-```bash
-for R in 5 10 15 20 25 30; do
-    ./run.sh -D human -f "$FA" -i "$INT" \
-             -r "$R" -t 5 -l 8 -d 3 -k 1000 -K 1000 -H 8 -c 70 -p 8
-done
+./run.sh -D 9606 -f "$FA" -i "$INT" \
+         -r 5 -t 10 -l 8 -d 3 -k 1000 -K 1000 -H 8 -c 70 -p 8
 ```
 
 The `-l/-d` (motif length / number of wildcards) and `-k/-K/-H/-c` values above are illustrative
