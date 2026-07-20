@@ -10,11 +10,11 @@ endif
 
 ALG_DIR  := ..
 ALG_OBJS := $(ALG_DIR)/rank_table.o $(ALG_DIR)/data_import.o $(ALG_DIR)/libsais64.o $(ALG_DIR)/libsais.o
-OBJS     := cmm_perf.o motifs_search_test.o
+OBJS     := cmm_test.o motifs_search_test.o
 
-all: cmm_perf
+all: cmm_test
 
-cmm_perf: $(OBJS) $(ALG_OBJS)
+cmm_test: $(OBJS) $(ALG_OBJS)
 	$(CXX) $(LDFLAGS) -o $@ $^
 
 %.o: %.cpp
@@ -24,4 +24,4 @@ $(ALG_OBJS):
 	$(MAKE) -C $(ALG_DIR)
 
 clean:
-	rm -f $(OBJS) cmm_perf
+	rm -f $(OBJS) cmm_test
