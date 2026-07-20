@@ -354,7 +354,8 @@ def plot_one(df_ell, x_col, x_label, y_col, y_label, title,
 
 def run_rq3(df, stem, error, annotate_pairs, log_scale,
             log_scale_mem=False,
-            fit_poly_pairs=None, fit_poly_pairs_mem=None, poly_degree=2,
+            fit_poly_pairs=None, fit_poly_pairs_mem=None,
+            poly_degree_time=2, poly_degree_mem=2,
             poly_label=True):
     v2n = v_to_n(df)
     for ell in sorted(df["ell"].unique()):
@@ -380,7 +381,7 @@ def run_rq3(df, stem, error, annotate_pairs, log_scale,
                 log_scale=log_scale,
                 show_legend=False,
                 fit_poly_pairs=fit_poly_pairs,
-                poly_degree=poly_degree,
+                poly_degree=poly_degree_time,
                 poly_label=poly_label
             )
             plot_one(
@@ -399,7 +400,7 @@ def run_rq3(df, stem, error, annotate_pairs, log_scale,
                 log_scale=log_scale_mem,
                 show_legend=False,
                 fit_poly_pairs=fit_poly_pairs_mem,
-                poly_degree=poly_degree,
+                poly_degree=poly_degree_mem,
                 poly_label=poly_label
             )
             save_legend(h, l, f"{base}_legend.pdf")
@@ -513,7 +514,15 @@ def main():
                         metavar="ell:d",
                         help="As --fit-poly-time, but for the memory plots.")
     parser.add_argument("--poly-degree", type=int, default=2,
-                        help="Degree of the polynomial fit (default: 2, i.e. a*x^2+b*x+c)")
+                        help="Default polynomial fit degree used for both axes when "
+                             "--poly-degree-time / --poly-degree-mem are not given "
+                             "(default: 2, i.e. a*x^2+b*x+c).")
+    parser.add_argument("--poly-degree-time", type=int, default=None,
+                        help="Polynomial fit degree for the time plots. Overrides "
+                             "--poly-degree for time only (e.g. 2 for quadratic).")
+    parser.add_argument("--poly-degree-mem", type=int, default=None,
+                        help="Polynomial fit degree for the memory plots. Overrides "
+                             "--poly-degree for memory only (e.g. 1 for linear).")
     parser.add_argument("--no-poly-label", action="store_true",
                         help="Draw the polynomial fit curve but omit the equation label "
                              "in the bottom-right corner of the plot.")
@@ -533,11 +542,15 @@ def main():
     fit_poly_pairs     = set(args.fit_poly_time) if args.fit_poly_time is not None else None
     fit_poly_pairs_mem = set(args.fit_poly_mem) if args.fit_poly_mem is not None else None
     poly_label         = not args.no_poly_label
+    # Per-axis degree, each falling back to the shared --poly-degree default.
+    poly_degree_time   = args.poly_degree_time if args.poly_degree_time is not None else args.poly_degree
+    poly_degree_mem    = args.poly_degree_mem  if args.poly_degree_mem  is not None else args.poly_degree
 
     if args.rq == "rq3":
         run_rq3(df, stem, args.error, annotate_pairs, args.log_scale_time,
                 args.log_scale_mem,
-                fit_poly_pairs, fit_poly_pairs_mem, args.poly_degree,
+                fit_poly_pairs, fit_poly_pairs_mem,
+                poly_degree_time, poly_degree_mem,
                 poly_label)
     elif args.rq == "rq4":
         run_rq4(df, stem, args.error, annotate_pairs, args.log_scale_time,
