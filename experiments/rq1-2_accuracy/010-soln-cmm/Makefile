@@ -1,7 +1,7 @@
 SHELL       := /usr/bin/bash
 .SHELLFLAGS := -o pipefail -c
 
-CMM_PERF := ../cmm_test
+CMM_TEST := ../../bin/cmm_test
 
 .PHONY: usage
 usage:
@@ -21,5 +21,5 @@ all: $(DATASET)/$(DATASET).cmm.l$(L)d$(D).k$(K_TOP).out
 
 $(DATASET)/$(DATASET).cmm.l$(L)d$(D).k$(K_TOP).out: $(FASTA) $(INTS)
 	mkdir -p $(@D)
-	$(CMM_PERF) $(FASTA) $(INTS) $(L) $(D) $(K_TOP) $(THREADS) $@ \
+	$(CMM_TEST) $(FASTA) $(INTS) $(L) $(D) $(K_TOP) $(THREADS) $@ \
 		> $(@:.out=.perf)
