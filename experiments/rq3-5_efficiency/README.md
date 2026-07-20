@@ -6,8 +6,9 @@
 
 ## Prerequisites
 
+Under the `experiments` directory:
 1. Build `cmm_perf` by running `make`.
-2. Run `../data/run.sh` to generate the artificial instances used for this experiment.
+2. Run `./data/run.sh` to generate the artificial instances used for this experiment.
 
 Python dependencies for plotting (`pandas`, `matplotlib`, `seaborn`) are listed
 in `requirements.txt` and installed automatically into a local `venv/` on first
