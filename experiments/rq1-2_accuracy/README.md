@@ -10,10 +10,10 @@ Under the `experiments` directory:
    `bin/cmm_eval`, `bin/cmm_dedup`).
 2. Have the real datasets available under `data/real_instances/` (produced by
    `./data/run.sh`).
+3. Unzip the source code for SLIDER in `000-slider` (see instructions therein).
 
-SLIDER is invoked from `010-soln-slider/` as a Java jar under
-`000-slider/SliderLight/`. The plotting stages use `gnuplot` (with the
-`cairolatex` terminal) and produce LaTeX/PGF `.tex` figures.
+SLIDER is invoked from `010-soln-slider/` as a Java jar under `000-slider/SliderLight/`.
+The plotting stages use `gnuplot` (with the `cairolatex` terminal) and produce LaTeX/PGF `.tex` figures.
 
 ## Usage
 
