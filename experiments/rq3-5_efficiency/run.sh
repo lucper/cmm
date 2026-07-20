@@ -34,7 +34,7 @@ K=10000
 RQ5_ELL=8
 RQ5_D=2
 
-source ../experiments.conf
+source ../params.conf
 
 V_MAX=$(echo ${NODE_COUNTS} | tr ' ' '\n' | sort -n | tail -1)
 

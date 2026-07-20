@@ -26,9 +26,7 @@ ORGANISMS=(
     "7227:Drosophila_melanogaster"
 )
 
-INSTANCE_TAXID=9606
-DENSITIES="05 10 15 20 25 30"
-NODE_COUNTS="50 100 200 400 800 1600 3200"
+source ../params.conf
 
 SCRIPT_DIR="scripts"
 FETCH="${SCRIPT_DIR}/fetch_string.sh"
