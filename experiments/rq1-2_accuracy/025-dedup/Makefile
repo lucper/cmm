@@ -1,7 +1,9 @@
 SHELL       := /usr/bin/bash
 .SHELLFLAGS := -o pipefail -c
 
-CMM_DEDUP   := ../cmm_dedup
+CMM_DEDUP   := ../../bin/cmm_dedup
+
+EXACT_DIR   := ../010-soln-cmm/$(DATASET)
 
 INPUT       := ../020-agg/$(DATASET)
 
@@ -16,15 +18,8 @@ usage:
 	@echo "       L=<motif length>"
 	@echo "       D=<number of wildcards>"
 	@echo "       K_TOP=<top motif pairs>      (SLIDER dedup only)"
-	@echo "       EXACT_DIR=<dir with exact .out>  (cmm dedup only)"
 
 .DELETE_ON_ERROR:
-
-ifneq (,$(filter cmm,$(MAKECMDGOALS)))
-ifndef EXACT_DIR
-$(error EXACT_DIR is required for the cmm target (directory containing the exact .out files))
-endif
-endif
 
 .PHONY: slider
 slider: $(DATASET)/$(DATASET).seq_slider.l$(L)d$(D).agg.trials$(R).min$(T).k$(K_TOP).dedup.out \
