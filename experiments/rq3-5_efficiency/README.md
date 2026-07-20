@@ -7,7 +7,7 @@
 ## Prerequisites
 
 Under the `experiments` directory:
-1. Build `cmm_perf` by running `make`.
+1. Build `cmm_test` by running `make`.
 2. Run `./data/run.sh` to generate the artificial instances used for this experiment.
 
 Python dependencies for plotting (`pandas`, `matplotlib`, `seaborn`) are listed
@@ -28,16 +28,16 @@ Each measurement is keyed by `(trial, instance, ell, d, threads)`; rows already 
 
 | File                | Role                                                              |
 |---------------------|-------------------------------------------------------------------|
-| `run.sh`            | Driver: runs `cmm_perf` over the instances, then plots.           |
+| `run.sh`            | Driver: runs `cmm_test` over the instances, then plots.           |
 | `plot.py`           | Renders the TSVs into PDFs under `plots/`.                        |
 | `requirements.txt`  | Python dependencies for `plot.py`.                                |
-| `cmm_perf`          | The profiled binary version of `cmm` (exact algorithm).           |
+| `cmm_test`          | The profiled binary version of `cmm` (exact algorithm).           |
 | `rq{3,4,5}_out.tsv` | Measurement output, one row per run (generated).                  |
 | `plots/`            | Rendered PDFs (generated).                                        |
 
 ## Output format
 
-Each row of `rq{3,4,5}_out.tsv` is one `cmm_perf` run with the trial number
+Each row of `rq{3,4,5}_out.tsv` is one `cmm_test` run with the trial number
 prepended, tab-separated:
 
 | # | Column | | # | Column | | # | Column |
