@@ -1,8 +1,13 @@
-## Installation
-**Requirements:**
+# Code for "Mining Correlated Motifs with Wildcards in PPI networks: Exact and Optimal"
+
+Here, you will find the source code for the exact algorithm proposed in "Mining Correlated Motifs with Wildcards in PPI networks: Exact and Optimal".
+To run the code used for Section 5 (**Experimental Results**), go to `experiments` and follow the instructions therein.
+
+## Requirements
 - C++17 compiler GCC 7+
 - GNU/Linux system (e.g., Ubuntu, Fedora)
 
+## Installation
 Run the following command in the current directory to compile and link the code:
 ```bash
 make

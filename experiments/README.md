@@ -12,6 +12,9 @@ Here, you will find two experiment suites to answer the five research questions 
 
 ## One-time setup
 
+Developed and run on a GNU/Linux system (x86-64).
+The scripts use GNU tooling and bash features, so a Linux environment (or WSL) is assumed.
+
 From this directory:
 
 ```bash
