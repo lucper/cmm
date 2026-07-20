@@ -1,8 +1,8 @@
 ## Research questions
 
-- *RQ3:* How does our algorithm scale as $V$ (and thus $N$) grows?
-- *RQ4:* How does our algorithm scale as $E$ grows?
-- *RQ5:* How does our algorithm scale as the number $t$ of threads used increases?
+- **RQ3:** How does our algorithm scale as $V$ (and thus $N$) grows?
+- **RQ4:** How does our algorithm scale as $E$ grows?
+- **RQ5:** How does our algorithm scale as the number $t$ of threads used increases?
 
 ## Prerequisites
 
@@ -30,7 +30,7 @@ Each measurement is keyed by `(trial, instance, ell, d, threads)`; rows already 
 | `run.sh`            | Driver: runs `cmm_perf` over the instances, then plots.           |
 | `plot.py`           | Renders the TSVs into PDFs under `plots/`.                        |
 | `requirements.txt`  | Python dependencies for `plot.py`.                                |
-| `cmm_perf`          | The profiled binary of `cmm` (exact algorithm)).                  |
+| `cmm_perf`          | The profiled binary version of `cmm` (exact algorithm).           |
 | `rq{3,4,5}_out.tsv` | Measurement output, one row per run (generated).                  |
 | `plots/`            | Rendered PDFs (generated).                                        |
 
