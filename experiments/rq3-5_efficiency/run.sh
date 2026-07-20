@@ -34,6 +34,10 @@ K=10000
 RQ5_ELL=8
 RQ5_D=2
 
+source ../experiments.conf
+
+V_MAX=$(echo ${NODE_COUNTS} | tr ' ' '\n' | sort -n | tail -1)
+
 # RQ5 thread counts: start at 1 and double up to MAX_THREADS.
 rq5_thread_counts() {
     local threads=""
@@ -121,10 +125,10 @@ then
     ED=05
     for trial in $(seq 1 ${TRIALS})
     do
-        for v in 100 200 400 800 1600 3200
+        for v in ${NODE_COUNTS}
         do
-            fa="${INSTANCE_DIR}/ed${ED}/sampled_human_V${v}_ed${ED}.fa"
-            int="${INSTANCE_DIR}/ed${ED}/sampled_human_V${v}_ed${ED}.int"
+            fa="${INSTANCE_DIR}/ed${ED}/sampled_${INSTANCE_TAXID}_V${v}_ed${ED}.fa"
+            int="${INSTANCE_DIR}/ed${ED}/sampled_${INSTANCE_TAXID}_V${v}_ed${ED}.int"
 
             ell=5
             for d in 0 1 2 3 4
@@ -142,13 +146,13 @@ then
 
     ## RQ4
     echo "Running experiment for RQ4..." >&2
-    V=3200
+    V=${V_MAX}
     for trial in $(seq 1 ${TRIALS})
     do
-        for ed in 05 10 15 20 25 30
+        for ed in ${DENSITIES}
         do
-            fa="${INSTANCE_DIR}/ed${ed}/sampled_human_V${V}_ed${ed}.fa"
-            int="${INSTANCE_DIR}/ed${ed}/sampled_human_V${V}_ed${ed}.int"
+            fa="${INSTANCE_DIR}/ed${ed}/sampled_${INSTANCE_TAXID}_V${V}_ed${ed}.fa"
+            int="${INSTANCE_DIR}/ed${ed}/sampled_${INSTANCE_TAXID}_V${V}_ed${ed}.int"
 
             ell=5
             for d in 0 1 2 3 4
@@ -167,13 +171,13 @@ then
     ## RQ5
     echo "Running experiment for RQ5..." >&2
     ED=05
-    V=3200
+    V=${V_MAX}
     for trial in $(seq 1 ${TRIALS})
     do
         for t in $(rq5_thread_counts)
         do
-            fa="${INSTANCE_DIR}/ed${ED}/sampled_human_V${V}_ed${ED}.fa"
-            int="${INSTANCE_DIR}/ed${ED}/sampled_human_V${V}_ed${ED}.int"
+            fa="${INSTANCE_DIR}/ed${ED}/sampled_${INSTANCE_TAXID}_V${V}_ed${ED}.fa"
+            int="${INSTANCE_DIR}/ed${ED}/sampled_${INSTANCE_TAXID}_V${V}_ed${ED}.int"
             run_cmm_perf ${OUT_RQ5} ${trial} ${fa} ${int} ${RQ5_ELL} ${RQ5_D} ${t}
         done
     done
