@@ -1,6 +1,6 @@
 SHELL    := /usr/bin/bash
 
-CMM_EVAL := ../cmm_eval
+CMM_EVAL := ../../bin/cmm_eval
 
 INPUT    := ../025-dedup/$(DATASET)
 
