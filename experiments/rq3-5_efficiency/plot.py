@@ -71,9 +71,12 @@ def fit_polynomial(x, y, degree=2, relative=True):
     return np.polyfit(x, y, degree, w=w)
 
 def _fmt_coeff(v):
-    """Format a coefficient legibly: plain decimals for moderate magnitudes,
-    scientific (mantissa x 10^exp) only when the value is very small or very
-    large. Returns the magnitude string (sign is handled by the caller)."""
+    """Format a coefficient magnitude legibly.
+
+    Uses plain decimals for moderate magnitudes and scientific notation
+    (mantissa x 10^exp) only when the value is very small or very large. The
+    sign is handled by the caller; this returns the magnitude string only.
+    """
     a = abs(v)
     if a == 0:
         return "0"
@@ -152,9 +155,11 @@ def ell_d_pair(s):
         )
 
 def save_legend(handles, labels, output_path, max_cols=4):
-    """Save a standalone legend PDF, fixed canvas size for uniform scaling.
-    Uses min(len(labels), max_cols) columns; the legend itself centers in
-    the canvas so fewer entries cluster in the middle with whitespace.
+    """Save a standalone legend PDF on a fixed-size canvas.
+
+    The fixed canvas keeps legends across plots at a uniform scale. Uses
+    min(len(labels), max_cols) columns; the legend centers in the canvas, so
+    fewer entries cluster in the middle with surrounding whitespace.
     """
     if not labels:
         return
@@ -171,19 +176,23 @@ def plot_one(df_ell, x_col, x_label, y_col, y_label, title,
              ell=None, annotate_pairs=None, log_scale=False,
              show_legend=True, speedup=False,
              fit_poly_pairs=None, poly_degree=2, poly_label=True):
-    """Plot one (ell, x, y) view with lines per d.
-    annotate_pairs: set of (ell, d) tuples to annotate with max_rank, or None.
-    fit_poly_pairs: set of (ell, d) tuples to overlay a polynomial fit
-      (a*x^deg + ... + c) on, or None. Fit with 1/y weighting so it is not
-      dominated by large-y points; evaluated directly at each point's true x
-      (no log-axis interpolation), then plotted at that point's position.
-    poly_degree: degree of the polynomial fit (default 2).
-    poly_label: if True, annotate the polynomial curve with its equation in
-      the bottom-right corner. The curve is drawn regardless; this only
-      controls the text label.
-    speedup: if True, label each point with its speedup relative to the
-      smallest x value in its own series (so the leftmost point reads 1.0x).
-      Only meaningful when x is a thread count and y is a time.
+    """Plot one (ell, x, y) view with one line per d value.
+
+    Args:
+        annotate_pairs: Set of (ell, d) tuples to annotate with max_rank,
+            or None.
+        fit_poly_pairs: Set of (ell, d) tuples to overlay a polynomial fit
+            (a*x^deg + ... + c) on, or None. Fit with 1/y weighting so it is
+            not dominated by large-y points; evaluated directly at each
+            point's true x (no log-axis interpolation), then plotted at that
+            point's position.
+        poly_degree: Degree of the polynomial fit (default 2).
+        poly_label: If True, annotate the polynomial curve with its equation
+            in the bottom-right corner. The curve is drawn regardless; this
+            only controls the text label.
+        speedup: If True, label each point with its speedup relative to the
+            smallest x value in its own series (so the leftmost point reads
+            1.0x). Only meaningful when x is a thread count and y is a time.
     """
     ds      = sorted(df_ell["d"].unique())
     palette = sns.color_palette("tab10", n_colors=len(ds))
