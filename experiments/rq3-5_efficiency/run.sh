@@ -27,16 +27,22 @@ OUT_RQ3="rq3_out.tsv"
 OUT_RQ4="rq4_out.tsv"
 OUT_RQ5="rq5_out.tsv"
 
-MAX_THREADS=128
-TRIALS=1
-K=10000
-
-RQ5_ELL=8
-RQ5_D=2
-
+# Shared with the producer (DENSITIES, NODE_COUNTS, INSTANCE_TAXID).
 source ../params.conf
 
 V_MAX=$(echo ${NODE_COUNTS} | tr ' ' '\n' | sort -n | tail -1)
+MAX_THREADS=128      # thread cap; RQ3/RQ4 use this, RQ5 sweeps 1..MAX_THREADS
+TRIALS=1             # repeats per configuration
+K=10000              # number of top motif pairs cmm_perf keeps
+ELLS="5 8"
+FIXED_ED=05
+RQ5_ELL=8
+RQ5_D=2
+
+# For a given ell, echo the wildcard counts d = 0 .. ell-1.
+d_range() {
+    seq 0 $(( $1 - 1 ))
+}
 
 # RQ5 thread counts: start at 1 and double up to MAX_THREADS.
 rq5_thread_counts() {
@@ -50,10 +56,21 @@ rq5_thread_counts() {
     echo "${threads} ${MAX_THREADS}"
 }
 
+# Checks
 case "${MAX_THREADS}" in
     ''|*[!0-9]*) echo "Error: MAX_THREADS must be a positive integer." >&2; exit 1 ;;
 esac
 [ "${MAX_THREADS}" -ge 1 ] || { echo "Error: MAX_THREADS must be >= 1." >&2; exit 1; }
+
+case " ${DENSITIES} " in
+    *" ${FIXED_ED} "*) ;;
+    *) echo "Error: FIXED_ED (${FIXED_ED}) is not in DENSITIES (${DENSITIES})." >&2; exit 1 ;;
+esac
+
+case " ${ELLS} " in
+    *" ${RQ5_ELL} "*) ;;
+    *) echo "Error: RQ5_ELL (${RQ5_ELL}) is not in ELLS (${ELLS})." >&2; exit 1 ;;
+esac
 
 PLOT_ONLY=0
 if [ "$#" -gt 0 ]
@@ -122,7 +139,7 @@ then
 
     ## RQ3
     echo "Running experiment for RQ3..." >&2
-    ED=05
+    ED=${FIXED_ED}
     for trial in $(seq 1 ${TRIALS})
     do
         for v in ${NODE_COUNTS}
@@ -130,16 +147,12 @@ then
             fa="${INSTANCE_DIR}/ed${ED}/sampled_${INSTANCE_TAXID}_V${v}_ed${ED}.fa"
             int="${INSTANCE_DIR}/ed${ED}/sampled_${INSTANCE_TAXID}_V${v}_ed${ED}.int"
 
-            ell=5
-            for d in 0 1 2 3 4
+            for ell in ${ELLS}
             do
-                run_cmm_perf ${OUT_RQ3} ${trial} ${fa} ${int} ${ell} ${d} ${MAX_THREADS}
-            done
-
-            ell=8
-            for d in 0 1 2 3 4 5 6 7
-            do
-                run_cmm_perf ${OUT_RQ3} ${trial} ${fa} ${int} ${ell} ${d} ${MAX_THREADS}
+                for d in $(d_range ${ell})
+                do
+                    run_cmm_perf ${OUT_RQ3} ${trial} ${fa} ${int} ${ell} ${d} ${MAX_THREADS}
+                done
             done
         done
     done
@@ -154,23 +167,19 @@ then
             fa="${INSTANCE_DIR}/ed${ed}/sampled_${INSTANCE_TAXID}_V${V}_ed${ed}.fa"
             int="${INSTANCE_DIR}/ed${ed}/sampled_${INSTANCE_TAXID}_V${V}_ed${ed}.int"
 
-            ell=5
-            for d in 0 1 2 3 4
+            for ell in ${ELLS}
             do
-                run_cmm_perf ${OUT_RQ4} ${trial} ${fa} ${int} ${ell} ${d} ${MAX_THREADS}
-            done
-
-            ell=8
-            for d in 0 1 2 3 4 5 6 7
-            do
-                run_cmm_perf ${OUT_RQ4} ${trial} ${fa} ${int} ${ell} ${d} ${MAX_THREADS}
+                for d in $(d_range ${ell})
+                do
+                    run_cmm_perf ${OUT_RQ4} ${trial} ${fa} ${int} ${ell} ${d} ${MAX_THREADS}
+                done
             done
         done
     done
 
     ## RQ5
     echo "Running experiment for RQ5..." >&2
-    ED=05
+    ED=${FIXED_ED}
     V=${V_MAX}
     for trial in $(seq 1 ${TRIALS})
     do
@@ -189,10 +198,8 @@ fi
 echo "Plotting results..." >&2
 mkdir -p ${PLOT_DIR}
 
-# (ell:d) pairs annotated with max_rank on the time plots.
-ANNOTATE="8:4 8:7 5:2 5:4"
-# (ell:d) pairs given a polynomial fit on the RQ3 plots.
-POLY_PAIRS="5:1 5:3 8:2 8:5"
+ANNOTATE="8:4 8:7 5:2 5:4"     # points annotated with max_rank
+POLY_PAIRS="5:1 5:3 8:2 8:5"   # points given a polynomial fit on RQ3
 
 # RQ3: log-scale both axes, quadratic fit on time, linear fit on memory.
 if [ ! -s "${OUT_RQ3}" ]
