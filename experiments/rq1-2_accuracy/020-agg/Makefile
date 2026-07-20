@@ -1,7 +1,7 @@
 SHELL       := /usr/bin/bash
 .SHELLFLAGS := -o pipefail -c
 
-INPUT       := ../010-soln/$(DATASET)
+INPUT       := ../010-soln-slider/$(DATASET)
 
 .PHONY: usage
 usage:
