@@ -27,7 +27,6 @@ ORGANISMS=(
 )
 
 INSTANCE_TAXID=9606
-INSTANCE_NAME=human
 DENSITIES="05 10 15 20 25 30"
 NODE_COUNTS="50 100 200 400 800 1600 3200"
 
@@ -111,8 +110,8 @@ do
     mkdir -p ${INSTANCE_DIR}/ed${ed}
     for v in ${NODE_COUNTS}
     do
-        fa="${INSTANCE_DIR}/ed${ed}/sampled_${INSTANCE_NAME}_V${v}_ed${ed}.fa"
-        int="${INSTANCE_DIR}/ed${ed}/sampled_${INSTANCE_NAME}_V${v}_ed${ed}.int"
+        fa="${INSTANCE_DIR}/ed${ed}/sampled_${INSTANCE_TAXID}_V${v}_ed${ed}.fa"
+        int="${INSTANCE_DIR}/ed${ed}/sampled_${INSTANCE_TAXID}_V${v}_ed${ed}.int"
         if [ ! -f "${fa}" ] || [ ! -f "${int}" ]
         then
             echo "  V=${v} ed=0.${ed}" >&2
@@ -127,4 +126,4 @@ done
 
 echo "Done." >&2
 echo "  cleaned data (all organisms): ${CLEAN_DIR}/" >&2
-echo "  instances (${INSTANCE_NAME}):  ${INSTANCE_DIR}/ed<NN>/" >&2
+echo "  instances (${INSTANCE_TAXID}):  ${INSTANCE_DIR}/ed<NN>/" >&2
