@@ -18,7 +18,7 @@ set -euo pipefail
 cd "$(dirname "$0")"
 
 INSTANCE_DIR="../data/artificial_instances"
-CMM_PERF="./cmm_perf"
+CMM_PERF="../cmm_perf"
 PLOT="./plot.py"
 VENV="venv"
 PLOT_DIR="plots"
