@@ -28,27 +28,30 @@ The script `data/run.sh` populates both `data/real_instances/` (used by RQ1-RQ2)
 ## RQ1 and RQ2 (accuracy experiment)
 
 Each `run.sh` invocation runs the experiment for **one parameter cell** on a real dataset.
-For example, from `rq1-2_accuracy`:
-1. Pick a cleaned dataset from `data/real_instances/` (here taxon `9606`).
+From `rq1-2_accuracy`:
 ```bash
-FA=../data/real_instances/9606.sequences.s700.clean.fa
-INT=../data/real_instances/9606.links.s700.clean.int
-```
-2. Run a parameter cell:
-```bash
-./run.sh -D 9606 -f "$FA" -i "$INT" \
-         -r 5 -t 10 -l 8 -d 3 -k 1000 -K 1000 -H 8 -c 70 -p 8
+DATASETS="9606 3702 4932 511145 7227"
+P="128"
+Ds="3 5"
+
+for d in ${Ds}
+do
+    for dataset in ${DATASETS}
+    do
+        ./run.sh -D ${dataset} -r 10 -t 10 -l 8 -d ${d} -k 10000 -K 10000 -H 8 -c 70 -p ${P} \
+                 -f ../data/real_instances/${dataset}.sequences.s700.clean.fa \
+                 -i ../data/real_instances/${dataset}.links.s700.clean.int
+    done
+done
 ```
 
-The `-l/-d` (motif length / number of wildcards) and `-k/-K/-H/-c` values above are illustrative
 See `rq1-2_accuracy/README.md` for what every flag means and how the outputs are named.
 
 ## RQ3, RQ4, and RQ5 (efficiency experiment)
 
-A single driver runs the exact algorithm over the artificial instances and plots the results:
-
+A single driver runs the exact algorithm over the artificial instances and plots the results.
+From `rq3-5_efficiency`:
 ```bash
-cd rq3-5_efficiency
 ./run.sh               # run code for RQ3, RQ4, RQ5, then plot
 ./run.sh --plot-only   # re-plot existing results without re-measuring
 ```
