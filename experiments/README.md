@@ -24,6 +24,7 @@ make -C src            # builds bin/cmm_test, bin/cmm_eval, bin/cmm_dedup
 
 Both suites call binaries in `bin/` and expect their inputs under `data/`.
 The script `data/run.sh` populates both `data/real_instances/` (used by RQ1-RQ2) and `data/artificial_instances/` (used by RQ3-RQ5).
+
 **Note:** For convenience, `data/slider_data` (after unzip) contains the datasets from the evaluation of SLIDER.
 See `data/README.md` for references.
 
