@@ -86,3 +86,10 @@ MLHxx TFIxx 0,17
 MLHxx TKDxx 0,17
 MLHxx RTQxx 0,17
 ```
+
+## Citation
+If you use this software, please cite the following paper.
+```text
+Lucas Peres Oliveira, Ben Bals, Aalt-Jan van Dijk, and Solon P. Pissis. Mining Correlated Motifs with Wildcards in PPI networks: Exact and Optimal. In SIAM Symposium on Algorithm Engineering
+and Experiments, ALENEX 2027, 2027.
+```
