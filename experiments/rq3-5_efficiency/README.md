@@ -53,3 +53,6 @@ Note that `num_threads_spawned` (13) may be lower than `num_threads_requested` (
 
 `plot.py` writes PDFs into `plots/`, keyed by RQ. Time and memory are separate figures, with the legend saved as a standalone PDF.
 The exact styling per RQ (log scaling, polynomial fits, `max_rank` annotations, RQ5 speedup labels) is set by the `plot.py` invocations in `run.sh`.
+
+The memory plots of RQ3 and RQ4 show the peak RAM **per thread**: `peak_ram_kb` (15), i.e. the peak resident set size of the whole process, divided by `num_threads_spawned` (13). This is set with the `--mem-per-thread` flag of `plot.py`.
+The memory plot of RQ5 shows the **total** peak RAM, since it measures how memory grows with the number of threads.

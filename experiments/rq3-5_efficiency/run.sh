@@ -201,7 +201,7 @@ mkdir -p ${PLOT_DIR}
 ANNOTATE="8:4 8:7 5:2 5:4"     # points annotated with max_rank
 POLY_PAIRS="5:1 5:3 8:2 8:5"   # points given a polynomial fit on RQ3
 
-# RQ3: log-scale both axes, quadratic fit on time, linear fit on memory.
+# RQ3: log-scale both axes, quadratic fit on time, linear fit on memory per thread.
 if [ ! -s "${OUT_RQ3}" ]
 then
     echo "  ${OUT_RQ3} missing or empty, skipping rq3 plots" >&2
@@ -218,10 +218,11 @@ else
         --poly-degree-time 2 \
         --poly-degree-mem 1 \
         --no-poly-label \
-        --max-rank ${ANNOTATE}
+        --max-rank ${ANNOTATE} \
+        --mem-per-thread
 fi
 
-# RQ4: annotate selected points with max_rank (linear axes, no fits).
+# RQ4: annotate selected points with max_rank (linear axes, no fits), memory per thread.
 if [ ! -s "${OUT_RQ4}" ]
 then
     echo "  ${OUT_RQ4} missing or empty, skipping rq4 plots" >&2
@@ -231,10 +232,11 @@ else
         --input ${OUT_RQ4} \
         --rq rq4 \
         --output ${PLOT_DIR}/rq4 \
-        --max-rank ${ANNOTATE}
+        --max-rank ${ANNOTATE} \
+        --mem-per-thread
 fi
 
-# RQ5: speedup labels, log-scale both axes.
+# RQ5: speedup labels, log-scale both axes, total memory.
 if [ ! -s "${OUT_RQ5}" ]
 then
     echo "  ${OUT_RQ5} missing or empty, skipping rq5 plots" >&2

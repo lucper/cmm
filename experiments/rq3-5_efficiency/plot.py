@@ -123,10 +123,14 @@ def _format_poly(coeffs, var="V"):
     return out if out else "0"
 
 
-def load(path):
+def load(path, mem_per_thread=False):
     df = pd.read_csv(path, sep="\t", header=None, names=COLS)
     df["time_s"]      = df["time_ms"] / 1000.0
     df["peak_ram_mb"] = df["peak_ram_kb"] / 1024.0
+    # Peak RSS of the whole process divided by the threads actually spawned,
+    # which can be fewer than requested.
+    if mem_per_thread:
+        df["peak_ram_mb"] /= df["num_threads_spawned"]
     return df
 
 def v_to_n(df):
@@ -531,11 +535,14 @@ def main():
                              "relative to the fewest-threads run of the same series")
     parser.add_argument("--rq5-ell", type=int, default=5,
                         help="Motif length used for the RQ5 thread-scaling run (default: 5)")
+    parser.add_argument("--mem-per-thread", action="store_true",
+                        help="Plot peak RAM divided by the number of threads spawned "
+                             "instead of the total peak RAM of the process")
     args = parser.parse_args()
 
     sns.set_theme(style="white", font_scale=1.0)
 
-    df   = load(args.input)
+    df   = load(args.input, args.mem_per_thread)
     stem = str(Path(args.output).with_suffix(""))  # strip extension if given
 
     annotate_pairs     = set(args.max_rank) if args.max_rank is not None else None
