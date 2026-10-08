@@ -6,7 +6,9 @@ static void flush_fasta_entry(const std::string &current_id,
                               graph_input_t &result) {
     if (current_id.empty()) return;
     uint32_t idx = static_cast<uint32_t>(result.node_labels.size());
-    id_to_index[current_id] = idx;
+    auto [it, inserted] = id_to_index.emplace(current_id, idx);
+    if (!inserted)
+        throw std::runtime_error("Duplicate identifier in FASTA file: " + current_id);
     result.node_labels.push_back(std::move(current_seq));
     result.adj_list.emplace_back();
 }
