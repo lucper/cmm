@@ -1,7 +1,7 @@
 # Code for "Mining Correlated Motifs with Wildcards in PPI networks: Exact and Optimal"
 
 Here, you will find the source code for the exact algorithm proposed in "Mining Correlated Motifs with Wildcards in PPI networks: Exact and Optimal".
-To run the code used for Section 5 (**Experimental Results**), go to `experiments` and follow the instructions therein.
+To reproduce Section 5 (**Experimental Results**), see [Reproducing the experiments](#reproducing-the-experiments).
 
 ## Requirements
 - C++17 compiler GCC 7+
@@ -86,6 +86,34 @@ MLHxx TFIxx 0,17
 MLHxx TKDxx 0,17
 MLHxx RTQxx 0,17
 ```
+
+## Reproducing the experiments
+The script `runme.sh` runs all the experiments of Section 5 (**Experimental Results**) and collects the results in `output/`.
+It has two modes:
+```bash
+./runme.sh      # full experiments of the paper (takes several days with 128 threads)
+./runme.sh -s   # subset evaluated by the ALENEX 2027 Artifact Evaluation Committee (takes a few hours with 64 threads)
+```
+All parameters of both modes are set at the top of `runme.sh`.
+Internet access is needed on the first run, since the datasets are downloaded from the STRING database.
+On a Linux host, the run can be resumed: rerunning `runme.sh` skips the work that is already done (in Docker with `--rm`, intermediate results are discarded when the container exits).
+
+To run `runme.sh` in Docker, use the provided `Dockerfile`:
+```bash
+docker build -t cmm-repro .
+docker run --rm -it -v "$PWD/output:/work/output" cmm-repro               # full experiments
+docker run --rm -it -v "$PWD/output:/work/output" cmm-repro ./runme.sh -s # subset
+```
+
+To run it directly on a Linux host, install the following (Ubuntu package names):
+```text
+build-essential make wget curl gzip gawk tar unzip
+default-jre-headless gnuplot-nox
+texlive-latex-base texlive-pictures texlive-latex-recommended
+python3 python3-pip python3-venv
+```
+
+To run each experiment suite separately, see [`experiments/README.md`](experiments/README.md).
 
 ## Citation
 If you use this software, please cite the following paper.

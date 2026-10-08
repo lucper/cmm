@@ -10,6 +10,9 @@ Here, you will find two experiment suites to answer the five research questions 
     - **RQ4:** How does our algorithm scale as $E$ grows?
     - **RQ5:** How does our algorithm scale as the number $t$ of threads used increases?
 
+To run everything at once, use `runme.sh` in the root directory (see the root `README.md`).
+The rest of this file describes how to run each step separately.
+
 ## One-time setup
 
 Everything was developed and run on a GNU/Linux system (x86-64).
