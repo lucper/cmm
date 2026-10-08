@@ -22,7 +22,7 @@ Usage: $0 [-s]
 
 Options:
   -s  run the subset of the experiments evaluated by the ALENEX 2027 AEC
-      (takes hours) instead of the full experiments of the paper (takes days)
+      instead of the full experiments of the paper
   -h  show this help and exit
 EOF
 }
