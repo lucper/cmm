@@ -34,9 +34,13 @@ graph_input_t read_graph_files(const std::string &edge_path,
                 auto space = current_id.find_first_of(" \t");
                 if (space != std::string::npos)
                     current_id = current_id.substr(0, space);
+                if (current_id.empty())
+                    throw std::runtime_error("FASTA header without an identifier: " + line);
                 current_seq.clear();
             } else {
                 line.erase(line.find_last_not_of(" \t\r\n") + 1);
+                if (!line.empty() && current_id.empty())
+                    throw std::runtime_error("Sequence line before the first FASTA header: " + line);
                 current_seq += line;
             }
         }
