@@ -45,21 +45,18 @@ SLIDER_DATA="yeast_ii"
 
 (
     cd "${WDIR}/rq1-2_accuracy"
-    for d in ${Ds}
+    for dataset in ${STRING_DATA}
     do
-        for dataset in ${STRING_DATA}
-        do
-            ./run.sh -D "${dataset}" -r 10 -t 10 -l 8 -d "${d}" -k 10000 -K 10000 -H 8 -c 70 -p "${P}" \
-                     -f "../data/real_instances/${dataset}.sequences.s700.clean.fa" \
-                     -i "../data/real_instances/${dataset}.links.s700.clean.int"
-        done
+        ./run.sh -D "${dataset}" -r 10 -t 10 -l 8 -d "${Ds}" -k 10000 -K 10000 -H 8 -c 70 -p "${P}" \
+                 -f "../data/real_instances/${dataset}.sequences.s700.clean.fa" \
+                 -i "../data/real_instances/${dataset}.links.s700.clean.int"
+    done
 
-        for dataset in ${SLIDER_DATA}
-        do
-            ./run.sh -D "${dataset}" -r 10 -t 10 -l 8 -d "${d}" -k 10000 -K 10000 -H 8 -c 70 -p "${P}" \
-                     -f "../data/slider_data/${dataset}.clean.fa" \
-                     -i "../data/slider_data/${dataset}.clean.int"
-        done
+    for dataset in ${SLIDER_DATA}
+    do
+        ./run.sh -D "${dataset}" -r 10 -t 10 -l 8 -d "${Ds}" -k 10000 -K 10000 -H 8 -c 70 -p "${P}" \
+                 -f "../data/slider_data/${dataset}.clean.fa" \
+                 -i "../data/slider_data/${dataset}.clean.int"
     done
 )
 

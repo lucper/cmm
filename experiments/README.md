@@ -43,29 +43,21 @@ See `data/README.md` for references.
 
 ## RQ1 and RQ2 (accuracy experiment)
 
-Each `run.sh` invocation runs the experiment for **one parameter cell** on a real dataset.
-From `rq1-2_accuracy`:
+Each `run.sh` invocation runs the experiment on **one real dataset**, for every number of wildcards given with `-d`.
+From `rq1-2_accuracy`, the following runs it with the parameters of the paper:
 ```bash
-P="128"
-Ds="3 5"
-
-for d in ${Ds}
+for dataset in 9606 3702 4932 511145 7227
 do
-    STRING_DATA="9606 3702 4932 511145 7227"
-    for dataset in ${STRING_DATA}
-    do
-        ./run.sh -D ${dataset} -r 10 -t 10 -l 8 -d ${d} -k 10000 -K 10000 -H 8 -c 70 -p ${P} \
-                 -f ../data/real_instances/${dataset}.sequences.s700.clean.fa \
-                 -i ../data/real_instances/${dataset}.links.s700.clean.int
-    done
+    ./run.sh -D ${dataset} -r 10 -t 10 -l 8 -d "3 5" -k 10000 -K 10000 -H 8 -c 70 -p 128 \
+             -f ../data/real_instances/${dataset}.sequences.s700.clean.fa \
+             -i ../data/real_instances/${dataset}.links.s700.clean.int
+done
 
-    SLIDER_DATA="yeast_ii human_ii"
-    for dataset in ${DATASETS}
-    do
-        ./run.sh -D ${dataset} -r 10 -t 10 -l 8 -d ${d} -k 10000 -K 10000 -H 8 -c 70 -p ${P} \
-                 -f ../data/slider_data/${dataset}.clean.fa \
-                 -i ../data/slider_data/${dataset}.clean.int
-    done
+for dataset in yeast_ii human_ii
+do
+    ./run.sh -D ${dataset} -r 10 -t 10 -l 8 -d "3 5" -k 10000 -K 10000 -H 8 -c 70 -p 128 \
+             -f ../data/slider_data/${dataset}.clean.fa \
+             -i ../data/slider_data/${dataset}.clean.int
 done
 ```
 
