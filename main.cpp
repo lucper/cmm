@@ -78,6 +78,10 @@ int main(int argc, char* argv[]) {
 
         auto gi = read_graph_files(path_to_edges, path_to_nodes);
 
+        // At least one pair of proteins is needed to compute the edge density.
+        if (gi.node_labels.size() < 2)
+            throw std::invalid_argument("The input must contain at least two sequences.");
+
         // Every sequence must contain at least one motif occurrence.
         size_t num_short = 0;
         for (const auto& seq : gi.node_labels)

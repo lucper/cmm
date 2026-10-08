@@ -77,6 +77,9 @@ graph_input_t read_graph_files(const std::string &edge_path,
             result.adj_list[v].emplace_back(u, edge_id);
             ++edge_id;
         }
+
+        if (edge_id == 0)
+            throw std::runtime_error("No interactions found in interactions file: " + edge_path);
     }
 
     return result;
