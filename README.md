@@ -129,8 +129,23 @@ To run each experiment suite separately, see [`experiments/README.md`](experimen
 
 ## Citation
 If you use this software, please cite the following paper.
-```text
-Lucas Peres Oliveira, Ben Bals, Aalt-Jan van Dijk, and Solon P. Pissis. 
-Mining Correlated Motifs with Wildcards in PPI networks: Exact and Optimal. 
-In SIAM Symposium on Algorithm Engineering and Experiments, ALENEX 2027, 2027.
+```bibtex
+@inproceedings{OliveiraBvDP27,
+  author    = {Lucas P. Oliveira and Ben Bals and Aalt-Jan van Dijk and Solon P. Pissis},
+  title     = {Mining Correlated Motifs with Wildcards in {PPI} Networks: Exact and Optimal},
+  booktitle = {SIAM Symposium on Algorithm Engineering and Experiments, {ALENEX} 2027},
+  publisher = {{SIAM}},
+  year      = {2027}
+}
+```
+
+The software is archived on Zenodo:
+```bibtex
+@software{cmm,
+  author    = {Lucas P. Oliveira and Ben Bals and Aalt-Jan van Dijk and Solon P. Pissis},
+  title     = {Mining Correlated Motifs with Wildcards in {PPI} Networks: Exact and Optimal},
+  publisher = {Zenodo},
+  doi       = {10.5281/zenodo.23017579},
+  url       = {https://doi.org/10.5281/zenodo.23017579}
+}
 ```
