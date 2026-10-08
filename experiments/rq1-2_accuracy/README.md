@@ -80,6 +80,14 @@ The exact solution omits the `trials`/`min` fields, since it does not depend on 
 <dataset>.cmm.l<L>d<D>.k<K_TOP>.out
 ```
 
+Its running time and peak memory depend on the number $P$ of threads (`-p`), so they are kept apart for each $P$:
+
+```
+<dataset>.cmm.l<L>d<D>.k<K_TOP>.p<P>.perf
+```
+
+The solution itself does not depend on $P$: running again with another $P$ only measures the time and memory, and keeps the existing solution.
+
 ## Plots
 
 `030-score-curve` and `035-eval-density` each produce a figure plus a standalone legend, via `gnuplot` scripts (`plot_curve.gp`, `plot_density.gp`).

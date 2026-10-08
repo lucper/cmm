@@ -1,7 +1,8 @@
 #!/usr/bin/bash
 #
 # Reproduces the experiments of the paper (RQ1-RQ5) and collects the results
-# in output/. All parameters are set in sections 1-3 of this script:
+# in output/full/ (or output/subset/ with -s). All parameters are set in
+# sections 1-3 of this script:
 #   1. Parameters shared by the subset and the full experiments
 #   2. Subset of parameters used by the ALENEX 2027 AEC (-s)
 #   3. Parameters of the full experiments of the paper (default)
@@ -9,7 +10,7 @@
 #   5. Data preparation
 #   6. RQ1-RQ2 (accuracy)
 #   7. RQ3-RQ5 (efficiency)
-#   8. Aggregation of the results in output/
+#   8. Aggregation of the results
 
 set -euo pipefail
 
@@ -72,6 +73,7 @@ then
     NODE_COUNTS="100 200 400 800 1600"   # RQ3-RQ5: node counts
     ELLS="5"                             # RQ3-RQ4: motif lengths
     RQ5_ELL=5                            # RQ5: motif length
+    OUTDIR="output/subset"               # where the results are collected
 else
 ## ---------------------------------------------------------------------------
 ## 3. Parameters of the full experiments of the paper
@@ -84,13 +86,13 @@ else
     NODE_COUNTS="100 200 400 800 1600 3200"
     ELLS="5 8"
     RQ5_ELL=8
+    OUTDIR="output/full"
 fi
 
 ## ---------------------------------------------------------------------------
 ## 4. Build
 ## ---------------------------------------------------------------------------
 WDIR="experiments"
-OUTDIR="output"
 
 # Make every script in the tree executable (a fresh unzip may drop +x).
 echo "=== Making scripts executable ===" >&2
@@ -156,7 +158,7 @@ echo "=== Running RQ3-RQ5 (efficiency) ===" >&2
 )
 
 ## ---------------------------------------------------------------------------
-## 8. Aggregation of the results in output/
+## 8. Aggregation of the results
 ## ---------------------------------------------------------------------------
 echo "=== Aggregating results into ${OUTDIR}/ ===" >&2
 
@@ -313,7 +315,7 @@ perf_summary="${ACC_OUT}/performance_summary.tsv"
 printf 'dataset\ttime\tpeak_ram_mb_per_thread\ttotal_peak_ram_mb\n' > "${perf_summary}"
 perf_dir="${WDIR}/rq1-2_accuracy/010-soln-cmm"
 if [ -d "${perf_dir}" ]; then
-    find "${perf_dir}" -mindepth 2 -type f -name '*.perf' | sort | while read -r perf_file; do
+    find "${perf_dir}" -mindepth 2 -type f -name "*.p${THREADS}.perf" | sort | while read -r perf_file; do
         # Extract the directory name directly containing the .perf file
         dataset=$(basename "$(dirname "${perf_file}")")
 
@@ -338,8 +340,8 @@ if [ -d "${perf_dir}" ]; then
 fi
 
 # RQ3-RQ5: figures.
-if [ -d "${WDIR}/rq3-5_efficiency/plots" ]; then
-    build_rq3-5_pdf "${WDIR}/rq3-5_efficiency/plots" "${EFF_OUT}/efficiency_all.pdf"
+if [ -d "${WDIR}/rq3-5_efficiency/plots/p${THREADS}" ]; then
+    build_rq3-5_pdf "${WDIR}/rq3-5_efficiency/plots/p${THREADS}" "${EFF_OUT}/efficiency_all.pdf"
 fi
 
 echo "=== Done ===" >&2

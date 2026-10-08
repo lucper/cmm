@@ -19,7 +19,7 @@ run.
 ```bash
 ./run.sh -e <densities> -v <node counts> -x <taxid> -p <P> -r <trials> -k <K> \
          -l <ells> -E <density> -L <ell> -d <D>     # run experiments, then plot
-./run.sh -P -L <ell>                                # re-plot existing TSVs without re-running measurements
+./run.sh -P -p <P> -L <ell>                         # re-plot existing TSVs without re-running measurements
 ```
 
 The parameters used in the paper are:
@@ -28,7 +28,7 @@ The parameters used in the paper are:
          -p 128 -r 1 -k 10000 -l "5 8" -E 05 -L 8 -d 2
 ```
 
-All options are required (with `-P`, only `-L`):
+All options are required (with `-P`, only `-p` and `-L`):
 
 | Flag | Meaning |
 |------|---------|
@@ -55,15 +55,15 @@ Each measurement is keyed by `(trial, instance, ell, d, threads)`; rows already 
 | File                | Role                                                              |
 |---------------------|-------------------------------------------------------------------|
 | `run.sh`            | Driver: runs `cmm_test` over the instances, then plots.           |
-| `plot.py`           | Renders the TSVs into PDFs under `plots/`.                        |
+| `plot.py`           | Renders the TSVs into PDFs under `plots/p<P>/`.                   |
 | `requirements.txt`  | Python dependencies for `plot.py`.                                |
-| `rq{3,4,5}_out.tsv` | Measurement output, one row per run (generated).                  |
-| `plots/`            | Rendered PDFs (generated).                                        |
+| `rq{3,4,5}_out.p<P>.tsv` | Measurement output, one row per run (generated).             |
+| `plots/p<P>/`       | Rendered PDFs (generated).                                        |
 
 ## Output format
 
-Each row of `rq{3,4,5}_out.tsv` is one `cmm_test` run with the trial number
-prepended, tab-separated:
+Time and memory depend on the thread cap $P$ given with `-p`, so the measurements of each $P$ are kept in their own files, `rq{3,4,5}_out.p<P>.tsv`.
+Each row is one `cmm_test` run with the trial number prepended, tab-separated:
 
 | # | Column | | # | Column | | # | Column |
 |---|--------|-|---|--------|-|---|--------|
@@ -77,7 +77,7 @@ Note that `num_threads_spawned` (13) may be lower than `num_threads_requested` (
 
 ## Plots
 
-`plot.py` writes PDFs into `plots/`, keyed by RQ. Time and memory are separate figures, with the legend saved as a standalone PDF.
+`plot.py` writes PDFs into `plots/p<P>/`, keyed by RQ. Time and memory are separate figures, with the legend saved as a standalone PDF.
 The exact styling per RQ (log scaling, polynomial fits, `max_rank` annotations, RQ5 speedup labels) is set by the `plot.py` invocations in `run.sh`.
 
 The memory plots of RQ3 and RQ4 show the peak RAM **per thread**: `peak_ram_kb` (15), i.e. the peak resident set size of the whole process, divided by `num_threads_spawned` (13). This is set with the `--mem-per-thread` flag of `plot.py`.

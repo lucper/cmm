@@ -88,7 +88,7 @@ MLHxx RTQxx 0,17
 ```
 
 ## Reproducing the experiments
-The script `runme.sh` runs all the experiments of Section 5 (**Experimental Results**) and collects the results in `output/`.
+The script `runme.sh` runs all the experiments of Section 5 (**Experimental Results**) and collects the results in `output/full/` (or `output/subset/` with `-s`).
 It has two modes:
 ```bash
 ./runme.sh      # full experiments of the paper (takes several days with 128 threads)

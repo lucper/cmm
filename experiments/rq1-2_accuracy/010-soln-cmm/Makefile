@@ -16,10 +16,19 @@ usage:
 
 .DELETE_ON_ERROR:
 
-.PHONY: all
-all: $(DATASET)/$(DATASET).cmm.l$(L)d$(D).k$(K_TOP).out
+OUT  := $(DATASET)/$(DATASET).cmm.l$(L)d$(D).k$(K_TOP).out
+PERF := $(DATASET)/$(DATASET).cmm.l$(L)d$(D).k$(K_TOP).p$(THREADS).perf
 
-$(DATASET)/$(DATASET).cmm.l$(L)d$(D).k$(K_TOP).out: $(FASTA) $(INTS)
+.PHONY: all
+all: $(PERF) $(OUT)
+
+$(PERF): $(FASTA) $(INTS)
+	mkdir -p $(@D)
+	$(CMM_TEST) $(FASTA) $(INTS) $(L) $(D) $(K_TOP) $(THREADS) $(OUT).tmp \
+		> $@
+	if [ -f $(OUT) ]; then rm $(OUT).tmp; else mv $(OUT).tmp $(OUT); fi
+
+$(OUT): $(FASTA) $(INTS)
 	mkdir -p $(@D)
 	$(CMM_TEST) $(FASTA) $(INTS) $(L) $(D) $(K_TOP) $(THREADS) $@ \
-		> $(@:.out=.perf)
+		> $(PERF)
