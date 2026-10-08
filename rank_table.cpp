@@ -48,6 +48,12 @@ uint32_t rank_table_t::sort_by_prefix(const std::vector<uint16_t>& H)
 {
     // Positions H must be in [ell] and sorted.
 
+    // No suffix has an ell-length prefix without SEP, so there is nothing to rank.
+    if (sSA.empty()) {
+        this->max_rank_R1 = 0;
+        return 0;
+    }
+
     std::fill(R1.begin(), R1.end(), 0);
 
     size_t d = H.size();

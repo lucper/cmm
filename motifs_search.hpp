@@ -88,7 +88,7 @@ struct thread_workspace_t {
         for (uint32_t u = 0; u < V.size(); u++) {
             if (!is_table_X)
                 node_active_counts_Y[u] = 0;
-            for (size_t i = 0; i < V[u].length() - ell + 1; i++) {
+            for (size_t i = 0; i + ell <= V[u].length(); i++) {
                 uint32_t r = rank_table.get_rank_of_substr(i, u);
                 if (rank_timestamp[r] != u + 1) {
                     rank_timestamp[r] = u + 1;
