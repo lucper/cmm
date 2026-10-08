@@ -8,7 +8,7 @@
 
 Under the `experiments` directory:
 1. Build the binaries by running `make -C src` (produces `bin/cmm_test`).
-2. Run `./data/run.sh` to generate the artificial instances used for this experiment.
+2. Run `./data/run.sh` to generate the artificial instances used for this experiment (see `experiments/README.md` for its options).
 
 Python dependencies for plotting (`pandas`, `matplotlib`, `seaborn`) are listed
 in `requirements.txt` and installed automatically into a local `venv/` on first

@@ -19,11 +19,24 @@ From this directory:
 
 ```bash
 make -C src            # builds bin/cmm_test, bin/cmm_eval, bin/cmm_dedup
-./data/run.sh          # fetches + cleans real data and generates artificial instances
+# fetches + cleans real data and generates artificial instances
+./data/run.sh -O "9606:Homo_sapiens 3702:Arabidopsis_thaliana 4932:Saccharomyces_cerevisiae 511145:Escherichia_coli_K12_MG1655 7227:Drosophila_melanogaster" \
+              -s 700 -S 42 -x 9606 \
+              -e "05 10 15 20 25 30" -v "100 200 400 800 1600 3200"
 ```
 
 Both suites call binaries in `bin/` and expect their inputs under `data/`.
 The script `data/run.sh` populates both `data/real_instances/` (used by RQ1-RQ2) and `data/artificial_instances/` (used by RQ3-RQ5).
+The command above uses the parameters of the paper. All options are required:
+
+| Flag | Meaning |
+|------|---------|
+| `-O` | organisms to fetch from STRING and clean, as `"taxid:name ..."` |
+| `-s` | STRING combined score cutoff in $[0,1000]$ |
+| `-S` | seed for sampling the artificial instances |
+| `-x` | taxid of the organism the artificial instances are sampled from (one of `-O`) |
+| `-e` | edge densities of the artificial instances, in percent |
+| `-v` | node counts of the artificial instances |
 
 **Note:** For convenience, `data/slider_data` (after unzip) contains the datasets from the evaluation of SLIDER.
 See `data/README.md` for references.

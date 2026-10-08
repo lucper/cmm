@@ -18,7 +18,9 @@ make -C "${WDIR}/src"
 echo "=== Preparing datasets ===" >&2
 (
     cd "${WDIR}/data"
-    ./run.sh
+    ./run.sh -O "9606:Homo_sapiens 3702:Arabidopsis_thaliana 4932:Saccharomyces_cerevisiae 511145:Escherichia_coli_K12_MG1655 7227:Drosophila_melanogaster" \
+             -s 700 -S 42 -x 9606 \
+             -e "05 10 15 20 25 30" -v "100 200 400 800 1600 3200"
     tar zxvf slider_data.tar.gz
 )
 
