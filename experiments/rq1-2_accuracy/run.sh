@@ -2,6 +2,8 @@
 
 set -euo pipefail
 
+export LC_ALL=C
+
 usage() {
     cat >&2 <<EOF
 Usage: $0 -D <dataset> -f <fasta> -i <ints> -r <R> -t <T> -l <L> -d <Ds> -k <K> -K <K_TOP> -H <h> -c <C> -p <P>

@@ -7,6 +7,8 @@
 
 set -euo pipefail
 
+export LC_ALL=C
+
 usage() {
     cat >&2 <<EOF
 Usage: $0 -O <organisms> -s <cutoff> -S <seed> -x <taxid> -e <densities> -v <node counts>
