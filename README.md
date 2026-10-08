@@ -1,13 +1,15 @@
 # Code for "Mining Correlated Motifs with Wildcards in PPI networks: Exact and Optimal"
 
-Here, you will find the source code for the exact algorithm proposed in "Mining Correlated Motifs with Wildcards in PPI networks: Exact and Optimal".
+Here, you will find the source code for the exact algorithm proposed in "Mining Correlated Motifs with Wildcards in PPI Networks: Exact and Optimal".
 To reproduce Section 5 (**Experimental Results**), see [Reproducing the experiments](#reproducing-the-experiments).
 
-## Requirements
+## Users' Guide
+
+### Requirements
 - C++17 compiler GCC 7+
 - GNU/Linux system (e.g., Ubuntu, Fedora)
 
-## Installation
+### Installation
 Run the following command in the current directory to compile and link the code:
 ```bash
 make
@@ -38,7 +40,7 @@ cmm [OPTION...]
   -h, --help                    Print usage.
 ```
 
-## Usage
+### Usage
 
 - Option `-s`:
 FASTA file containing protein sequences.
@@ -70,7 +72,7 @@ seqC seqA
 Support function to be maximized by the algorithm.
 We support `E`, the number of edges in which a motif pair co-occurs, and `x2`, the $\chi^2$-score.
 
-## Example
+### Example
 The following command runs the program in the example input files above.
 It retrieves the top 5 motif pairs with highest $\chi^2$-score.
 Each motif will have length 5 and 2 wildcard symbols (`x`).
