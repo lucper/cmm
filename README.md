@@ -95,6 +95,18 @@ It has two modes:
 ./runme.sh -s   # subset evaluated by the ALENEX 2027 Artifact Evaluation Committee (takes a few hours with 64 threads)
 ```
 All parameters of both modes are set at the top of `runme.sh`.
+The results are collected in `output/full/` (or `output/subset/` with `-s`), where `<L>` is the motif length and `<D>` the number of wildcards:
+
+| File | Content | Paper |
+|------|---------|-------|
+| `rq1_score_curves_l<L>d<D>.pdf` | Normalized score curves of SLIDER and the exact algorithm, one panel per dataset (RQ1) | Figure 5.1 |
+| `rq2_similarity_densities_l<L>d<D>.pdf` | Densities of the similarity between SLIDER's and the exact solution sets, one panel per dataset (RQ2) | Figure 5.2 |
+| `rq2_coverage.tsv` | Coverage of the exact solution set by SLIDER, per dataset, $D$, and SLIDER variant (RQ2) | Table C.2 |
+| `exact_algorithm_performance.tsv` | Running time and peak memory (total and per thread) of the exact algorithm, per dataset and $D$ | Table C.3 |
+| `rq3-5_efficiency.pdf` | Running time and peak memory of the exact algorithm on the artificial instances (RQ3, RQ4, RQ5) | Figures 5.3, 5.4, and 5.5 |
+
+The subset (`-s`) produces a selection of the rows and panels of these figures and tables, with smaller parameters for RQ3-RQ5.
+
 Internet access is needed on the first run, since the datasets are downloaded from the STRING database.
 On a Linux host, the run can be resumed: rerunning `runme.sh` skips the work that is already done (in Docker with `--rm`, intermediate results are discarded when the container exits).
 

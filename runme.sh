@@ -164,9 +164,7 @@ echo "=== Running RQ3-RQ5 (efficiency) ===" >&2
 ## ---------------------------------------------------------------------------
 echo "=== Aggregating results into ${OUTDIR}/ ===" >&2
 
-ACC_OUT="${OUTDIR}/rq1-2_accuracy"
-EFF_OUT="${OUTDIR}/rq3-5_efficiency"
-mkdir -p "${ACC_OUT}" "${EFF_OUT}"
+mkdir -p "${OUTDIR}"
 
 # Datasets that were run above (order defines the subfigure grid).
 ALL_DATASETS="${STRING_DATA} ${SLIDER_DATA}"
@@ -267,10 +265,13 @@ BLOCK
 \begin{document}\centering
 HEAD
 
-        # rq3 and rq4: one figure page each, the two ell groups stacked.
+        # rq3 and rq4: one figure page each, with two d groups per ell (as in
+        # d_groups of plot.py).
         for rq in rq3 rq4; do
-            for g in ell5_d0_1 ell5_d2_4 ell8_d0_3 ell8_d4_7; do
-                _eff_block "${rq}_${g}"
+            for ell in ${ELLS}; do
+                local half=$((ell / 2))
+                _eff_block "${rq}_ell${ell}_d0_$((half - 1))"
+                _eff_block "${rq}_ell${ell}_d${half}_$((ell - 1))"
             done
             echo '\newpage'
         done
@@ -292,36 +293,44 @@ HEAD
     fi
 }
 
-# RQ1-RQ2: figures.
-build_figure_pdf "${WDIR}/rq1-2_accuracy/035-eval-density" \
-                 "density.@.l8d5.h8.dedup" "density_legend" "${ACC_OUT}/density_all.pdf"
-build_figure_pdf "${WDIR}/rq1-2_accuracy/030-score-curve" \
-                 "curve.@.l8d5.dedup" "curve_legend" "${ACC_OUT}/curve_all.pdf"
+# RQ1-RQ2: figures, one PDF per number of wildcards.
+for d in ${DS}; do
+    build_figure_pdf "${WDIR}/rq1-2_accuracy/035-eval-density" \
+                     "density.@.l${ELL}d${d}.h${H}.dedup" "density_legend" "${OUTDIR}/rq2_similarity_densities_l${ELL}d${d}.pdf"
+    build_figure_pdf "${WDIR}/rq1-2_accuracy/030-score-curve" \
+                     "curve.@.l${ELL}d${d}.dedup" "curve_legend" "${OUTDIR}/rq1_score_curves_l${ELL}d${d}.pdf"
+done
 
 # RQ1-RQ2: coverage table.
-cov_summary="${ACC_OUT}/coverage_summary.tsv"
-printf 'dataset\tmethod\treduced_solution\tfull_solution\tcoverage\n' > "${cov_summary}"
+cov_summary="${OUTDIR}/rq2_coverage.tsv"
 cov_dir="${WDIR}/rq1-2_accuracy/035-eval-coverage"
-if [ -d "${cov_dir}" ]; then
-    find "${cov_dir}" -name '*.dat' | sort | while read -r dat; do
-        fname=$(basename "${dat}")
-        dataset=${fname%%.*}
-        method=$(echo "${fname}" | cut -d. -f2)
-        awk -v ds="${dataset}" -v m="${method}" \
-            '{print ds "\t" m "\t" $1 "\t" $2 "\t" $3}' "${dat}" >> "${cov_summary}"
+printf 'dataset\td\tmethod\treduced_solution\tfull_solution\tcoverage\n' > "${cov_summary}"
+for ds in ${ALL_DATASETS}; do
+    for d in ${DS}; do
+        for method in seq_slider m_slider; do
+            dat="${cov_dir}/${ds}/${ds}.${method}.l${ELL}d${d}.recall_c${C}.trials${R}.min${T}.k${K_TOP}.h${H}.dedup.dat"
+            if [ -f "${dat}" ]; then
+                awk -v ds="${ds}" -v d="${d}" -v m="${method}" \
+                    '{print ds "\t" d "\t" m "\t" $1 "\t" $2 "\t" $3}' "${dat}" >> "${cov_summary}"
+            else
+                echo "  WARNING: missing ${dat}" >&2
+            fi
+        done
     done
-fi
+done
 
 # RQ1-RQ2: performance table of the exact algorithm.
-perf_summary="${ACC_OUT}/performance_summary.tsv"
-printf 'dataset\ttime\tpeak_ram_mb_per_thread\ttotal_peak_ram_mb\n' > "${perf_summary}"
+perf_summary="${OUTDIR}/exact_algorithm_performance.tsv"
 perf_dir="${WDIR}/rq1-2_accuracy/010-soln-cmm"
-if [ -d "${perf_dir}" ]; then
-    find "${perf_dir}" -mindepth 2 -type f -name "*.p${THREADS}.perf" | sort | while read -r perf_file; do
-        # Extract the directory name directly containing the .perf file
-        dataset=$(basename "$(dirname "${perf_file}")")
-
-        awk -v ds="${dataset}" '
+printf 'dataset\td\ttime\tpeak_ram_mb_per_thread\ttotal_peak_ram_mb\n' > "${perf_summary}"
+for ds in ${ALL_DATASETS}; do
+    for d in ${DS}; do
+        perf_file="${perf_dir}/${ds}/${ds}.cmm.l${ELL}d${d}.k${K_TOP}.p${THREADS}.perf"
+        if [ ! -f "${perf_file}" ]; then
+            echo "  WARNING: missing ${perf_file}" >&2
+            continue
+        fi
+        awk -v ds="${ds}" -v d="${d}" '
             NF >= 14 {
                 # Convert milliseconds to seconds
                 total_sec = int($13 / 1000)
@@ -335,18 +344,16 @@ if [ -d "${perf_dir}" ]; then
                 # Per thread
                 ram_mb_per_thread = ram_mb / $12
 
-                printf "%s\t%02d:%02d:%02d\t%.2f\t%.2f\n", ds, hh, mm, ss, ram_mb_per_thread, ram_mb
+                printf "%s\t%s\t%02d:%02d:%02d\t%.2f\t%.2f\n", ds, d, hh, mm, ss, ram_mb_per_thread, ram_mb
             }
         ' "${perf_file}" >> "${perf_summary}"
     done
-fi
+done
 
 # RQ3-RQ5: figures.
 if [ -d "${WDIR}/rq3-5_efficiency/plots/p${THREADS}" ]; then
-    build_rq3-5_pdf "${WDIR}/rq3-5_efficiency/plots/p${THREADS}" "${EFF_OUT}/efficiency_all.pdf"
+    build_rq3-5_pdf "${WDIR}/rq3-5_efficiency/plots/p${THREADS}" "${OUTDIR}/rq3-5_efficiency.pdf"
 fi
 
 echo "=== Done ===" >&2
-echo "Aggregated results:" >&2
-echo "  Accuracy   : ${ACC_OUT}/  (density_all.pdf, curve_all.pdf, coverage_summary.tsv)" >&2
-echo "  Efficiency : ${EFF_OUT}/  (efficiency_all.pdf)" >&2
+echo "Aggregated results in ${OUTDIR}/ (see README.md)" >&2
