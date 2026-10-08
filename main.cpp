@@ -3,6 +3,7 @@
 #include <vector>
 #include <iostream>
 #include <cstring>
+#include <limits>
 #include "cxxopts.hpp"
 #include <sys/resource.h>
 #include "motifs_search.hpp"
@@ -62,6 +63,16 @@ int main(int argc, char* argv[]) {
         if (d < 0 || d >= ell)
             throw std::invalid_argument("Number of wildcards (" + std::to_string(d) + ")" +
                                         " must be in the range [0," + std::to_string(ell) + ").");
+
+        // main_algo computes C(C+1)/2 pairs of the C = C(ell, d) wildcard combinations in a size_t,
+        // so C(C+1) must fit in a size_t, i.e., C must fit in half of its bits.
+        const uint64_t max_combinations = std::numeric_limits<size_t>::max() >> (std::numeric_limits<size_t>::digits / 2);
+        uint64_t num_combinations = 1;
+        for (int i = 1; i <= d && num_combinations <= max_combinations; i++)
+            num_combinations = num_combinations * (ell - d + i) / i;
+        if (num_combinations > max_combinations)
+            throw std::invalid_argument("Motif length (" + std::to_string(ell) + ") with " + std::to_string(d) +
+                                        " wildcards gives too many pairs of wildcard combinations.");
 
         std::vector<motif_pair_record_t> solution;
 
