@@ -41,6 +41,9 @@ graph_input_t read_graph_files(const std::string &edge_path,
         flush_fasta_entry(current_id, current_seq, id_to_index, result);
     }
 
+    if (result.node_labels.empty())
+        throw std::runtime_error("No sequences found in FASTA file: " + labels_path);
+
     result.adj_list.resize(result.node_labels.size());
 
     {

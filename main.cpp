@@ -67,6 +67,16 @@ int main(int argc, char* argv[]) {
 
         auto gi = read_graph_files(path_to_edges, path_to_nodes);
 
+        // Every sequence must contain at least one motif occurrence.
+        size_t num_short = 0;
+        for (const auto& seq : gi.node_labels)
+            if (seq.length() < static_cast<size_t>(ell))
+                num_short++;
+        if (num_short > 0)
+            throw std::invalid_argument(std::to_string(num_short) + " sequence(s) shorter than the motif length (" +
+                                        std::to_string(ell) + "). " +
+                                        "Remove them from the input or use a smaller motif length.");
+
         auto start_time = std::chrono::steady_clock::now();
 
         if (supp_func == "E")
