@@ -156,8 +156,9 @@ echo "=== Running RQ1-RQ2 (accuracy) ===" >&2
 echo "=== Running RQ3-RQ5 (efficiency) ===" >&2
 (
     cd "${WDIR}/rq3-5_efficiency"
-    ./run.sh -e "${DENSITIES}" -v "${NODE_COUNTS}" -x ${INSTANCE_TAXID} \
-             -p ${THREADS} -r ${TRIALS} -k ${K_CMM} -l "${ELLS}" -E ${FIXED_ED} -V ${FIXED_V} -L ${RQ5_ELL} -d ${RQ5_D}
+    ./run.sh -e "${DENSITIES}" -v "${NODE_COUNTS}" -x ${INSTANCE_TAXID} -s ${THRESHOLD} -S ${SEED} \
+             -p ${THREADS} -r ${TRIALS} -k ${K_CMM} -l "${ELLS}" \
+             -E ${FIXED_ED} -V ${FIXED_V} -L ${RQ5_ELL} -d ${RQ5_D}
 )
 
 ## ---------------------------------------------------------------------------

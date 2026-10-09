@@ -30,3 +30,4 @@ experiments/bin/
 venv/
 output/
 __pycache__/
+*.tmp

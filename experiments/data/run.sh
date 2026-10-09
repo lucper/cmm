@@ -3,7 +3,7 @@
 # Layout produced under this directory:
 #   string_data/<taxid>_<name>/   raw + per-cutoff .fa/.int (from fetch_string.sh)
 #   real_instances/               cleaned .fa/.int, one pair per organism
-#   artificial_instances/ed<NN>/  sampled instances
+#   artificial_instances/ed<NN>/  sampled instances, sampled_<taxid>_s<cutoff>_S<seed>_V<v>_ed<NN>.{fa,int}
 
 set -euo pipefail
 
@@ -165,8 +165,10 @@ do
     mkdir -p ${INSTANCE_DIR}/ed${ed}
     for v in ${NODE_COUNTS}
     do
-        fa="${INSTANCE_DIR}/ed${ed}/sampled_${INSTANCE_TAXID}_V${v}_ed${ed}.fa"
-        int="${INSTANCE_DIR}/ed${ed}/sampled_${INSTANCE_TAXID}_V${v}_ed${ed}.int"
+        # The name records every parameter the instance depends on.
+        instance="sampled_${INSTANCE_TAXID}_s${THRESHOLD}_S${SEED}_V${v}_ed${ed}"
+        fa="${INSTANCE_DIR}/ed${ed}/${instance}.fa"
+        int="${INSTANCE_DIR}/ed${ed}/${instance}.int"
         if [ ! -f "${fa}" ] || [ ! -f "${int}" ]
         then
             echo "  V=${v} ed=0.${ed}" >&2
