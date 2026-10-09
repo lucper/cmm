@@ -54,13 +54,13 @@ struct thread_workspace_t {
     std::vector<bool> has_rank_X;
 
     thread_workspace_t(const esa_t& ESA, size_t ell, size_t V_size, size_t E_size)
-        : intersec_nodes_count(ESA.N), intersec_nodes_count_set_indices(ESA.N),
-          edge_count(ESA.N), edge_count_set_indices(ESA.N),
-          flat_nodes_X(ESA.N), rank_offsets_X(ESA.N + 1), rank_active_counts_X(ESA.N + 1), active_ranks_X(ESA.N + 1),
-          flat_nodes_Y(ESA.N), rank_offsets_Y(ESA.N + 1), rank_active_counts_Y(ESA.N + 1), active_ranks_Y(ESA.N + 1),
-          flat_ranks_Y(ESA.N), node_offsets_Y(V_size), node_active_counts_Y(V_size),
+        : intersec_nodes_count(ESA.get_N()), intersec_nodes_count_set_indices(ESA.get_N()),
+          edge_count(ESA.get_N()), edge_count_set_indices(ESA.get_N()),
+          flat_nodes_X(ESA.get_N()), rank_offsets_X(ESA.get_N() + 1), rank_active_counts_X(ESA.get_N() + 1), active_ranks_X(ESA.get_N() + 1),
+          flat_nodes_Y(ESA.get_N()), rank_offsets_Y(ESA.get_N() + 1), rank_active_counts_Y(ESA.get_N() + 1), active_ranks_Y(ESA.get_N() + 1),
+          flat_ranks_Y(ESA.get_N()), node_offsets_Y(V_size), node_active_counts_Y(V_size),
           rank_table_X(ell, ESA), rank_table_Y(ell, ESA),
-          uniq_ranks_per_node_buffer(ESA.N), rank_timestamp(ESA.N + 1),
+          uniq_ranks_per_node_buffer(ESA.get_N()), rank_timestamp(ESA.get_N() + 1),
           edge_timestamp(E_size),
           has_rank_X(V_size, false)
     {}

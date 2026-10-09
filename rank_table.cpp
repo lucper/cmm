@@ -1,7 +1,7 @@
 #include "rank_table.hpp"
 
 rank_table_t::rank_table_t(size_t ell, const esa_t& ESA)
-    : ell(ell), N(ESA.N), S(ESA.S), S_offset(ESA.S_offset), SA(ESA.SA), LCP(ESA.LCP), max_rank_R1(0)
+    : ell(ell), N(ESA.get_N()), S(ESA.get_S()), S_offset(ESA.get_S_offset()), SA(ESA.get_SA()), LCP(ESA.get_LCP()), max_rank_R1(0)
 {
 
     R1.resize(N);

@@ -9,15 +9,8 @@
 
 #define SEP 0
 
-struct esa_t {
-    int64_t *SA = nullptr;
-    int64_t *PLCP = nullptr;
-    int64_t *LCP = nullptr;
-    int64_t N;
-
-    uint8_t *S = nullptr;
-    std::vector<uint32_t> S_offset;
-
+class esa_t {
+public:
     esa_t(const std::vector<std::string>& seqs) {
         // Store offsets of each individual string from the concatenated string.
         S_offset.resize(seqs.size() + 1); // Add 1 for pos of empty string after last string.
@@ -67,7 +60,21 @@ struct esa_t {
     esa_t(const esa_t&) = delete;
     esa_t& operator=(const esa_t&) = delete;
 
+    int64_t get_N() const { return N; }
+    const uint8_t *get_S() const { return S; }
+    const std::vector<uint32_t>& get_S_offset() const { return S_offset; }
+    const int64_t *get_SA() const { return SA; }
+    const int64_t *get_LCP() const { return LCP; }
+
 private:
+    int64_t *SA = nullptr;
+    int64_t *PLCP = nullptr;
+    int64_t *LCP = nullptr;
+    int64_t N;
+
+    uint8_t *S = nullptr;
+    std::vector<uint32_t> S_offset;
+
     // The destructor does not run when the constructor throws, so the buffers
     // allocated so far are freed here.
     [[noreturn]] void fail(const std::string& msg) {
