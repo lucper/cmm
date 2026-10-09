@@ -1,4 +1,4 @@
-# Code for "Mining Correlated Motifs with Wildcards in PPI networks: Exact and Optimal"
+# Code for "Mining Correlated Motifs with Wildcards in PPI Networks: Exact and Optimal"
 
 Here, you will find the source code for the exact algorithm proposed in "Mining Correlated Motifs with Wildcards in PPI Networks: Exact and Optimal".
 To reproduce Section 5 (**Experimental Results**), see [Reproducing the experiments](#reproducing-the-experiments).
