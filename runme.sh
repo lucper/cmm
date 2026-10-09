@@ -238,9 +238,9 @@ FOOT
 
 # RQ3-RQ5: assembles the efficiency plots into one PDF.
 build_rq3-5_pdf() {
-    local plots="$1" out="$2"
+    local plots="$1" rq3="$2" rq4="$3" rq5="$4" out="$5"
     local wrap; wrap=$(mktemp -d)
-    cp -f "${plots}/"*.pdf "${wrap}/" 2>/dev/null || true
+    cp -f "${plots}/${rq3}"_*.pdf "${plots}/${rq4}"_*.pdf "${plots}/${rq5}"_*.pdf "${wrap}/" 2>/dev/null || true
 
     # One legend+time+memory block for a given basename prefix.
     _eff_block() {
@@ -269,16 +269,16 @@ HEAD
 
         # rq3 and rq4: one figure page each, with two d groups per ell (as in
         # d_groups of plot.py).
-        for rq in rq3 rq4; do
+        for stem in "${rq3}" "${rq4}"; do
             for ell in ${ELLS}; do
                 local half=$((ell / 2))
-                _eff_block "${rq}_ell${ell}_d0_$((half - 1))"
-                _eff_block "${rq}_ell${ell}_d${half}_$((ell - 1))"
+                _eff_block "${stem}_ell${ell}_d0_$((half - 1))"
+                _eff_block "${stem}_ell${ell}_d${half}_$((ell - 1))"
             done
             echo '\newpage'
         done
         # rq5: single thread-scaling block.
-        _eff_block "rq5"
+        _eff_block "${rq5}"
 
         echo '\end{document}'
     } > "${wrap}/efficiency.tex"
@@ -353,9 +353,13 @@ for ds in ${ALL_DATASETS}; do
 done
 
 # RQ3-RQ5: figures.
-if [ -d "${WDIR}/rq3-5_efficiency/plots/p${THREADS}" ]; then
-    build_rq3-5_pdf "${WDIR}/rq3-5_efficiency/plots/p${THREADS}" "${OUTDIR}/rq3-5_efficiency.pdf"
-fi
+# Names of the plots of each research question (as in rq3-5_efficiency/run.sh).
+EFF_PARAMS="${INSTANCE_TAXID}.s${THRESHOLD}.S${SEED}"
+EFF_RQ3="rq3.${EFF_PARAMS}.ed${FIXED_ED}.k${K_CMM}.p${THREADS}"
+EFF_RQ4="rq4.${EFF_PARAMS}.v${FIXED_V}.k${K_CMM}.p${THREADS}"
+EFF_RQ5="rq5.${EFF_PARAMS}.v${FIXED_V}.ed${FIXED_ED}.l${RQ5_ELL}d${RQ5_D}.k${K_CMM}.p${THREADS}"
+build_rq3-5_pdf "${WDIR}/rq3-5_efficiency/030-plot" "${EFF_RQ3}" "${EFF_RQ4}" "${EFF_RQ5}" \
+                "${OUTDIR}/rq3-5_efficiency.pdf"
 
 echo "=== Done ===" >&2
 echo "Aggregated results in ${OUTDIR}/ (see README.md)" >&2

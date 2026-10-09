@@ -30,4 +30,5 @@ experiments/bin/
 venv/
 output/
 __pycache__/
+*.plotted
 *.tmp
