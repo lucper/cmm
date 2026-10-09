@@ -133,7 +133,7 @@ To run each experiment suite separately, see [`experiments/README.md`](experimen
 ## Citation
 If you use this software, please cite the following paper.
 ```bibtex
-@inproceedings{OliveiraBvDP27,
+@inproceedings{OBvDP27,
   author    = {Lucas P. Oliveira and Ben Bals and Aalt-Jan van Dijk and Solon P. Pissis},
   title     = {Mining Correlated Motifs with Wildcards in {PPI} Networks: Exact and Optimal},
   booktitle = {SIAM Symposium on Algorithm Engineering and Experiments, {ALENEX} 2027},
