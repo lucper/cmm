@@ -60,6 +60,7 @@ C=70                  # coverage cutoff
 K_CMM=10000           # number of top motif pairs kept by cmm_test
 TRIALS=1              # trials per configuration
 FIXED_ED=05           # edge density for RQ3 and RQ5
+FIXED_V=200           # node count for RQ4 and RQ5
 RQ5_D=2               # number of wildcards for RQ5
 
 if [ ${SUBSET} -eq 1 ]
@@ -156,7 +157,7 @@ echo "=== Running RQ3-RQ5 (efficiency) ===" >&2
 (
     cd "${WDIR}/rq3-5_efficiency"
     ./run.sh -e "${DENSITIES}" -v "${NODE_COUNTS}" -x ${INSTANCE_TAXID} \
-             -p ${THREADS} -r ${TRIALS} -k ${K_CMM} -l "${ELLS}" -E ${FIXED_ED} -L ${RQ5_ELL} -d ${RQ5_D}
+             -p ${THREADS} -r ${TRIALS} -k ${K_CMM} -l "${ELLS}" -E ${FIXED_ED} -V ${FIXED_V} -L ${RQ5_ELL} -d ${RQ5_D}
 )
 
 ## ---------------------------------------------------------------------------

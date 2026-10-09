@@ -16,7 +16,7 @@ export LC_ALL=C
 usage() {
     cat >&2 <<EOF
 Usage: $0 -e <densities> -v <node counts> -x <taxid> -p <P> -r <trials> -k <K>
-          -l <ells> -E <density> -L <ell> -d <D>
+          -l <ells> -E <density> -V <node count> -L <ell> -d <D>
        $0 -P -p <P> -L <ell>
 
 Options:
@@ -28,6 +28,7 @@ Options:
   -k <int>   number K of top motif pairs kept by cmm_test
   -l <list>  motif lengths for RQ3/RQ4 (e.g. "5 8"); each runs with d = 0..ell-1
   -E <int>   edge density for RQ3 and RQ5 (one of -e)
+  -V <int>   node count for RQ4 and RQ5 (one of -v)
   -L <int>   motif length for RQ5 (one of -l)
   -d <int>   number of wildcards for RQ5, in [0,ell)
   -P         only re-plot the existing TSVs (requires only -p and -L)
@@ -36,9 +37,9 @@ EOF
 }
 
 DENSITIES="" NODE_COUNTS="" INSTANCE_TAXID="" MAX_THREADS="" TRIALS="" K=""
-ELLS="" FIXED_ED="" RQ5_ELL="" RQ5_D="" PLOT_ONLY=0
+ELLS="" FIXED_ED="" FIXED_V="" RQ5_ELL="" RQ5_D="" PLOT_ONLY=0
 
-while getopts "e:v:x:p:r:k:l:E:L:d:Ph" opt
+while getopts "e:v:x:p:r:k:l:E:V:L:d:Ph" opt
 do
     case ${opt} in
         e) DENSITIES=${OPTARG} ;;
@@ -49,6 +50,7 @@ do
         k) K=${OPTARG} ;;
         l) ELLS=${OPTARG} ;;
         E) FIXED_ED=${OPTARG} ;;
+        V) FIXED_V=${OPTARG} ;;
         L) RQ5_ELL=${OPTARG} ;;
         d) RQ5_D=${OPTARG} ;;
         P) PLOT_ONLY=1 ;;
@@ -59,7 +61,7 @@ done
 
 declare -A FLAG=(
     [DENSITIES]=-e [NODE_COUNTS]=-v [INSTANCE_TAXID]=-x [MAX_THREADS]=-p
-    [TRIALS]=-r [K]=-k [ELLS]=-l [FIXED_ED]=-E [RQ5_ELL]=-L [RQ5_D]=-d
+    [TRIALS]=-r [K]=-k [ELLS]=-l [FIXED_ED]=-E [FIXED_V]=-V [RQ5_ELL]=-L [RQ5_D]=-d
 )
 if [ ${PLOT_ONLY} -eq 1 ]
 then
@@ -67,8 +69,8 @@ then
     INTEGERS="MAX_THREADS RQ5_ELL"
     LISTS=""
 else
-    REQUIRED="DENSITIES NODE_COUNTS INSTANCE_TAXID MAX_THREADS TRIALS K ELLS FIXED_ED RQ5_ELL RQ5_D"
-    INTEGERS="INSTANCE_TAXID MAX_THREADS TRIALS K FIXED_ED RQ5_ELL RQ5_D"
+    REQUIRED="DENSITIES NODE_COUNTS INSTANCE_TAXID MAX_THREADS TRIALS K ELLS FIXED_ED FIXED_V RQ5_ELL RQ5_D"
+    INTEGERS="INSTANCE_TAXID MAX_THREADS TRIALS K FIXED_ED FIXED_V RQ5_ELL RQ5_D"
     LISTS="DENSITIES NODE_COUNTS ELLS"
 fi
 missing=""
@@ -115,6 +117,10 @@ then
         *" ${FIXED_ED} "*) ;;
         *) echo "Error: -E ${FIXED_ED} is not one of the densities given with -e (${DENSITIES})." >&2; exit 1 ;;
     esac
+    case " ${NODE_COUNTS} " in
+        *" ${FIXED_V} "*) ;;
+        *) echo "Error: -V ${FIXED_V} is not one of the node counts given with -v (${NODE_COUNTS})." >&2; exit 1 ;;
+    esac
     case " ${ELLS} " in
         *" ${RQ5_ELL} "*) ;;
         *) echo "Error: -L ${RQ5_ELL} is not one of the motif lengths given with -l (${ELLS})." >&2; exit 1 ;;
@@ -139,8 +145,6 @@ PLOT_DIR="plots/p${MAX_THREADS}"
 OUT_RQ3="rq3_out.p${MAX_THREADS}.tsv"
 OUT_RQ4="rq4_out.p${MAX_THREADS}.tsv"
 OUT_RQ5="rq5_out.p${MAX_THREADS}.tsv"
-
-V_MAX=$(echo ${NODE_COUNTS} | tr ' ' '\n' | sort -n | tail -1)
 
 # For a given ell, echo the wildcard counts d = 0 .. ell-1.
 d_range() {
@@ -237,7 +241,7 @@ then
 
     ## RQ4
     echo "Running experiment for RQ4..." >&2
-    V=${V_MAX}
+    V=${FIXED_V}
     for trial in $(seq 1 ${TRIALS})
     do
         for ed in ${DENSITIES}
@@ -258,7 +262,7 @@ then
     ## RQ5
     echo "Running experiment for RQ5..." >&2
     ED=${FIXED_ED}
-    V=${V_MAX}
+    V=${FIXED_V}
     for trial in $(seq 1 ${TRIALS})
     do
         for t in $(rq5_thread_counts)

@@ -73,7 +73,7 @@ From `rq3-5_efficiency`:
 ```bash
 # run code for RQ3, RQ4, RQ5, then plot
 ./run.sh -e "05 10 15 20 25 30" -v "100 200 400 800 1600 3200" -x 9606 \
-         -p 128 -r 1 -k 10000 -l "5 8" -E 05 -L 8 -d 2
+         -p 128 -r 1 -k 10000 -l "5 8" -E 05 -V 200 -L 8 -d 2
 # re-plot existing results without re-measuring
 ./run.sh -P -p 128 -L 8
 ```
