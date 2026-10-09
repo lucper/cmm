@@ -94,7 +94,7 @@ The script `runme.sh` runs all the experiments of Section 5 (**Experimental Resu
 It has two modes:
 ```bash
 ./runme.sh      # full experiments of the paper
-./runme.sh -s   # subset evaluated by the ALENEX 2027 Artifact Evaluation Committee
+./runme.sh -s   # subset for evaluation purposes
 ```
 All parameters of both modes are set at the top of `runme.sh`.
 The results are collected in `output/full/` (or `output/subset/` with `-s`), where `<L>` is the motif length and `<D>` the number of wildcards:
