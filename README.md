@@ -108,6 +108,7 @@ The results are collected in `output/full/` (or `output/subset/` with `-s`), whe
 | `rq3-5_efficiency.pdf` | Running time and peak memory of the exact algorithm on the artificial instances (RQ3, RQ4, RQ5) | Figures 5.3, 5.4, and 5.5 |
 
 The subset (`-s`) produces a selection of the rows and panels of these figures and tables, with smaller parameters for RQ3-RQ5.
+In particular, RQ4 and RQ5 run on artificial instances with 1600 proteins instead of 3200 (the largest node count of each mode), so their *absolute* running times and memory are not directly comparable with those in the paper.
 
 Internet access is needed on the first run, since the datasets are downloaded from the STRING database.
 On a Linux host, the run can be resumed: rerunning `runme.sh` skips the work that is already done (in Docker with `--rm`, intermediate results are discarded when the container exits).
