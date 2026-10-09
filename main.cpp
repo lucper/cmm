@@ -3,6 +3,7 @@
 #include <vector>
 #include <iostream>
 #include <cstring>
+#include <clocale>
 #include <limits>
 #include "cxxopts.hpp"
 #include <sys/resource.h>
@@ -112,6 +113,9 @@ int main(int argc, char* argv[]) {
         getrusage(RUSAGE_SELF, &usage);
         long peak_ram_kb = usage.ru_maxrss;
         std::fprintf(stderr, "Peak RAM: %ld KB\n", peak_ram_kb);
+
+        // The progress bar of main_algo leaves the program in the system locale.
+        std::setlocale(LC_NUMERIC, "C");
 
         for (auto &mp : solution) {
             double f = 0.0;
