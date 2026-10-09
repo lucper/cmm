@@ -9,7 +9,7 @@ Under the `experiments` directory:
 1. Build the binaries by running `make -C src` (produces `bin/cmm_test`,
    `bin/cmm_eval`, `bin/cmm_dedup`).
 2. Have the real datasets available under `data/real_instances/` (produced by
-   `./data/run.sh`).
+   `./data/run.sh`; see `experiments/README.md` for its options).
 3. Unzip the source code for SLIDER in `000-slider` (see instructions therein).
 
 SLIDER is invoked from `010-soln-slider/` as a Java jar under `000-slider/SliderLight/`.
@@ -19,7 +19,7 @@ The plotting stages use `gnuplot` (with the `cairolatex` terminal) and produce L
 
 ```bash
 ./run.sh -D <dataset> -f <fasta> -i <ints> \
-         -r <R> -t <T> -l <L> -d <D> \
+         -r <R> -t <T> -l <L> -d <Ds> \
          -k <K> -K <K_TOP> -H <h> -c <C> -p <P>
 ```
 
@@ -33,15 +33,15 @@ All options are required:
 | `-r` | number $R$ of runs for SLIDER |
 | `-t` | max convergence time $T$ for SLIDER (minutes) |
 | `-l` | motif length $\ell$ |
-| `-d` | number of wildcards $d$ |
+| `-d` | numbers of wildcards $d$, as a list (e.g. `"3 5"`); the stages run once per value |
 | `-k` | number $K$ of top motif pairs (per run) for SLIDER |
-| `-K` | number of top motif pairs to keeo after aggregation |
+| `-K` | number of top motif pairs to keep after aggregation |
 | `-H` | similarity proximity $h$ |
 | `-c` | coverage cutoff $C$ in $[0,100]$ |
 | `-p` | threads for the exact algorithm |
 
 The experiment is a sequence of numbered `make` stages, each consuming a previous stage's output.
-`run.sh` drives them in order:
+`run.sh` drives them in order, once per number of wildcards:
 
 | Directory | Produces |
 |-----------|----------|
@@ -58,7 +58,7 @@ The experiment is a sequence of numbered `make` stages, each consuming a previou
 
 | File / dir | Role |
 |------------|------|
-| `run.sh` | Driver: runs all stages in order for one parameter cell. |
+| `run.sh` | Driver: runs all stages in order for one dataset, once per number of wildcards. |
 | `methods.csv` | Maps method keys (`m_slider`, `seq_slider`, `cmm`) to display names. |
 | `<NNN>-*/` | The numbered pipeline stages, each with its own `Makefile`. |
 | `000-slider/` | The SLIDER source code, invoked by `010-soln-slider`. |
@@ -79,6 +79,14 @@ The exact solution omits the `trials`/`min` fields, since it does not depend on 
 ```
 <dataset>.cmm.l<L>d<D>.k<K_TOP>.out
 ```
+
+Its running time and peak memory depend on the number $P$ of threads (`-p`), so they are kept apart for each $P$:
+
+```
+<dataset>.cmm.l<L>d<D>.k<K_TOP>.p<P>.perf
+```
+
+The solution itself does not depend on $P$: running again with another $P$ only measures the time and memory, and keeps the existing solution.
 
 ## Plots
 

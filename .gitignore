@@ -25,3 +25,10 @@ logs/
 .DS_Store
 .idea/
 benchmark/FlameGraph/
+/cmm
+experiments/bin/
+venv/
+output/
+__pycache__/
+*.plotted
+*.tmp

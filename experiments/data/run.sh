@@ -3,30 +3,87 @@
 # Layout produced under this directory:
 #   string_data/<taxid>_<name>/   raw + per-cutoff .fa/.int (from fetch_string.sh)
 #   real_instances/               cleaned .fa/.int, one pair per organism
-#   artificial_instances/ed<NN>/  sampled instances
-#
-# Usage:
-#   ./run.sh
+#   artificial_instances/ed<NN>/  sampled instances, sampled_<taxid>_s<cutoff>_S<seed>_V<v>_ed<NN>.{fa,int}
 
 set -euo pipefail
 
-cd "$(dirname "$0")"
+export LC_ALL=C
 
-## Parameters
-THRESHOLD=700
-SEED=42
+usage() {
+    cat >&2 <<EOF
+Usage: $0 -O <organisms> -s <cutoff> -S <seed> -x <taxid> -e <densities> -v <node counts>
 
-# Organisms to fetch and clean, as "taxid:name" (passed through to fetch_string.sh).
-# Instances are generated from INSTANCE_TAXID only.
-ORGANISMS=(
-    "9606:Homo_sapiens"
-    "3702:Arabidopsis_thaliana"
-    "4932:Saccharomyces_cerevisiae"
-    "511145:Escherichia_coli_K12_MG1655"
-    "7227:Drosophila_melanogaster"
+Options:
+  -O <list>  organisms to fetch and clean, as "taxid:name ..." (e.g. "9606:Homo_sapiens")
+  -s <int>   STRING combined score cutoff in [0,1000]
+  -S <int>   seed for sampling the artificial instances
+  -x <int>   taxid of the organism the artificial instances are sampled from (must be in -O)
+  -e <list>  edge densities of the artificial instances, in percent (e.g. "05 10")
+  -v <list>  node counts of the artificial instances (e.g. "100 200")
+  -h         show this help and exit
+EOF
+}
+
+ORGANISMS_LIST="" THRESHOLD="" SEED="" INSTANCE_TAXID="" DENSITIES="" NODE_COUNTS=""
+
+while getopts "O:s:S:x:e:v:h" opt
+do
+    case ${opt} in
+        O) ORGANISMS_LIST=${OPTARG} ;;
+        s) THRESHOLD=${OPTARG} ;;
+        S) SEED=${OPTARG} ;;
+        x) INSTANCE_TAXID=${OPTARG} ;;
+        e) DENSITIES=${OPTARG} ;;
+        v) NODE_COUNTS=${OPTARG} ;;
+        h) usage; exit 0 ;;
+        *) usage; exit 1 ;;
+    esac
+done
+
+declare -A FLAG=(
+    [ORGANISMS_LIST]=-O [THRESHOLD]=-s [SEED]=-S [INSTANCE_TAXID]=-x
+    [DENSITIES]=-e [NODE_COUNTS]=-v
 )
+missing=""
+for var in ORGANISMS_LIST THRESHOLD SEED INSTANCE_TAXID DENSITIES NODE_COUNTS
+do
+    [ -z "${!var}" ] && missing="${missing} ${FLAG[$var]}"
+done
+if [ -n "${missing}" ]
+then
+    echo "Error: missing required option(s):${missing}" >&2
+    usage
+    exit 1
+fi
+for var in THRESHOLD SEED INSTANCE_TAXID
+do
+    if ! [[ "${!var}" =~ ^[0-9]+$ ]]
+    then
+        echo "Error: ${FLAG[$var]} must be a non-negative integer, got '${!var}'." >&2
+        exit 1
+    fi
+done
+for var in DENSITIES NODE_COUNTS
+do
+    for value in ${!var}
+    do
+        if ! [[ "${value}" =~ ^[0-9]+$ ]]
+        then
+            echo "Error: ${FLAG[$var]} must be a list of non-negative integers, got '${!var}'." >&2
+            exit 1
+        fi
+    done
+done
 
-source ../params.conf
+# Organisms as "taxid:name" (passed through to fetch_string.sh).
+# Instances are generated from INSTANCE_TAXID only.
+read -r -a ORGANISMS <<< "${ORGANISMS_LIST}"
+case " ${ORGANISMS[*]} " in
+    *" ${INSTANCE_TAXID}:"*) ;;
+    *) echo "Error: -x ${INSTANCE_TAXID} is not one of the organisms given with -O." >&2; exit 1 ;;
+esac
+
+cd "$(dirname "$0")"
 
 SCRIPT_DIR="scripts"
 FETCH="${SCRIPT_DIR}/fetch_string.sh"
@@ -108,8 +165,10 @@ do
     mkdir -p ${INSTANCE_DIR}/ed${ed}
     for v in ${NODE_COUNTS}
     do
-        fa="${INSTANCE_DIR}/ed${ed}/sampled_${INSTANCE_TAXID}_V${v}_ed${ed}.fa"
-        int="${INSTANCE_DIR}/ed${ed}/sampled_${INSTANCE_TAXID}_V${v}_ed${ed}.int"
+        # The name records every parameter the instance depends on.
+        instance="sampled_${INSTANCE_TAXID}_s${THRESHOLD}_S${SEED}_V${v}_ed${ed}"
+        fa="${INSTANCE_DIR}/ed${ed}/${instance}.fa"
+        int="${INSTANCE_DIR}/ed${ed}/${instance}.int"
         if [ ! -f "${fa}" ] || [ ! -f "${int}" ]
         then
             echo "  V=${v} ed=0.${ed}" >&2
