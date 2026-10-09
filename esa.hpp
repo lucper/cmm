@@ -10,22 +10,28 @@
 #define SEP 0
 
 struct esa_t {
-    int64_t *SA;
-    int64_t *PLCP;
-    int64_t *LCP;
+    int64_t *SA = nullptr;
+    int64_t *PLCP = nullptr;
+    int64_t *LCP = nullptr;
     int64_t N;
 
-    uint8_t *S;
+    uint8_t *S = nullptr;
     std::vector<uint32_t> S_offset;
 
     esa_t(const std::vector<std::string>& seqs) {
+        // Store offsets of each individual string from the concatenated string.
+        S_offset.resize(seqs.size() + 1); // Add 1 for pos of empty string after last string.
+        S_offset[0] = 0;
+        for (size_t i = 1; i < seqs.size() + 1; i++)
+            S_offset[i] = S_offset[i-1] + seqs[i-1].length() + 1;
+
         // Construct concatenated string S.
         N = 0;
         for (const auto& seq : seqs)
             N += seq.length() + 1;
         S = (uint8_t *) std::malloc((N + 1) * sizeof(uint8_t));
         if (!S)
-            throw std::runtime_error("Could not allocate memory for concatenated string.");
+            fail("Could not allocate memory for concatenated string.");
         size_t offset = 0;
         for (const auto& seq: seqs) {
             std::memcpy(S + offset, seq.data(), seq.length());
@@ -34,28 +40,23 @@ struct esa_t {
         }
         S[offset] = '\0';
 
-        // Store offsets of each individual string from the concatenated string.
-        S_offset.resize(seqs.size() + 1); // Add 1 for pos of empty string after last string.
-        S_offset[0] = 0;
-        for (size_t i = 1; i < seqs.size() + 1; i++)
-            S_offset[i] = S_offset[i-1] + seqs[i-1].length() + 1;
-
         SA = (int64_t *) std::malloc(N * sizeof(int64_t));
         if (!SA)
-            throw std::runtime_error("Could not allocate memory for suffix array.");
+            fail("Could not allocate memory for suffix array.");
         if (libsais64(S, SA, N, 0, NULL) != 0)
-            throw std::runtime_error("Could not construct suffix array.");
+            fail("Could not construct suffix array.");
         PLCP = (int64_t *) std::malloc(N * sizeof(int64_t));
         if (!PLCP)
-            throw std::runtime_error("Could not allocate memory for permuted longest common prefix array.");
+            fail("Could not allocate memory for permuted longest common prefix array.");
         if (libsais64_plcp(S, SA, PLCP, N) != 0)
-            throw std::runtime_error("Could not construct permuted longest common prefix array.");
+            fail("Could not construct permuted longest common prefix array.");
         LCP = (int64_t *) std::malloc(N * sizeof(int64_t));
         if (!LCP)
-            throw std::runtime_error("Could not allocate memory for longest common prefix array.");
+            fail("Could not allocate memory for longest common prefix array.");
         if (libsais64_lcp(PLCP, SA, LCP, N) != 0)
-            throw std::runtime_error("Could not construct longest common prefix array.");
+            fail("Could not construct longest common prefix array.");
         free(PLCP);
+        PLCP = nullptr;
     }
 
     ~esa_t() {
@@ -65,6 +66,17 @@ struct esa_t {
     }
     esa_t(const esa_t&) = delete;
     esa_t& operator=(const esa_t&) = delete;
+
+private:
+    // The destructor does not run when the constructor throws, so the buffers
+    // allocated so far are freed here.
+    [[noreturn]] void fail(const std::string& msg) {
+        free(S);
+        free(SA);
+        free(PLCP);
+        free(LCP);
+        throw std::runtime_error(msg);
+    }
 };
 
 #endif
