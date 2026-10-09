@@ -1,7 +1,7 @@
 #include "rank_table.hpp"
 
 rank_table_t::rank_table_t(size_t ell, const esa_t& ESA)
-    : ell(ell), N(ESA.N), S(ESA.S), S_offset(ESA.S_offset), SA(ESA.SA), LCP(ESA.LCP), max_rank_R1(0)
+    : ell(ell), N(ESA.get_N()), S(ESA.get_S()), S_offset(ESA.get_S_offset()), SA(ESA.get_SA()), LCP(ESA.get_LCP()), max_rank_R1(0)
 {
 
     R1.resize(N);
@@ -47,6 +47,12 @@ std::string_view rank_table_t::get_substr_with_rank(uint32_t r) const
 uint32_t rank_table_t::sort_by_prefix(const std::vector<uint16_t>& H)
 {
     // Positions H must be in [ell] and sorted.
+
+    // No suffix has an ell-length prefix without SEP, so there is nothing to rank.
+    if (sSA.empty()) {
+        this->max_rank_R1 = 0;
+        return 0;
+    }
 
     std::fill(R1.begin(), R1.end(), 0);
 

@@ -1,8 +1,10 @@
 #include <iostream>
 #include <cstdlib>
 #include <vector>
-#include <iostream>
+#include <chrono>
 #include <cstring>
+#include <clocale>
+#include <limits>
 #include "cxxopts.hpp"
 #include <sys/resource.h>
 #include "motifs_search.hpp"
@@ -63,9 +65,33 @@ int main(int argc, char* argv[]) {
             throw std::invalid_argument("Number of wildcards (" + std::to_string(d) + ")" +
                                         " must be in the range [0," + std::to_string(ell) + ").");
 
+        // main_algo computes C(C+1)/2 pairs of the C = C(ell, d) wildcard combinations in a size_t,
+        // so C(C+1) must fit in a size_t, i.e., C must fit in half of its bits.
+        const uint64_t max_combinations = std::numeric_limits<size_t>::max() >> (std::numeric_limits<size_t>::digits / 2);
+        uint64_t num_combinations = 1;
+        for (int i = 1; i <= d && num_combinations <= max_combinations; i++)
+            num_combinations = num_combinations * (ell - d + i) / i;
+        if (num_combinations > max_combinations)
+            throw std::invalid_argument("Motif length (" + std::to_string(ell) + ") with " + std::to_string(d) +
+                                        " wildcards gives too many pairs of wildcard combinations.");
+
         std::vector<motif_pair_record_t> solution;
 
         auto gi = read_graph_files(path_to_edges, path_to_nodes);
+
+        // At least one pair of proteins is needed to compute the edge density.
+        if (gi.node_labels.size() < 2)
+            throw std::invalid_argument("The input must contain at least two sequences.");
+
+        // Every sequence must contain at least one motif occurrence.
+        size_t num_short = 0;
+        for (const auto& seq : gi.node_labels)
+            if (seq.length() < static_cast<size_t>(ell))
+                num_short++;
+        if (num_short > 0)
+            throw std::invalid_argument(std::to_string(num_short) + " sequence(s) shorter than the motif length (" +
+                                        std::to_string(ell) + "). " +
+                                        "Remove them from the input or use a smaller motif length.");
 
         auto start_time = std::chrono::steady_clock::now();
 
@@ -87,6 +113,9 @@ int main(int argc, char* argv[]) {
         getrusage(RUSAGE_SELF, &usage);
         long peak_ram_kb = usage.ru_maxrss;
         std::fprintf(stderr, "Peak RAM: %ld KB\n", peak_ram_kb);
+
+        // The progress bar of main_algo leaves the program in the system locale.
+        std::setlocale(LC_NUMERIC, "C");
 
         for (auto &mp : solution) {
             double f = 0.0;

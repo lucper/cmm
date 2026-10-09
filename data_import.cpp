@@ -6,7 +6,9 @@ static void flush_fasta_entry(const std::string &current_id,
                               graph_input_t &result) {
     if (current_id.empty()) return;
     uint32_t idx = static_cast<uint32_t>(result.node_labels.size());
-    id_to_index[current_id] = idx;
+    auto [it, inserted] = id_to_index.emplace(current_id, idx);
+    if (!inserted)
+        throw std::runtime_error("Duplicate identifier in FASTA file: " + current_id);
     result.node_labels.push_back(std::move(current_seq));
     result.adj_list.emplace_back();
 }
@@ -32,14 +34,21 @@ graph_input_t read_graph_files(const std::string &edge_path,
                 auto space = current_id.find_first_of(" \t");
                 if (space != std::string::npos)
                     current_id = current_id.substr(0, space);
+                if (current_id.empty())
+                    throw std::runtime_error("FASTA header without an identifier: " + line);
                 current_seq.clear();
             } else {
                 line.erase(line.find_last_not_of(" \t\r\n") + 1);
+                if (!line.empty() && current_id.empty())
+                    throw std::runtime_error("Sequence line before the first FASTA header: " + line);
                 current_seq += line;
             }
         }
         flush_fasta_entry(current_id, current_seq, id_to_index, result);
     }
+
+    if (result.node_labels.empty())
+        throw std::runtime_error("No sequences found in FASTA file: " + labels_path);
 
     result.adj_list.resize(result.node_labels.size());
 
@@ -72,6 +81,9 @@ graph_input_t read_graph_files(const std::string &edge_path,
             result.adj_list[v].emplace_back(u, edge_id);
             ++edge_id;
         }
+
+        if (edge_id == 0)
+            throw std::runtime_error("No interactions found in interactions file: " + edge_path);
     }
 
     return result;
