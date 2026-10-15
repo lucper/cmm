@@ -333,18 +333,18 @@ for ds in ${ALL_DATASETS}; do
             continue
         fi
         awk -v ds="${ds}" -v d="${d}" '
-            NF >= 14 {
+            NF >= 13 {
                 # Convert milliseconds to seconds
-                total_sec = int($13 / 1000)
+                total_sec = int($12 / 1000)
                 hh = int(total_sec / 3600)
                 mm = int((total_sec % 3600) / 60)
                 ss = total_sec % 60
 
                 # Convert KB to MB
-                ram_mb = $14 / 1024
+                ram_mb = $13 / 1024
 
                 # Per thread
-                ram_mb_per_thread = ram_mb / $12
+                ram_mb_per_thread = ram_mb / $11
 
                 printf "%s\t%s\t%02d:%02d:%02d\t%.2f\t%.2f\n", ds, d, hh, mm, ss, ram_mb_per_thread, ram_mb
             }
