@@ -26,7 +26,6 @@ struct motif_pair_record_t {
 };
 
 struct solution_report_t {
-    size_t pruning_cnt;
     size_t max_assigned_rank_X;
     size_t min_assigned_rank_X;
     double avg_assigned_rank_X;
@@ -40,10 +39,16 @@ struct sort_by_countE_t {};
 
 template <typename Tag>
 struct motif_pair_record_comp_t {
+    // True if lhs is better than rhs: higher score, then lexicographically smaller X, then Y.
     bool operator()(const motif_pair_record_t& lhs, const motif_pair_record_t& rhs) const {
-        if constexpr (std::is_same_v<Tag, sort_by_x2_t>) return lhs.x2 > rhs.x2;
-        else if constexpr (std::is_same_v<Tag, sort_by_countE_t>) return lhs.countE > rhs.countE;
-        else return false;
+        if constexpr (std::is_same_v<Tag, sort_by_x2_t>) {
+            if (lhs.x2 != rhs.x2) return lhs.x2 > rhs.x2;
+        } else if constexpr (std::is_same_v<Tag, sort_by_countE_t>) {
+            if (lhs.countE != rhs.countE) return lhs.countE > rhs.countE;
+        }
+        // Equal scores: break the tie on X, then Y.
+        if (lhs.X != rhs.X) return lhs.X < rhs.X;
+        return lhs.Y < rhs.Y;
     }
 };
 
@@ -66,7 +71,6 @@ struct thread_workspace_t {
     std::vector<bool> has_rank_X;
 
     // Profiling
-    size_t pruning_cnt;
     uint32_t min_rank_X;
     uint32_t max_rank_X;
     size_t sum_rank_X;
@@ -82,7 +86,7 @@ struct thread_workspace_t {
           uniq_ranks_per_node_buffer(ESA.get_N()), rank_timestamp(ESA.get_N() + 1),
           edge_timestamp(E_size),
           has_rank_X(V_size, false),
-          pruning_cnt(0), min_rank_X(UINT32_MAX), max_rank_X(0), sum_rank_X(0), cell_count_X(0)
+          min_rank_X(UINT32_MAX), max_rank_X(0), sum_rank_X(0), cell_count_X(0)
     {}
 
     void build_csr(const std::vector<std::string>& V, const rank_table_t& rank_table,
@@ -159,7 +163,7 @@ struct thread_workspace_t {
 template <typename Tag>
 solution_report_t main_algo(const std::vector<std::string>& V,
                             const std::vector<std::vector<std::pair<uint32_t, uint32_t>>>& G,
-                            size_t ell, size_t d, size_t k, size_t requested_num_threads, bool to_prune,
+                            size_t ell, size_t d, size_t k, size_t requested_num_threads,
                             size_t c_begin = 0, size_t c_end = SIZE_MAX);
 
 #endif

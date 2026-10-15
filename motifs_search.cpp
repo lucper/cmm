@@ -41,12 +41,11 @@ std::vector<motif_pair_record_t> main_algo(const std::vector<std::string>& V,
 
     std::priority_queue<motif_pair_record_t, std::vector<motif_pair_record_t>, motif_comparator_t> topK_global;
 
-    // Parameters for x2 that depend on graph topology only.
+    // Edge density for x2, which depends on graph topology only.
     size_t number_of_edges = 0;
     for (const auto& node : G) number_of_edges += node.size();
     number_of_edges /= 2;
     double edge_density = static_cast<double>(number_of_edges) / ((G.size() * (G.size() - 1)) / 2);
-    double x2_coeff = edge_density > 0 ? (std::pow(1.0 - edge_density,2) / edge_density) : 0;
 
     esa_t ESA(V);
 
@@ -108,28 +107,11 @@ std::vector<motif_pair_record_t> main_algo(const std::vector<std::string>& V,
 
         {
             const bool same_d = (d_u == d_v);
-            uint32_t max_countY = 0;
-            for (auto rank_Y : ws.active_ranks_Y)
-                max_countY = std::max(max_countY, ws.rank_active_counts_Y[rank_Y]);
-
             std::fill(ws.edge_timestamp.begin(), ws.edge_timestamp.end(), 0);
 
             for (auto rank_X : ws.active_ranks_X) {
                 size_t countX = ws.rank_active_counts_X[rank_X];
                 uint32_t *nodes_with_rank_X = &ws.flat_nodes_X[ws.rank_offsets_X[rank_X]];
-
-                size_t max_degree_rank_X = 0;
-                for (size_t i = 0; i < countX; i++)
-                    max_degree_rank_X = std::max(max_degree_rank_X, G[nodes_with_rank_X[i]].size());
-
-                // Pruning
-                size_t countE_max = std::min(countX * max_countY, countX * max_degree_rank_X);
-                double max_x2 =  std::max(0.0, static_cast<double>(countE_max) * x2_coeff);
-                motif_pair_record_t best_candidate;
-                best_candidate.x2 = max_x2;
-                best_candidate.countE = countE_max;
-                if (ws.topK.size() >= k && !motif_comparator(best_candidate, ws.topK.top()))
-                    continue;
 
                 ws.edge_count_set_indices.clear();
 
@@ -205,17 +187,22 @@ std::vector<motif_pair_record_t> main_algo(const std::vector<std::string>& V,
                     motif_pair_record_t candidate;
                     candidate.countE = countE;
                     candidate.x2 = x2;
-                    if (ws.topK.size() < k || motif_comparator(candidate, ws.topK.top())) {
-                        candidate.rankX = rank_X;
-                        candidate.rankY = rank_Y;
+                    // X and Y of candidate are still empty, so this holds only if the k-th has a higher score.
+                    bool worse_than_kth = ws.topK.size() >= k && motif_comparator(ws.topK.top(), candidate);
+                    if (!worse_than_kth) {
+                        // Build X and Y to break a tie with the k-th.
                         candidate.X = apply_mask(ws.rank_table_X.get_substr_with_rank(rank_X), H_u, 'x');
                         candidate.Y = apply_mask(ws.rank_table_Y.get_substr_with_rank(rank_Y), H_v, 'x');
-                        candidate.countE_bar = countE_bar;
-                        candidate.countX = countX;
-                        candidate.countY = countY;
-                        candidate.countXY = countXY;
-                        if (ws.topK.size() >= k) ws.topK.pop();
-                        ws.topK.push(candidate);
+                        if (ws.topK.size() < k || motif_comparator(candidate, ws.topK.top())) {
+                            candidate.rankX = rank_X;
+                            candidate.rankY = rank_Y;
+                            candidate.countE_bar = countE_bar;
+                            candidate.countX = countX;
+                            candidate.countY = countY;
+                            candidate.countXY = countXY;
+                            if (ws.topK.size() >= k) ws.topK.pop();
+                            ws.topK.push(candidate);
+                        }
                     }
                     ws.edge_count[rank_Y] = 0;
                 }

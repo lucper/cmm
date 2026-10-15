@@ -28,10 +28,16 @@ struct sort_by_countE_t {};
 
 template <typename Tag>
 struct motif_pair_record_comp_t {
+    // True if lhs is better than rhs: higher score, then lexicographically smaller X, then Y.
     bool operator()(const motif_pair_record_t& lhs, const motif_pair_record_t& rhs) const {
-        if constexpr (std::is_same_v<Tag, sort_by_x2_t>) return lhs.x2 > rhs.x2;
-        else if constexpr (std::is_same_v<Tag, sort_by_countE_t>) return lhs.countE > rhs.countE;
-        else return false;
+        if constexpr (std::is_same_v<Tag, sort_by_x2_t>) {
+            if (lhs.x2 != rhs.x2) return lhs.x2 > rhs.x2;
+        } else if constexpr (std::is_same_v<Tag, sort_by_countE_t>) {
+            if (lhs.countE != rhs.countE) return lhs.countE > rhs.countE;
+        }
+        // Equal scores: break the tie on X, then Y.
+        if (lhs.X != rhs.X) return lhs.X < rhs.X;
+        return lhs.Y < rhs.Y;
     }
 };
 
