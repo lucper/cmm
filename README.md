@@ -82,12 +82,14 @@ Each motif will have length 5 and 2 wildcard symbols (`x`).
 
 This command yields the following output:
 ```text
-MLHxx TQTxx 0.17
-MLHxx QTFxx 0.17
-MLHxx TFIxx 0.17
-MLHxx TKDxx 0.17
-MLHxx RTQxx 0.17
+ALRxx ARRxx 0.17
+ALRxx ARxYx 0.17
+ALRxx ARxxM 0.17
+ALRxx AxRYx 0.17
+ALRxx AxRxM 0.17
 ```
+
+Motif pairs with equal scores are listed in lexicographic order of the first motif, then of the second (byte order, so the wildcard `x` comes after the letters).
 
 ## Reproducing the experiments
 The script `runme.sh` runs all the experiments of Section 5 (**Experimental Results**) and collects the results in `output/full/` (or `output/subset/` with `-s`).
