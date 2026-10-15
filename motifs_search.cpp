@@ -187,17 +187,22 @@ std::vector<motif_pair_record_t> main_algo(const std::vector<std::string>& V,
                     motif_pair_record_t candidate;
                     candidate.countE = countE;
                     candidate.x2 = x2;
-                    if (ws.topK.size() < k || motif_comparator(candidate, ws.topK.top())) {
-                        candidate.rankX = rank_X;
-                        candidate.rankY = rank_Y;
+                    // X and Y of candidate are still empty, so this holds only if the k-th has a higher score.
+                    bool worse_than_kth = ws.topK.size() >= k && motif_comparator(ws.topK.top(), candidate);
+                    if (!worse_than_kth) {
+                        // Build X and Y to break a tie with the k-th.
                         candidate.X = apply_mask(ws.rank_table_X.get_substr_with_rank(rank_X), H_u, 'x');
                         candidate.Y = apply_mask(ws.rank_table_Y.get_substr_with_rank(rank_Y), H_v, 'x');
-                        candidate.countE_bar = countE_bar;
-                        candidate.countX = countX;
-                        candidate.countY = countY;
-                        candidate.countXY = countXY;
-                        if (ws.topK.size() >= k) ws.topK.pop();
-                        ws.topK.push(candidate);
+                        if (ws.topK.size() < k || motif_comparator(candidate, ws.topK.top())) {
+                            candidate.rankX = rank_X;
+                            candidate.rankY = rank_Y;
+                            candidate.countE_bar = countE_bar;
+                            candidate.countX = countX;
+                            candidate.countY = countY;
+                            candidate.countXY = countXY;
+                            if (ws.topK.size() >= k) ws.topK.pop();
+                            ws.topK.push(candidate);
+                        }
                     }
                     ws.edge_count[rank_Y] = 0;
                 }
