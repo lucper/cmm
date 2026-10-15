@@ -84,18 +84,18 @@ Each row of the TSVs of `020-concat/` is one measurement (the one-line output of
 
 | # | Column | | # | Column | | # | Column |
 |---|--------|-|---|--------|-|---|--------|
-| 1 | `trial` | | 6 | `ell` | | 11 | `pruning_cnt` |
-| 2 | `instance` | | 7 | `d` | | 12 | `num_threads_requested` |
-| 3 | `edge_density` | | 8 | `max_rank` | | 13 | `num_threads_spawned` |
-| 4 | `V` | | 9 | `min_rank` | | 14 | `time_ms` |
-| 5 | `N` | | 10 | `avg_rank` | | 15 | `peak_ram_kb` |
+| 1 | `trial` | | 6 | `ell` | | 11 | `num_threads_requested` |
+| 2 | `instance` | | 7 | `d` | | 12 | `num_threads_spawned` |
+| 3 | `edge_density` | | 8 | `max_rank` | | 13 | `time_ms` |
+| 4 | `V` | | 9 | `min_rank` | | 14 | `peak_ram_kb` |
+| 5 | `N` | | 10 | `avg_rank` | | | |
 
-Note that `num_threads_spawned` (13) may be lower than `num_threads_requested` (12).
+Note that `num_threads_spawned` (12) may be lower than `num_threads_requested` (11).
 
 ## Plots
 
 `030-plot/` writes the PDFs of each TSV as `<TSV name without .tsv>_*.pdf`. Time and memory are separate figures, with the legend saved as a standalone PDF.
 The exact styling per RQ (log scaling, polynomial fits, `max_rank` annotations, RQ5 speedup labels) is set by the `plot.py` invocations in `030-plot/Makefile`.
 
-The memory plots of RQ3 and RQ4 show the peak RAM **per thread**: `peak_ram_kb` (15), i.e. the peak resident set size of the whole process, divided by `num_threads_spawned` (13). This is set with the `--mem-per-thread` flag of `plot.py`.
+The memory plots of RQ3 and RQ4 show the peak RAM **per thread**: `peak_ram_kb` (14), i.e. the peak resident set size of the whole process, divided by `num_threads_spawned` (12). This is set with the `--mem-per-thread` flag of `plot.py`.
 The memory plot of RQ5 shows the **total** peak RAM, since it measures how memory grows with the number of threads.
