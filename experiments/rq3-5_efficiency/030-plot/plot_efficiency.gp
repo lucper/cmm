@@ -45,7 +45,7 @@ set offsets 0.5, 0.5, 0, 0
 set xtics nomirror
 set ytics nomirror
 if (top) { set x2tics nomirror rotate by 30 left ; set link x2 ; set x2label '\normalsize $N$' }
-if (logy) { set logscale y ; set format y '$10^{%T}$' }
+if (logy) { set logscale y ; set format y '$10^{%T}$' ; unset mytics }
 set xlabel '\normalsize '.xlab
 set ylabel (mode eq "time") ? '\normalsize Time (s)' : '\normalsize Peak RAM (MB)'
 unset key
