@@ -6,6 +6,7 @@ csv   = ARG2
 # Argument layout differs by mode only in whether a data file precedes <out>:
 #   plot:    mode csv data out exact W [H]   -> ARGC 7 or 8
 #   legend:  mode csv      out exact W [H]   -> ARGC 6 or 7
+# W and H are the size in cm of the plot area in plot mode, and of the whole legend in legend mode.
 if (mode eq "legend") {
     data  = ""
     out   = ARG3
@@ -25,6 +26,17 @@ if (mode eq "legend") {
 # name (and use it as the exact legend title).
 exact_name = system( \
   "awk -F, -v k=\"".exact."\" '$1==k {n=$2; gsub(/\"/,\"\",n); print n; exit}' ".csv)
+
+# Margins around the plot area, in cm, the same in all plots of the experiments, so that every
+# plot area has the size W x H given in plot mode.
+LM = 1.2 ; RM = 0.3 ; BM = 1.0 ; TM = 0.5
+# The terminal rounds the canvas to whole points, so it is rounded up here, keeping the plot area exact.
+whole_bp(cm) = ceil(cm / 2.54 * 72) / 72.0 * 2.54
+if (mode ne "legend") {
+    PW = W ; PH = H
+    W = whole_bp(LM + PW + RM)
+    H = whole_bp(BM + PH + TM)
+}
 
 eval sprintf("set terminal cairolatex pdf input color size %gcm,%gcm font ',9'", W, H)
 set output out . '.tex'
@@ -72,6 +84,10 @@ if (mode eq "legend") {
     # method names come from the TSV (col 2, tab), excluding the exact display name
     methods = system("awk -F'\t' -v ex=\"".exact_name."\" '\$2!=ex && !(\$2 in s){s[\$2]; printf \"%s\\n\", \$2}' ".data)
     NM = words(methods)
+    set lmargin at screen LM / W
+    set rmargin at screen (LM + PW) / W
+    set bmargin at screen BM / H
+    set tmargin at screen (BM + PH) / H
     set xlabel '\normalsize Score rank'
     set ylabel '\normalsize Norm. $f_{\chi^2}$'
     stats data using 1 nooutput

@@ -9,6 +9,7 @@ W     = ARG5 + 0
 # Argument layout (height REQUIRED in plot mode so the only optional is trailing):
 #   legend:  mode csv out exact W [H]                 -> ARGC 5 or 6
 #   plot:    mode csv out exact W H f1 f2 [thr]        -> ARGC 8 (no thr) or 9
+# W and H are the size in cm of the plot area in plot mode, and of the whole legend in legend mode.
 f1 = "" ; f2 = "" ; thr = 0
 if (mode eq "legend") {
     has_h = (ARGC >= 6) ? 1 : 0
@@ -18,6 +19,17 @@ if (mode eq "legend") {
     f1 = ARG7
     f2 = ARG8
     if (ARGC >= 9) { thr = ARG9 + 0 }   # 0 => no threshold line
+}
+
+# Margins around the plot area, in cm, the same in all plots of the experiments, so that every
+# plot area has the size W x H given in plot mode.
+LM = 1.2 ; RM = 0.3 ; BM = 1.0 ; TM = 0.5
+# The terminal rounds the canvas to whole points, so it is rounded up here, keeping the plot area exact.
+whole_bp(cm) = ceil(cm / 2.54 * 72) / 72.0 * 2.54
+if (mode ne "legend") {
+    PW = W ; PH = H
+    W = whole_bp(LM + PW + RM)
+    H = whole_bp(BM + PH + TM)
 }
 
 eval sprintf("set terminal cairolatex pdf input color size %gcm,%gcm font ',9'", W, H)
@@ -52,6 +64,10 @@ if (mode eq "legend") {
       '+' using (2):(1) with lines lw LW lc rgb H2COL title N2
 } else {
     # --- panel: normalized KDE of distance, two overlaid series ---
+    set lmargin at screen LM / W
+    set rmargin at screen (LM + PW) / W
+    set bmargin at screen BM / H
+    set tmargin at screen (BM + PH) / H
     set xlabel '\normalsize Similarity'
     set ylabel '\normalsize Density'
 
