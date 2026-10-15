@@ -130,7 +130,6 @@ cd "$(dirname "$0")"
 
 INSTANCE_DIR="../data/artificial_instances"
 CMM_TEST="../bin/cmm_test"
-VENV="venv"
 
 # For a given ell, echo the wildcard counts d = 0 .. ell-1.
 d_range() {
@@ -198,15 +197,6 @@ TSV_RQ3="rq3.${PARAMS}.ed${FIXED_ED}.k${K}.p${MAX_THREADS}.tsv"
 TSV_RQ4="rq4.${PARAMS}.v${FIXED_V}.k${K}.p${MAX_THREADS}.tsv"
 TSV_RQ5="rq5.${PARAMS}.v${FIXED_V}.ed${FIXED_ED}.l${RQ5_ELL}d${RQ5_D}.k${K}.p${MAX_THREADS}.tsv"
 
-# Setup virtual environment
-if [ ! -d "${VENV}" ]
-then
-    echo "Creating virtual environment..." >&2
-    python3 -m venv ${VENV}
-    ${VENV}/bin/pip install -q -r requirements.txt
-fi
-source ${VENV}/bin/activate
-
 if [ ${PLOT_ONLY} -eq 0 ]
 then
     if [ ! -x "${CMM_TEST}" ]
@@ -271,7 +261,7 @@ do
     make -s -C 020-concat all OUT=${tsv} INPUTS="${inputs}"
 
     echo "=== Stage 030-plot: ${rq} ===" >&2
-    make -s -C 030-plot all TSV=${tsv} RQ5_ELL=${RQ5_ELL}
+    make -s -C 030-plot all TSV=${tsv}
 done
 
 echo "Done. Plots written to 030-plot/" >&2
