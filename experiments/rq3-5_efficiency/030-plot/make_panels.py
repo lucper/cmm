@@ -7,10 +7,11 @@ Usage: make_panels.py <rq> <tsv> <stem> [annotate]
 rq:        rq3, rq4, or rq5
 annotate:  "ell:d ..." pairs whose time points are labelled with max_rank (RQ3, RQ4)
 Input:     trial, then the 13 columns of cmm_test (see the README)
-Output:    for RQ3 and RQ4, per motif length L, <stem>_ell<L>_d0_<L/2>.dat with the numbers of wildcards
-           d for which C(L, d) increases, and <stem>_ell<L>_d<L/2+1>_<L-1>.dat with those for which it
-           decreases (L/2 rounded down); for RQ5, <stem>.dat. Their names are printed on stdout. Each holds one gnuplot data
-           set per d (two blank lines apart), headed by its legend title, with one row per point:
+Output:    for RQ3 and RQ4, per motif length L, <stem>_ell<L>_d0_<L/2-1>.dat with the numbers of
+           wildcards d < L/2 and <stem>_ell<L>_d<L/2>_<L-1>.dat with the others (L/2 rounded down), as
+           in the plots of the paper; for RQ5, <stem>.dat. Their names are printed on stdout. Each
+           holds one gnuplot data set per d (two blank lines apart), headed by its legend title, with
+           one row per point:
            x <tab> N <tab> time_s <tab> mem_mb <tab> label
            x is V (RQ3), the edge density in percent (RQ4), or the number of threads (RQ5); time and
            memory are medians over the trials, memory per thread on RQ3 and RQ4; label is max_rank on
@@ -34,12 +35,12 @@ with open(tsv, newline="") as fh:
         if row:
             points.setdefault((int(row[5]), int(row[6])), {}).setdefault(x_of(row), []).append(row)
 
-# C(ell, d) increases up to its peak at d = ell // 2 and decreases after it; one panel for each side.
+# The lower and upper halves of the numbers of wildcards of ell, as in the plots of the paper.
 def group(ell, d):
     if rq == "rq5":
         return stem
-    peak = ell // 2
-    return f"{stem}_ell{ell}_d0_{peak}" if d <= peak else f"{stem}_ell{ell}_d{peak + 1}_{ell - 1}"
+    half = ell // 2
+    return f"{stem}_ell{ell}_d0_{half - 1}" if d < half else f"{stem}_ell{ell}_d{half}_{ell - 1}"
 
 files = {}
 for ell, d in sorted(points):
