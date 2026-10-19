@@ -84,3 +84,12 @@ The densities (`-e`), node counts (`-v`), taxid (`-x`), cutoff (`-s`), and seed 
 The run is resumable: completed measurements are skipped, so an interrupted run continues where it left off.
 Measurements land in `rq3-5_efficiency/010-measure/`, the TSVs of each research question in `rq3-5_efficiency/020-concat/`, and the plots in `rq3-5_efficiency/030-plot/`, all with the parameters in their names.
 See `rq3-5_efficiency/README.md` for the parameters and output format.
+
+## Previewing the plots
+
+The plots of both suites are LaTeX figures (a `.tex` file with the text and a `.pdf` with the graphics, from the `cairolatex` terminal of `gnuplot`), meant to be included in a LaTeX document.
+To look at some of them as PNG images, run from this directory, e.g.:
+```bash
+./tex2png.sh rq3-5_efficiency/030-plot/*.tex   # writes <figure>.png next to each .tex
+```
+`-r <dpi>` sets the resolution (150 by default). It needs `pdflatex` and `pdftoppm` (Ubuntu package `poppler-utils`).

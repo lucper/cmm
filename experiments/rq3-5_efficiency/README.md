@@ -10,9 +10,7 @@ Under the `experiments` directory:
 1. Build the binaries by running `make -C src` (produces `bin/cmm_test`).
 2. Run `./data/run.sh` to generate the artificial instances used for this experiment (see `experiments/README.md` for its options).
 
-Python dependencies for plotting (`pandas`, `matplotlib`, `seaborn`) are listed
-in `requirements.txt` and installed automatically into a local `venv/` on first
-run.
+The plotting stage uses `python3` (standard library only) and `gnuplot` (with the `cairolatex` terminal), and produces LaTeX `.tex` figures.
 
 ## Usage
 
@@ -56,16 +54,16 @@ The experiment is a sequence of numbered `make` stages, each consuming the previ
 |-----------|----------|
 | `010-measure/` | One `cmm_test` measurement per file |
 | `020-concat/` | One TSV per research question, with the measurements of the given parameters |
-| `030-plot/` | The time and memory plots of each TSV |
+| `030-plot/` | The time and memory plots, and their legends, of each TSV |
 
 ## Files
 
 | File / dir | Role |
 |------------|------|
 | `run.sh` | Driver: runs all stages in order. |
-| `requirements.txt` | Python dependencies for `030-plot/plot.py`. |
 | `<NNN>-*/` | The numbered pipeline stages, each with its own `Makefile`. |
-| `030-plot/plot.py` | Renders a TSV into PDFs. |
+| `030-plot/make_panels.py` | Splits a TSV into one data file per panel. |
+| `030-plot/plot_efficiency.gp` | Plots a panel file as a time plot, a memory plot, or a legend. |
 | `<stage>/`, `010-measure/<instance>/` | Per-stage outputs (generated). |
 
 ## Output format
@@ -94,8 +92,12 @@ Note that `num_threads_spawned` (12) may be lower than `num_threads_requested` (
 
 ## Plots
 
-`030-plot/` writes the PDFs of each TSV as `<TSV name without .tsv>_*.pdf`. Time and memory are separate figures, with the legend saved as a standalone PDF.
-The exact styling per RQ (log scaling, polynomial fits, `max_rank` annotations, RQ5 speedup labels) is set by the `plot.py` invocations in `030-plot/Makefile`.
+For each TSV, `030-plot/make_panels.py` writes one data file per panel, with one line per number $d$ of wildcards, the median time and memory over the trials, and the labels of the points:
+- RQ3 and RQ4: `<TSV name without .tsv>_ell<L>_d<a>_<b>.dat` for each motif length $\ell$, one with $d < \lfloor \ell/2 \rfloor$ and one with the other $d$, as in the paper (e.g. `_ell8_d0_3` and `_ell8_d4_7`);
+- RQ5: `<TSV name without .tsv>.dat`.
 
-The memory plots of RQ3 and RQ4 show the peak RAM **per thread**: `peak_ram_kb` (14), i.e. the peak resident set size of the whole process, divided by `num_threads_spawned` (12). This is set with the `--mem-per-thread` flag of `plot.py`.
+The names of these files are listed in `<TSV name without .tsv>.panels`.
+`030-plot/plot_efficiency.gp` plots each of them as `<panel>_time.tex`, `<panel>_memory.tex`, and `<panel>_legend.tex`, each with a `.pdf` of its graphics, to be included in a LaTeX document with `\input` (as `runme.sh` does; see `../tex2png.sh` to look at one as a PNG).
+
+The memory plots of RQ3 and RQ4 show the peak RAM **per thread**: `peak_ram_kb` (14), i.e. the peak resident set size of the whole process, divided by `num_threads_spawned` (12).
 The memory plot of RQ5 shows the **total** peak RAM, since it measures how memory grows with the number of threads.
