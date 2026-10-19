@@ -183,15 +183,13 @@ build_figure_pdf() {
     {
         cat <<'HEAD'
 \documentclass{article}
-\usepackage[paperwidth=18cm,paperheight=26cm,margin=1cm]{geometry}
-\pagestyle{empty}
 \usepackage{graphicx}
 \usepackage{color}
 \usepackage{caption}
 % Placeholder for a figure that was not generated. Uses only \framebox/\parbox
 % (base LaTeX) so it needs no extra packages.
 \newcommand{\missingfig}[1]{%
-  \framebox[3.2cm]{\parbox[c][2.4cm][c]{3.0cm}{\centering\footnotesize\color{gray}#1\\[2pt](not generated)}}%
+  \framebox[6.5cm]{\parbox[c][5.1cm][c]{6.0cm}{\centering\footnotesize\color{gray}#1\\[2pt](not generated)}}%
 }
 \newcommand{\subfig}[2]{%
   \begin{minipage}[t]{0.48\linewidth}
@@ -201,8 +199,11 @@ build_figure_pdf() {
     \captionof{figure}{#2}
   \end{minipage}%
 }
+% The page is the size of the figure, with a margin of 0.5cm.
+\newsavebox\content
+\hoffset=-1in \voffset=-1in
 \begin{document}
-\begin{minipage}{15cm}
+\sbox\content{\begin{minipage}{15cm}
   \centering
 HEAD
 
@@ -219,7 +220,10 @@ HEAD
         done
 
         cat <<'FOOT'
-\end{minipage}
+\end{minipage}}
+\pdfpagewidth=\dimexpr\wd\content+1cm\relax
+\pdfpageheight=\dimexpr\ht\content+\dp\content+1cm\relax
+\shipout\hbox{\kern0.5cm\vbox{\kern0.5cm\box\content}}
 \end{document}
 FOOT
     } > "${wrap}/figure.tex"
@@ -236,49 +240,47 @@ FOOT
     fi
 }
 
-# RQ3-RQ5: assembles the efficiency plots into one PDF.
+# RQ3-RQ5: assembles the efficiency plots into one PDF, with one page per research question
+# (TSV), holding the legend, time plot, and memory plot of each panel listed in its .panels file.
 build_rq3-5_pdf() {
-    local plots="$1" rq3="$2" rq4="$3" rq5="$4" out="$5"
+    local plots="$1" out="$2"
+    shift 2
     local wrap; wrap=$(mktemp -d)
-    cp -f "${plots}/${rq3}"_*.pdf "${plots}/${rq4}"_*.pdf "${plots}/${rq5}"_*.pdf "${wrap}/" 2>/dev/null || true
-
-    # One legend+time+memory block for a given basename prefix.
-    _eff_block() {
-        local p="$1"
-        cat <<BLOCK
-\IfFileExists{${p}_legend.pdf}{\centerline{\includegraphics[width=0.6\linewidth]{${p}_legend.pdf}}\\\\[2pt]}{}%
-\begin{minipage}[t]{0.49\linewidth}\centering
-  \IfFileExists{${p}_time.pdf}{\includegraphics[width=\linewidth]{${p}_time.pdf}}{\effmissing{${p}_time}}%
-\end{minipage}\hfill%
-\begin{minipage}[t]{0.49\linewidth}\centering
-  \IfFileExists{${p}_memory.pdf}{\includegraphics[width=\linewidth]{${p}_memory.pdf}}{\effmissing{${p}_memory}}%
-\end{minipage}\par\vspace{0.2cm}
-BLOCK
-    }
 
     {
         cat <<'HEAD'
 \documentclass{article}
-\usepackage[paperwidth=18cm,paperheight=26cm,margin=1cm]{geometry}
-\pagestyle{empty}
 \usepackage{graphicx}
 \usepackage{color}
-\newcommand{\effmissing}[1]{\framebox[6cm]{\parbox[c][3.5cm][c]{5.5cm}{\centering\footnotesize\color{gray}\texttt{\detokenize{#1}}\\[2pt](not generated)}}}
-\begin{document}\centering
+\newcommand{\effmissing}[1]{\framebox[6.5cm]{\parbox[c][6.0cm][c]{6.0cm}{\centering\footnotesize\color{gray}\texttt{\detokenize{#1}}\\[2pt](not generated)}}}
+\newcommand{\effpanel}[1]{%
+  \IfFileExists{#1_legend.tex}{\input{#1_legend.tex}}{}\par
+  \IfFileExists{#1_time.tex}{\input{#1_time.tex}}{\effmissing{#1_time}}\hfill
+  \IfFileExists{#1_memory.tex}{\input{#1_memory.tex}}{\effmissing{#1_memory}}\par\vspace{0.3cm}}
+% Each page is the size of its plots, with a margin of 0.5cm.
+\newsavebox\content
+\newcommand{\effpage}[1]{%
+  \sbox\content{\begin{minipage}{13.6cm}\centering#1\end{minipage}}%
+  \pdfpagewidth=\dimexpr\wd\content+1cm\relax
+  \pdfpageheight=\dimexpr\ht\content+\dp\content+1cm\relax
+  \shipout\hbox{\kern0.5cm\vbox{\kern0.5cm\box\content}}}
+\hoffset=-1in \voffset=-1in
+\begin{document}
 HEAD
 
-        # rq3 and rq4: one figure page each, with two d groups per ell (as in
-        # d_groups of plot.py).
-        for stem in "${rq3}" "${rq4}"; do
-            for ell in ${ELLS}; do
-                local half=$((ell / 2))
-                _eff_block "${stem}_ell${ell}_d0_$((half - 1))"
-                _eff_block "${stem}_ell${ell}_d${half}_$((ell - 1))"
-            done
-            echo '\newpage'
+        local stem dat
+        for stem in "$@"; do
+            echo '\effpage{%'
+            if [ -f "${plots}/${stem}.panels" ]; then
+                while read -r dat; do
+                    printf '  \\effpanel{%s}%%\n' "${dat%.dat}"
+                    cp -f "${plots}/${dat%.dat}"_*.tex "${plots}/${dat%.dat}"_*.pdf "${wrap}/" 2>/dev/null || true
+                done < "${plots}/${stem}.panels"
+            else
+                printf '  \\effmissing{%s}%%\n' "${stem}"
+            fi
+            echo '}'
         done
-        # rq5: single thread-scaling block.
-        _eff_block "${rq5}"
 
         echo '\end{document}'
     } > "${wrap}/efficiency.tex"
@@ -358,8 +360,8 @@ EFF_PARAMS="${INSTANCE_TAXID}.s${THRESHOLD}.S${SEED}"
 EFF_RQ3="rq3.${EFF_PARAMS}.ed${FIXED_ED}.k${K_CMM}.p${THREADS}"
 EFF_RQ4="rq4.${EFF_PARAMS}.v${FIXED_V}.k${K_CMM}.p${THREADS}"
 EFF_RQ5="rq5.${EFF_PARAMS}.v${FIXED_V}.ed${FIXED_ED}.l${RQ5_ELL}d${RQ5_D}.k${K_CMM}.p${THREADS}"
-build_rq3-5_pdf "${WDIR}/rq3-5_efficiency/030-plot" "${EFF_RQ3}" "${EFF_RQ4}" "${EFF_RQ5}" \
-                "${OUTDIR}/rq3-5_efficiency.pdf"
+build_rq3-5_pdf "${WDIR}/rq3-5_efficiency/030-plot" "${OUTDIR}/rq3-5_efficiency.pdf" \
+                "${EFF_RQ3}" "${EFF_RQ4}" "${EFF_RQ5}"
 
 echo "=== Done ===" >&2
 echo "Aggregated results in ${OUTDIR}/ (see README.md)" >&2

@@ -19,12 +19,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         texlive-pictures \
         texlive-latex-recommended \
         python3 \
-        python3-pip \
-        python3-venv \
     && rm -rf /var/lib/apt/lists/*
-
-RUN pip3 install --no-cache-dir --break-system-packages \
-        pandas matplotlib seaborn
 
 WORKDIR /work
 COPY . /work
@@ -32,6 +27,6 @@ COPY . /work
 # Make every script executable (a fresh checkout / copy may drop the bit).
 RUN find /work -type f \( -name '*.sh' -o -name '*.py' \) -exec chmod +x {} +
 
-RUN make -C /work/experiments/src
-
+# The binaries are compiled by runme.sh when the container runs, since they are
+# compiled with -march=native for the CPU that runs them.
 CMD ["./runme.sh"]

@@ -5,9 +5,9 @@ EXACT_PROG  := cmm
 METHODS_CSV := ../methods.csv
 METHODS     := $(shell awk -F, '{print $$1}' $(METHODS_CSV))
 
-## dimensions for plot and legend
-PLOT_W      := 3.5
-PLOT_H      := 3.0
+## dimensions of the plot area (the same in all plots of the experiments) and of the legend, in cm
+PLOT_W      := 5.0
+PLOT_H      := 3.6
 LEGEND_W    := 7
 LEGEND_H    := 1.0
 
