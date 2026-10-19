@@ -10,6 +10,8 @@
 #include <cmath>
 #include <atomic>
 #include <random>
+#include <limits>
+#include <string>
 #include "indicators.hpp"
 #include "rank_table.hpp"
 #include "esa.hpp"

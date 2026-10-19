@@ -59,6 +59,31 @@ std::vector<motif_pair_record_t> main_algo(const std::vector<std::string>& V,
 {
     if (k <= 0) throw std::invalid_argument("k must be positive");
     if (ell < 1) throw std::invalid_argument("ell must be positive");
+    if (d >= ell) throw std::invalid_argument("d must be in [0, ell)");
+
+    // The C(C+1)/2 pairs of the C = C(ell, d) wildcard combinations are counted in a size_t, so
+    // C(C+1) must fit in a size_t, i.e., C must fit in half of its bits.
+    const uint64_t max_combinations = std::numeric_limits<size_t>::max() >> (std::numeric_limits<size_t>::digits / 2);
+    uint64_t num_combinations = 1;
+    for (size_t i = 1; i <= d && num_combinations <= max_combinations; i++)
+        num_combinations = num_combinations * (ell - d + i) / i;
+    if (num_combinations > max_combinations)
+        throw std::invalid_argument("Motif length (" + std::to_string(ell) + ") with " + std::to_string(d) +
+                                    " wildcards gives too many pairs of wildcard combinations.");
+
+    // At least one pair of proteins is needed to compute the edge density.
+    if (V.size() < 2)
+        throw std::invalid_argument("The input must contain at least two sequences.");
+
+    // Every sequence must contain at least one motif occurrence.
+    size_t num_short = 0;
+    for (const auto& seq : V)
+        if (seq.length() < ell)
+            num_short++;
+    if (num_short > 0)
+        throw std::invalid_argument(std::to_string(num_short) + " sequence(s) shorter than the motif length (" +
+                                    std::to_string(ell) + "). " +
+                                    "Remove them from the input or use a smaller motif length.");
 
     using motif_comparator_t = motif_pair_record_comp_t<Tag>;
 
