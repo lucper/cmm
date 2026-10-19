@@ -60,6 +60,7 @@ search_result_t main_algo(const std::vector<std::string>& V,
     if (k <= 0) throw std::invalid_argument("k must be positive");
     if (ell < 1) throw std::invalid_argument("ell must be positive");
     if (d >= ell) throw std::invalid_argument("d must be in [0, ell)");
+    if (requested_num_threads < 1) throw std::invalid_argument("num_threads must be positive");
 
     // The C(C+1)/2 pairs of the C = C(ell, d) wildcard combinations are counted in a size_t, so
     // C(C+1) must fit in a size_t, i.e., C must fit in half of its bits.

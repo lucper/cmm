@@ -5,12 +5,13 @@
 #include <string>
 #include <vector>
 
-// An invalid input: files in instances/, motif length ell, d wildcards, k motif pairs, and the
-// message of the exception it must raise.
+// An invalid input: files in instances/, motif length ell, d wildcards, k motif pairs, the
+// message of the exception it must raise, and the number of threads.
 struct error_case_t {
     std::string fasta, interactions;
     size_t ell, d, k;
     std::string message;
+    size_t num_threads = 1;
 };
 
 TEST_CASE("invalid input raises an exception with its message") {
@@ -29,12 +30,13 @@ TEST_CASE("invalid input raises an exception with its message") {
         {"readme.fa",                        "readme.int",                      64, 32, 5, "Motif length (64) with 32 wildcards gives too many pairs of wildcard combinations."},
         {"readme.fa",                        "readme.int",                       4, 4, 5, "d must be in [0, ell)"},
         {"readme.fa",                        "readme.int",                       4, 0, 0, "k must be positive"},
+        {"readme.fa",                        "readme.int",                       4, 0, 5, "num_threads must be positive", 0},
     };
     for (const auto& e : cases) {
-        INFO(e.fasta, " ", e.interactions, ", ell = ", e.ell, ", d = ", e.d, ", k = ", e.k);
+        INFO(e.fasta, " ", e.interactions, ", ell = ", e.ell, ", d = ", e.d, ", k = ", e.k, ", ", e.num_threads, " threads");
         CHECK_THROWS_WITH([&] {
             auto gi = read_graph_files("instances/" + e.interactions, "instances/" + e.fasta);
-            main_algo<sort_by_x2_t>(gi.node_labels, gi.adj_list, e.ell, e.d, e.k, 1);
+            main_algo<sort_by_x2_t>(gi.node_labels, gi.adj_list, e.ell, e.d, e.k, e.num_threads);
         }(), doctest::Contains(e.message.c_str()));
     }
 }
