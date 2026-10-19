@@ -1,4 +1,5 @@
 #include <chrono>
+#include <clocale>
 #include <cstdint>
 #include <filesystem>
 #include <fstream>
@@ -7,7 +8,7 @@
 #include <string>
 #include <sys/resource.h>
 
-#include "motifs_search_test.hpp"
+#include "motifs_search.hpp"
 #include "data_import.hpp"
 
 namespace fs = std::filesystem;
@@ -16,7 +17,7 @@ int main(int argc, char* argv[]) {
     if (argc < 8) {
         std::fprintf(stderr,
             "Usage: %s <fa_file> <int_file> <ell> <d> <k> <num_threads> <solution_file>"
-            " [c_begin] [c_end]\n\n"
+            " [support_function]\n\n"
             "  fa_file       : FASTA file with protein sequences\n"
             "  int_file      : interactions file with lines formatted as 'u v'\n"
             "  ell           : motif length\n"
@@ -24,8 +25,7 @@ int main(int argc, char* argv[]) {
             "  k             : number of top motif pairs to keep\n"
             "  num_threads   : number of threads to be requested\n"
             "  solution_file : output file for top motif pairs\n"
-            "  c_begin       : (optional) first flat cell index to process (default 0)\n"
-            "  c_end         : (optional) one-past-last flat cell index (default: all cells)\n",
+            "  support_function : (optional) support function to sort motifs, 'E' or 'x2' (default: x2)\n",
             argv[0]);
         return EXIT_SUCCESS;
     }
@@ -39,11 +39,7 @@ int main(int argc, char* argv[]) {
         int    num_threads  = std::stoi(argv[6]);
         fs::path sol_path(argv[7]);
 
-        size_t c_begin = 0;
-        size_t c_end   = SIZE_MAX;
-        bool range_given = false;
-        if (argc > 8) { c_begin = static_cast<size_t>(std::stoull(argv[8])); range_given = true; }
-        if (argc > 9) { c_end   = static_cast<size_t>(std::stoull(argv[9])); range_given = true; }
+        std::string supp_func = argc > 8 ? argv[8] : "x2";
 
         if (!fs::exists(fa_path))
             throw std::runtime_error("FASTA file not found: " + fa_path.string());
@@ -55,6 +51,10 @@ int main(int argc, char* argv[]) {
             throw std::invalid_argument("d must be in [0, ell).");
         if (k <= 0)
             throw std::invalid_argument("k must be a positive integer.");
+        if (num_threads <= 0)
+            throw std::invalid_argument("num_threads must be a positive integer.");
+        if (supp_func != "E" && supp_func != "x2")
+            throw std::invalid_argument("Invalid support function: " + supp_func + ".");
 
         std::string instance_name = fa_path.stem().string();
 
@@ -73,12 +73,7 @@ int main(int argc, char* argv[]) {
         std::fprintf(stderr, "d                 : %d\n", d);
         std::fprintf(stderr, "Requested threads : %d\n", num_threads);
         std::fprintf(stderr, "k                 : %d\n", k);
-        if (range_given) {
-            if (c_end == SIZE_MAX)
-                std::fprintf(stderr, "Cell range        : [%zu, all)\n", c_begin);
-            else
-                std::fprintf(stderr, "Cell range        : [%zu, %zu)\n", c_begin, c_end);
-        }
+        std::fprintf(stderr, "Support function  : %s\n", supp_func.c_str());
         std::fprintf(stderr, "V                 : %zu\n", V);
         std::fprintf(stderr, "N                 : %zu\n", N);
         std::fprintf(stderr, "Running ...\n");
@@ -86,8 +81,9 @@ int main(int argc, char* argv[]) {
 
         auto t0 = std::chrono::steady_clock::now();
 
-        auto solution = main_algo<sort_by_x2_t>(gi.node_labels, gi.adj_list, ell, d, k, num_threads,
-                                                c_begin, c_end);
+        auto [solution, stats] = (supp_func == "E")
+            ? main_algo<sort_by_countE_t>(gi.node_labels, gi.adj_list, ell, d, k, num_threads)
+            : main_algo<sort_by_x2_t>(gi.node_labels, gi.adj_list, ell, d, k, num_threads);
 
         auto t1 = std::chrono::steady_clock::now();
         long ms = std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0).count();
@@ -98,6 +94,9 @@ int main(int argc, char* argv[]) {
 
         std::fprintf(stderr, "Done: %ld ms, %ld KB\n", ms, peak_ram_kb);
 
+        // The progress bar of main_algo leaves the program in the system locale.
+        std::setlocale(LC_NUMERIC, "C");
+
         std::printf("%s\t%.4f\t%zu\t%zu\t%d\t%d\t%zu\t%zu\t%.4f\t%d\t%zu\t%ld\t%ld\n",
             instance_name.c_str(),
             edge_density,
@@ -105,11 +104,11 @@ int main(int argc, char* argv[]) {
             N,
             ell,
             d,
-            solution.max_assigned_rank_X,
-            solution.min_assigned_rank_X,
-            solution.avg_assigned_rank_X,
+            static_cast<size_t>(stats.max_max_rank_X),
+            static_cast<size_t>(stats.num_cells > 0 ? stats.min_max_rank_X : 0),
+            stats.num_cells > 0 ? static_cast<double>(stats.sum_max_rank_X) / stats.num_cells : 0.0,
             num_threads,
-            solution.num_threads_spawned,
+            stats.num_threads,
             ms,
             peak_ram_kb);
         std::fflush(stderr);
@@ -121,11 +120,9 @@ int main(int argc, char* argv[]) {
                              sol_path.string().c_str());
             } else {
                 sol_out << std::fixed << std::setprecision(3);
-                for (const auto& mp : solution.motif_pairs) {
-                    if (range_given)
-                        sol_out << mp.cell_c << " " << mp.cell_du << " " << mp.cell_dv << " ";
-                    sol_out << mp.X << " " << mp.Y << " " << mp.x2 << "\n";
-                }
+                for (const auto& mp : solution)
+                    sol_out << mp.X << " " << mp.Y << " "
+                            << (supp_func == "E" ? static_cast<double>(mp.countE) : mp.x2) << "\n";
                 if (!sol_out)
                     std::fprintf(stderr, "Warning: error while writing solution file: %s\n",
                                  sol_path.string().c_str());
