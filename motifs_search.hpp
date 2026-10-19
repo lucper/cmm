@@ -9,6 +9,7 @@
 #include <omp.h>
 #include <cmath>
 #include <atomic>
+#include <random>
 #include "indicators.hpp"
 #include "rank_table.hpp"
 #include "esa.hpp"
@@ -145,6 +146,11 @@ struct thread_workspace_t {
 template <typename Tag>
 std::vector<motif_pair_record_t> main_algo(const std::vector<std::string>& V,
                                            const std::vector<std::vector<std::pair<uint32_t, uint32_t>>>& G,
-                                           size_t ell, size_t d, size_t k, size_t requested_num_threads);
+                                           size_t ell, size_t d, size_t k, size_t requested_num_threads,
+                                           size_t num_parts = 1, size_t part = 0);
+
+// The best k of the given motif pairs, best first.
+template <typename Tag>
+std::vector<motif_pair_record_t> merge_top_k(std::vector<motif_pair_record_t> pairs, size_t k);
 
 #endif

@@ -27,10 +27,35 @@ static std::vector<std::vector<uint16_t>> all_H_combinations(size_t ell, size_t 
     return all_H;
 }
 
+// The upper-triangular cells (d_u <= d_v) of the wildcard combinations, in a fixed pseudo-random
+// order, so that every block of them has about the same amount of work.
+static std::vector<std::pair<size_t, size_t>> shuffled_cells(size_t num_H)
+{
+    std::vector<std::pair<size_t, size_t>> cells;
+    cells.reserve(num_H * (num_H + 1) / 2);
+    for (size_t d_u = 0; d_u < num_H; d_u++)
+        for (size_t d_v = d_u; d_v < num_H; d_v++)
+            cells.emplace_back(d_u, d_v);
+    std::mt19937_64 rng(0xC0FFEEULL);
+    std::shuffle(cells.begin(), cells.end(), rng);
+    return cells;
+}
+
+template <typename Tag>
+std::vector<motif_pair_record_t> merge_top_k(std::vector<motif_pair_record_t> pairs, size_t k)
+{
+    std::sort(pairs.begin(), pairs.end(), motif_pair_record_comp_t<Tag>());
+    if (pairs.size() > k) pairs.resize(k);
+    return pairs;
+}
+
+// Searches the cells of block `part` of `num_parts` of the shuffled cells (all of them by default),
+// and returns the top k motif pairs found there, best first.
 template <typename Tag>
 std::vector<motif_pair_record_t> main_algo(const std::vector<std::string>& V,
                                            const std::vector<std::vector<std::pair<uint32_t, uint32_t>>>& G,
-                                           size_t ell, size_t d, size_t k, size_t requested_num_threads)
+                                           size_t ell, size_t d, size_t k, size_t requested_num_threads,
+                                           size_t num_parts, size_t part)
 {
     if (k <= 0) throw std::invalid_argument("k must be positive");
     if (ell < 1) throw std::invalid_argument("ell must be positive");
@@ -39,26 +64,25 @@ std::vector<motif_pair_record_t> main_algo(const std::vector<std::string>& V,
 
     motif_comparator_t motif_comparator;
 
-    std::priority_queue<motif_pair_record_t, std::vector<motif_pair_record_t>, motif_comparator_t> topK_global;
-
     // Edge density for x2, which depends on graph topology only.
     size_t number_of_edges = 0;
     for (const auto& node : G) number_of_edges += node.size();
     number_of_edges /= 2;
     double edge_density = static_cast<double>(number_of_edges) / ((G.size() * (G.size() - 1)) / 2);
 
-    esa_t ESA(V);
-
     auto all_H = all_H_combinations(ell, d);
 
-    // Precompute the upper-triangular cells (d_u <= d_v) of wildcard combinations.
-    std::vector<std::pair<size_t, size_t>> cells;
-    cells.reserve(all_H.size() * (all_H.size() + 1) / 2);
-    for (size_t d_u = 0; d_u < all_H.size(); d_u++)
-        for (size_t d_v = d_u; d_v < all_H.size(); d_v++)
-            cells.emplace_back(d_u, d_v);
+    // This part's block [c_begin, c_end) of the shuffled cells; it is empty when there are fewer
+    // cells than parts, and then there is nothing to search.
+    auto cells = shuffled_cells(all_H.size());
+    size_t c_begin = part * cells.size() / num_parts;
+    size_t c_end = (part + 1) * cells.size() / num_parts;
+    if (c_begin == c_end)
+        return {};
 
-    size_t num_threads = std::min(cells.size(), requested_num_threads);
+    esa_t ESA(V);
+
+    size_t num_threads = std::min(c_end - c_begin, requested_num_threads);
     omp_set_num_threads(num_threads);
     std::vector<thread_workspace_t<motif_comparator_t>> workspaces;
     workspaces.reserve(num_threads);
@@ -80,7 +104,7 @@ std::vector<motif_pair_record_t> main_algo(const std::vector<std::string>& V,
         option::PrefixText("Mining motifs "),
         option::Stream(std::cerr)
     );
-    size_t total_pairs = all_H.size() * (all_H.size() + 1) / 2;
+    size_t total_pairs = c_end - c_begin;
     std::atomic<size_t> pairs_completed(0);
     size_t update_interval = std::max(static_cast<size_t>(1), total_pairs / 100);
 
@@ -94,7 +118,7 @@ std::vector<motif_pair_record_t> main_algo(const std::vector<std::string>& V,
     thread_workspace_t<motif_comparator_t>& ws = workspaces[tid];
 
     #pragma omp for schedule(dynamic)
-    for (size_t c = 0; c < cells.size(); c++) {
+    for (size_t c = c_begin; c < c_end; c++) {
         auto [d_u, d_v] = cells[c];
         auto& H_u = all_H[d_u];
         auto& H_v = all_H[d_v];
@@ -227,37 +251,29 @@ std::vector<motif_pair_record_t> main_algo(const std::vector<std::string>& V,
     }
     }
 
+    std::vector<motif_pair_record_t> candidates;
     for (auto& ws : workspaces) {
         while (!ws.topK.empty()) {
-            const auto& candidate = ws.topK.top();
-            topK_global.push(candidate);
-            if (topK_global.size() > k) topK_global.pop();
+            candidates.push_back(ws.topK.top());
             ws.topK.pop();
         }
     }
 
-    // Get solution from priority queue.
-    std::vector<motif_pair_record_t> solution;
-    solution.reserve(topK_global.size());
-
-    while (!topK_global.empty()) {
-        solution.push_back(topK_global.top());
-        topK_global.pop();
-    }
-
-    std::reverse(solution.begin(), solution.end());
-
-    return solution;
+    return merge_top_k<Tag>(std::move(candidates), k);
 }
 
 template std::vector<motif_pair_record_t> main_algo<sort_by_countE_t>(
     const std::vector<std::string>&,
     const std::vector<std::vector<std::pair<uint32_t, uint32_t>>>&,
-    size_t, size_t, size_t, size_t
+    size_t, size_t, size_t, size_t, size_t, size_t
 );
 
 template std::vector<motif_pair_record_t> main_algo<sort_by_x2_t>(
     const std::vector<std::string>&,
     const std::vector<std::vector<std::pair<uint32_t, uint32_t>>>&,
-    size_t, size_t, size_t, size_t
+    size_t, size_t, size_t, size_t, size_t, size_t
 );
+
+template std::vector<motif_pair_record_t> merge_top_k<sort_by_countE_t>(std::vector<motif_pair_record_t>, size_t);
+
+template std::vector<motif_pair_record_t> merge_top_k<sort_by_x2_t>(std::vector<motif_pair_record_t>, size_t);
