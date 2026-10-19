@@ -46,6 +46,8 @@ int main(int argc, char* argv[]) {
         std::string path_to_nodes = program["sequences"].as<std::string>();
         std::string path_to_edges = program["interactions"].as<std::string>();
         std::string supp_func = program["support-function"].as<std::string>();
+        if (supp_func != "E" && supp_func != "x2")
+            throw std::invalid_argument("Invalid support function: " + supp_func + ".");
 
         int num_threads = program["threads"].as<int>();
         if (num_threads <= 0)
@@ -64,18 +66,13 @@ int main(int argc, char* argv[]) {
             throw std::invalid_argument("Number of wildcards (" + std::to_string(d) + ")" +
                                         " must be in the range [0," + std::to_string(ell) + ").");
 
-        std::vector<motif_pair_record_t> solution;
-
         auto gi = read_graph_files(path_to_edges, path_to_nodes);
 
         auto start_time = std::chrono::steady_clock::now();
 
-        if (supp_func == "E")
-            solution = main_algo<sort_by_countE_t>(gi.node_labels, gi.adj_list, ell, d, k, num_threads);
-        else if (supp_func == "x2")
-            solution = main_algo<sort_by_x2_t>(gi.node_labels, gi.adj_list, ell, d, k, num_threads);
-        else
-            throw std::invalid_argument("Invalid support function: " + supp_func + ".");
+        [[maybe_unused]] auto [solution, stats] = (supp_func == "E")
+            ? main_algo<sort_by_countE_t>(gi.node_labels, gi.adj_list, ell, d, k, num_threads)
+            : main_algo<sort_by_x2_t>(gi.node_labels, gi.adj_list, ell, d, k, num_threads);
 
         auto now = std::chrono::steady_clock::now();
         auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(now - start_time).count();

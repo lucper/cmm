@@ -50,12 +50,12 @@ std::vector<motif_pair_record_t> merge_top_k(std::vector<motif_pair_record_t> pa
 }
 
 // Searches the cells of block `part` of `num_parts` of the shuffled cells (all of them by default),
-// and returns the top k motif pairs found there, best first.
+// and returns the top k motif pairs found there, best first, with the counters of the search.
 template <typename Tag>
-std::vector<motif_pair_record_t> main_algo(const std::vector<std::string>& V,
-                                           const std::vector<std::vector<std::pair<uint32_t, uint32_t>>>& G,
-                                           size_t ell, size_t d, size_t k, size_t requested_num_threads,
-                                           size_t num_parts, size_t part)
+search_result_t main_algo(const std::vector<std::string>& V,
+                          const std::vector<std::vector<std::pair<uint32_t, uint32_t>>>& G,
+                          size_t ell, size_t d, size_t k, size_t requested_num_threads,
+                          size_t num_parts, size_t part)
 {
     if (k <= 0) throw std::invalid_argument("k must be positive");
     if (ell < 1) throw std::invalid_argument("ell must be positive");
@@ -149,6 +149,7 @@ std::vector<motif_pair_record_t> main_algo(const std::vector<std::string>& V,
         auto& H_v = all_H[d_v];
 
         uint32_t cell_max_rank_X = ws.rank_table_X.sort_by_prefix(H_u);
+        ws.stats.count_cell(cell_max_rank_X);
         ws.build_csr(V, ws.rank_table_X, cell_max_rank_X);
 
         uint32_t cell_max_rank_Y = ws.rank_table_Y.sort_by_prefix(H_v);
@@ -276,24 +277,28 @@ std::vector<motif_pair_record_t> main_algo(const std::vector<std::string>& V,
     }
     }
 
+    search_result_t result;
     std::vector<motif_pair_record_t> candidates;
     for (auto& ws : workspaces) {
+        result.stats.add(ws.stats);
         while (!ws.topK.empty()) {
             candidates.push_back(ws.topK.top());
             ws.topK.pop();
         }
     }
+    result.stats.num_threads = num_threads;
+    result.pairs = merge_top_k<Tag>(std::move(candidates), k);
 
-    return merge_top_k<Tag>(std::move(candidates), k);
+    return result;
 }
 
-template std::vector<motif_pair_record_t> main_algo<sort_by_countE_t>(
+template search_result_t main_algo<sort_by_countE_t>(
     const std::vector<std::string>&,
     const std::vector<std::vector<std::pair<uint32_t, uint32_t>>>&,
     size_t, size_t, size_t, size_t, size_t, size_t
 );
 
-template std::vector<motif_pair_record_t> main_algo<sort_by_x2_t>(
+template search_result_t main_algo<sort_by_x2_t>(
     const std::vector<std::string>&,
     const std::vector<std::vector<std::pair<uint32_t, uint32_t>>>&,
     size_t, size_t, size_t, size_t, size_t, size_t
