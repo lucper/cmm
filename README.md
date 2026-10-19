@@ -126,7 +126,7 @@ To run it directly on a Linux host, install the following (Ubuntu package names)
 build-essential make wget curl gzip gawk tar unzip
 default-jre-headless gnuplot-nox
 texlive-latex-base texlive-pictures texlive-latex-recommended
-python3 python3-pip python3-venv
+python3
 ```
 
 To run each experiment suite separately, see [`experiments/README.md`](experiments/README.md).

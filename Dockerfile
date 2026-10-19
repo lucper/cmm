@@ -19,12 +19,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         texlive-pictures \
         texlive-latex-recommended \
         python3 \
-        python3-pip \
-        python3-venv \
     && rm -rf /var/lib/apt/lists/*
-
-RUN pip3 install --no-cache-dir --break-system-packages \
-        pandas matplotlib seaborn
 
 WORKDIR /work
 COPY . /work
