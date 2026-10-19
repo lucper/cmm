@@ -27,7 +27,6 @@ logs/
 benchmark/FlameGraph/
 /cmm
 experiments/bin/
-venv/
 output/
 __pycache__/
 *.plotted
