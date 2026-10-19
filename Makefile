@@ -25,5 +25,10 @@ cmm: $(OBJS)
 # The headers each object depends on, written by the compiler (-MMD) when it is built.
 -include $(OBJS:.o=.d)
 
+# Runs the tests of cmm and cmm_test (see test/).
+.PHONY: test
+test:
+	$(MAKE) -C test
+
 clean:
 	rm -f $(OBJS) $(OBJS:.o=.d) cmm

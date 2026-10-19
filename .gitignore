@@ -27,9 +27,15 @@ logs/
 .idea/
 benchmark/FlameGraph/
 /cmm
+/test/tests
 experiments/bin/
 output/
 __pycache__/
 *.plotted
 *.panels
 *.tmp
+
+# Inputs and expected outputs of the tests.
+!test/instances/**/*.fa
+!test/instances/**/*.int
+!test/expected/*.out
