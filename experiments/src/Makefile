@@ -1,6 +1,7 @@
 CXX      := g++
 CXXFLAGS := -std=c++17 -Wall -Wextra -fno-omit-frame-pointer -O3 -march=native -I../.. -I.
 LDFLAGS  := -fopenmp
+DEPFLAGS := -MMD -MP
 
 ifdef DEBUG
   CXXFLAGS += -g
@@ -29,18 +30,22 @@ $(BIN_DIR)/cmm_dedup: cmm_dedup.o cmm_acc.o $(ALG_DIR)/data_import.o
 	mkdir -p $(BIN_DIR)
 	$(CXX) $(LDFLAGS) -o $@ $^
 
+OBJS := cmm_test.o cmm_eval.o cmm_dedup.o cmm_acc.o
+
 %.o: %.cpp
-	$(CXX) $(CXXFLAGS) -fopenmp -c -o $@ $<
+	$(CXX) $(CXXFLAGS) $(DEPFLAGS) -fopenmp -c -o $@ $<
 
-## Header dependencies.
-cmm_acc.o:            cmm_acc.cpp   cmm_acc.hpp
-cmm_eval.o:           cmm_eval.cpp  cmm_acc.hpp
-cmm_dedup.o:          cmm_dedup.cpp cmm_acc.hpp
-cmm_test.o:           cmm_test.cpp  $(ALG_DIR)/motifs_search.hpp
+# The headers each object depends on, written by the compiler (-MMD) when it is built.
+-include $(OBJS:.o=.d)
 
-$(CORE_OBJS):
-	$(MAKE) -C $(ALG_DIR)
+# The objects of the root directory are brought up to date by its own Makefile, which knows
+# their sources and headers, every time these binaries are built.
+.PHONY: core
+core:
+	$(MAKE) -C $(ALG_DIR) $(notdir $(CORE_OBJS))
+
+$(CORE_OBJS): core ;
 
 clean:
-	rm -f *.o
+	rm -f $(OBJS) $(OBJS:.o=.d)
 	rm -f $(BINS)

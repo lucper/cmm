@@ -16,6 +16,7 @@ data/figures
 **/*.txt
 **/*.png
 **/*.o
+**/*.d
 **/*.a
 **/*.pdf
 **/*.tsv
