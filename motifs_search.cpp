@@ -52,14 +52,64 @@ static std::vector<std::pair<size_t, size_t>> shuffled_cells(size_t num_H)
     return cells;
 }
 
+/* Lists of numbers in compressed sparse rows (CSR): the lists (rows) are stored one after the
+ * other in items, and row i is items[offsets[i] .. offsets[i] + counts[i]). For example, the rows
+ * {5, 7}, {} and {3} are stored as offsets = {0, 2, 2}, counts = {2, 0, 1}, items = {5, 7, 3}.
+ * The vectors are allocated once, with room for num_rows rows and num_items items in all, and
+ * filled again for every cell; while a row is filled, its count is the position of the next item.
+ * The offset of an empty row is meaningless.
+ *
+ * Input:
+ * INT number num_rows of rows, and INT number num_items of items of all the rows. */
+struct csr_t {
+    std::vector<uint32_t> offsets, counts, items;
+
+    csr_t(size_t num_rows, size_t num_items) : offsets(num_rows), counts(num_rows), items(num_items) {}
+
+    /* Returns the items of row i.
+     *
+     * Input:
+     * INT row i.
+     *
+     * Output:
+     * Pointer to the first of the row_size(i) items of row i. */
+    const uint32_t* row(uint32_t i) const { return items.data() + offsets[i]; }
+
+    /* Returns the number of items of row i.
+     *
+     * Input:
+     * INT row i.
+     *
+     * Output:
+     * INT number of items of row i. */
+    uint32_t row_size(uint32_t i) const { return counts[i]; }
+};
+
+/* The motifs of one side (X or Y) of a cell, i.e., the ell-mers of the sequences masked by one
+ * wildcard combination H, and where they occur. rank_table gives each masked ell-mer its rank
+ * (sort_by_prefix with H), so that equal motifs have the same rank. active_ranks lists the ranks
+ * that occur in the sequences, in order of first occurrence, and nodes_of_rank has a row for each
+ * rank: the nodes (indices of the sequences) where it occurs, each once, in increasing order. The
+ * rows of the ranks that do not occur are empty.
+ *
+ * Input:
+ * INT motif length ell, and the ESA of the sequences, with N characters: the ranks are in [0, N],
+ * and a rank occurs at most once per position, so the rows hold at most N nodes in all. */
+struct motif_occurrences_t {
+    rank_table_t rank_table;
+    std::vector<uint32_t> active_ranks;
+    csr_t nodes_of_rank;
+
+    motif_occurrences_t(size_t ell, const esa_t& ESA)
+        : rank_table(ell, ESA), active_ranks(ESA.get_N() + 1), nodes_of_rank(ESA.get_N() + 1, ESA.get_N()) {}
+};
+
 // Scratch space of a thread of main_algo, reused for every cell.
 struct thread_workspace_t {
     std::vector<uint32_t> intersec_nodes_count, intersec_nodes_count_set_indices;
     std::vector<uint32_t> edge_count, edge_count_set_indices;
-    std::vector<uint32_t> flat_nodes_X, rank_offsets_X, rank_active_counts_X, active_ranks_X;
-    std::vector<uint32_t> flat_nodes_Y, rank_offsets_Y, rank_active_counts_Y, active_ranks_Y;
-    std::vector<uint32_t> flat_ranks_Y, node_offsets_Y, node_active_counts_Y;
-    rank_table_t rank_table_X, rank_table_Y;
+    motif_occurrences_t X, Y;
+    csr_t ranks_of_node_Y;  // for each node, its ranks of Y, in increasing order
 
     struct rank_occ_t { uint32_t node; uint32_t rank; };
     std::vector<rank_occ_t> uniq_ranks_per_node_buffer;
@@ -72,29 +122,29 @@ struct thread_workspace_t {
     thread_workspace_t(const esa_t& ESA, size_t ell, size_t V_size, size_t E_size)
         : intersec_nodes_count(ESA.get_N()), intersec_nodes_count_set_indices(ESA.get_N()),
           edge_count(ESA.get_N()), edge_count_set_indices(ESA.get_N()),
-          flat_nodes_X(ESA.get_N()), rank_offsets_X(ESA.get_N() + 1), rank_active_counts_X(ESA.get_N() + 1), active_ranks_X(ESA.get_N() + 1),
-          flat_nodes_Y(ESA.get_N()), rank_offsets_Y(ESA.get_N() + 1), rank_active_counts_Y(ESA.get_N() + 1), active_ranks_Y(ESA.get_N() + 1),
-          flat_ranks_Y(ESA.get_N()), node_offsets_Y(V_size), node_active_counts_Y(V_size),
-          rank_table_X(ell, ESA), rank_table_Y(ell, ESA),
+          X(ell, ESA), Y(ell, ESA), ranks_of_node_Y(V_size, ESA.get_N()),
           uniq_ranks_per_node_buffer(ESA.get_N()), rank_timestamp(ESA.get_N() + 1),
           edge_timestamp(E_size),
           has_rank_X(V_size, false)
     {}
 
-    void build_csr(const std::vector<std::string>& V, const rank_table_t& rank_table,
-                   uint32_t max_rank)
+    void build_csr(const std::vector<std::string>& V, motif_occurrences_t& occ, uint32_t max_rank)
     {
+        const rank_table_t& rank_table = occ.rank_table;
         size_t ell = rank_table.get_ell();
 
         uniq_ranks_per_node_buffer.clear();
         std::fill(rank_timestamp.begin(), rank_timestamp.end(), 0);
 
         // TODO: perhaps refactor a separate struct to handle this.
-        bool is_table_X = (&rank_table == &this->rank_table_X);
-        auto& active_ranks = is_table_X ? active_ranks_X : active_ranks_Y;
-        auto& rank_active_counts = is_table_X ? rank_active_counts_X : rank_active_counts_Y;
-        auto& rank_offsets = is_table_X ? rank_offsets_X : rank_offsets_Y;
-        auto& flat_nodes = is_table_X ? flat_nodes_X : flat_nodes_Y;
+        bool is_table_X = (&occ == &X);
+        auto& active_ranks = occ.active_ranks;
+        auto& rank_active_counts = occ.nodes_of_rank.counts;
+        auto& rank_offsets = occ.nodes_of_rank.offsets;
+        auto& flat_nodes = occ.nodes_of_rank.items;
+        auto& node_active_counts_Y = ranks_of_node_Y.counts;
+        auto& node_offsets_Y = ranks_of_node_Y.offsets;
+        auto& flat_ranks_Y = ranks_of_node_Y.items;
 
         for (auto r : active_ranks)
             rank_active_counts[r] = 0;
@@ -152,7 +202,14 @@ struct thread_workspace_t {
     }
 };
 
-// What a thread of main_algo finds over all its cells: the best k motif pairs, and the counters.
+/* What a thread of main_algo finds over all its cells. topK holds the best k motif pairs found so
+ * far, in a priority queue whose top is the worst of them, so that a candidate only has to be
+ * compared with the top to enter it; stats counts the cells searched by the thread. main_algo
+ * merges the results of its threads at the end.
+ *
+ * Input:
+ * Type Comparator of the order of the motif pairs, motif_pair_record_comp_t<Tag>, which is true
+ * if its first pair is better than the second. */
 template <typename Comparator>
 struct thread_result_t {
     std::priority_queue<motif_pair_record_t, std::vector<motif_pair_record_t>, Comparator> topK;
@@ -225,18 +282,18 @@ static void process_cell(thread_workspace_t& ws, thread_result_t<Comparator>& re
 {
     Comparator motif_comparator;
 
-    uint32_t cell_max_rank_X = ws.rank_table_X.sort_by_prefix(H_u);
+    uint32_t cell_max_rank_X = ws.X.rank_table.sort_by_prefix(H_u);
     result.stats.count_cell(cell_max_rank_X);
-    ws.build_csr(V, ws.rank_table_X, cell_max_rank_X);
+    ws.build_csr(V, ws.X, cell_max_rank_X);
 
-    uint32_t cell_max_rank_Y = ws.rank_table_Y.sort_by_prefix(H_v);
-    ws.build_csr(V, ws.rank_table_Y, cell_max_rank_Y);
+    uint32_t cell_max_rank_Y = ws.Y.rank_table.sort_by_prefix(H_v);
+    ws.build_csr(V, ws.Y, cell_max_rank_Y);
 
     std::fill(ws.edge_timestamp.begin(), ws.edge_timestamp.end(), 0);
 
-    for (auto rank_X : ws.active_ranks_X) {
-        size_t countX = ws.rank_active_counts_X[rank_X];
-        uint32_t *nodes_with_rank_X = &ws.flat_nodes_X[ws.rank_offsets_X[rank_X]];
+    for (auto rank_X : ws.X.active_ranks) {
+        size_t countX = ws.X.nodes_of_rank.row_size(rank_X);
+        const uint32_t *nodes_with_rank_X = ws.X.nodes_of_rank.row(rank_X);
 
         ws.edge_count_set_indices.clear();
 
@@ -246,8 +303,8 @@ static void process_cell(thread_workspace_t& ws, thread_result_t<Comparator>& re
         for (size_t i = 0; i < countX; i++) {
             uint32_t u = nodes_with_rank_X[i];
 
-            uint32_t *ranksY_in_node_u = &ws.flat_ranks_Y[ws.node_offsets_Y[u]];
-            uint32_t number_of_ranksY_in_node_u = ws.node_active_counts_Y[u];
+            const uint32_t *ranksY_in_node_u = ws.ranks_of_node_Y.row(u);
+            uint32_t number_of_ranksY_in_node_u = ws.ranks_of_node_Y.row_size(u);
 
             // Intersection count
             for (size_t j = 0; j < number_of_ranksY_in_node_u; j++) {
@@ -261,8 +318,8 @@ static void process_cell(thread_workspace_t& ws, thread_result_t<Comparator>& re
             for (auto [v, edge_id] : G[u])
                 if (ws.edge_timestamp[edge_id] != rank_X + 1) {
                     ws.edge_timestamp[edge_id] = rank_X + 1;
-                    uint32_t *ranksY_in_node_v = &ws.flat_ranks_Y[ws.node_offsets_Y[v]];
-                    uint32_t number_of_ranksY_in_node_v = ws.node_active_counts_Y[v];
+                    const uint32_t *ranksY_in_node_v = ws.ranks_of_node_Y.row(v);
+                    uint32_t number_of_ranksY_in_node_v = ws.ranks_of_node_Y.row_size(v);
 
                     // on the off-diagonal every rank is credited;
                     // on the diagonal only rank_Y >= rank_X.
@@ -303,7 +360,7 @@ static void process_cell(thread_workspace_t& ws, thread_result_t<Comparator>& re
 
         for (auto rank_Y : ws.edge_count_set_indices) {
             size_t countXY = ws.intersec_nodes_count[rank_Y];
-            size_t countY = ws.rank_active_counts_Y[rank_Y];
+            size_t countY = ws.Y.nodes_of_rank.row_size(rank_Y);
             size_t Emax = (countX * countY) - ((countXY * (countXY - 1))/2) - countXY;
             size_t countE = ws.edge_count[rank_Y];
             double countE_bar = edge_density * Emax;
@@ -316,8 +373,8 @@ static void process_cell(thread_workspace_t& ws, thread_result_t<Comparator>& re
             bool worse_than_kth = result.topK.size() >= k && motif_comparator(result.topK.top(), candidate);
             if (!worse_than_kth) {
                 // Build X and Y to break a tie with the k-th.
-                candidate.X = apply_mask(ws.rank_table_X.get_substr_with_rank(rank_X), H_u, 'x');
-                candidate.Y = apply_mask(ws.rank_table_Y.get_substr_with_rank(rank_Y), H_v, 'x');
+                candidate.X = apply_mask(ws.X.rank_table.get_substr_with_rank(rank_X), H_u, 'x');
+                candidate.Y = apply_mask(ws.Y.rank_table.get_substr_with_rank(rank_Y), H_v, 'x');
                 if (result.topK.size() < k || motif_comparator(candidate, result.topK.top())) {
                     candidate.rankX = rank_X;
                     candidate.rankY = rank_Y;
