@@ -27,6 +27,7 @@ logs/
 .idea/
 benchmark/FlameGraph/
 /cmm
+/cmm_mpi
 /test/tests
 experiments/bin/
 output/

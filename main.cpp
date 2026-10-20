@@ -10,9 +10,26 @@
 #include "data_import.hpp"
 #include "options_parsing.hpp"
 
+#ifdef CMM_MPI
+#include <mpi.h>
+#endif
+
 int main(int argc, char* argv[]) {
     int status = EXIT_SUCCESS;
-    auto opts = parse_options(argc, argv, status);
+
+#ifdef CMM_MPI
+    // Only the main thread calls MPI, outside the threads of main_algo.
+    int provided;
+    MPI_Init_thread(&argc, &argv, MPI_THREAD_FUNNELED, &provided);
+    if (provided < MPI_THREAD_FUNNELED) {
+        std::cerr << "MPI does not support threads (MPI_THREAD_FUNNELED)." << std::endl;
+        status = EXIT_FAILURE;
+    }
+#endif
+
+    std::optional<cmm_options_t> opts;
+    if (status == EXIT_SUCCESS)
+        opts = parse_options(argc, argv, status);
     if (opts) {
         try {
             auto gi = read_graph_files(opts->path_to_edges, opts->path_to_nodes);
@@ -50,6 +67,11 @@ int main(int argc, char* argv[]) {
             status = EXIT_FAILURE;
         }
     }
+
+#ifdef CMM_MPI
+    // Every process that initialized MPI must finalize it, so main does not return before this.
+    MPI_Finalize();
+#endif
 
     return status;
 }
