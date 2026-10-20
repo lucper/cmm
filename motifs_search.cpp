@@ -1,5 +1,18 @@
 #include "motifs_search.hpp"
 
+#include <atomic>
+#include <cmath>
+#include <iostream>
+#include <limits>
+#include <omp.h>
+#include <queue>
+#include <random>
+#include <stdexcept>
+#include <string_view>
+#include "indicators.hpp"
+#include "esa.hpp"
+#include "rank_table.hpp"
+
 static std::string apply_mask(std::string_view motif, const std::vector<uint16_t>& H, char wildcard = '*')
 {
     std::string masked_motif(motif);
@@ -40,6 +53,109 @@ static std::vector<std::pair<size_t, size_t>> shuffled_cells(size_t num_H)
     std::shuffle(cells.begin(), cells.end(), rng);
     return cells;
 }
+
+template <typename Comparator>
+struct thread_workspace_t {
+    std::vector<uint32_t> intersec_nodes_count, intersec_nodes_count_set_indices;
+    std::vector<uint32_t> edge_count, edge_count_set_indices;
+    std::vector<uint32_t> flat_nodes_X, rank_offsets_X, rank_active_counts_X, active_ranks_X;
+    std::vector<uint32_t> flat_nodes_Y, rank_offsets_Y, rank_active_counts_Y, active_ranks_Y;
+    std::vector<uint32_t> flat_ranks_Y, node_offsets_Y, node_active_counts_Y;
+    rank_table_t rank_table_X, rank_table_Y;
+    std::priority_queue<motif_pair_record_t, std::vector<motif_pair_record_t>, Comparator> topK;
+
+    struct rank_occ_t { uint32_t node; uint32_t rank; };
+    std::vector<rank_occ_t> uniq_ranks_per_node_buffer;
+    std::vector<uint32_t> rank_timestamp;
+
+    std::vector<uint32_t> edge_timestamp;
+
+    std::vector<bool> has_rank_X;
+
+    search_stats_t stats;
+
+    thread_workspace_t(const esa_t& ESA, size_t ell, size_t V_size, size_t E_size)
+        : intersec_nodes_count(ESA.get_N()), intersec_nodes_count_set_indices(ESA.get_N()),
+          edge_count(ESA.get_N()), edge_count_set_indices(ESA.get_N()),
+          flat_nodes_X(ESA.get_N()), rank_offsets_X(ESA.get_N() + 1), rank_active_counts_X(ESA.get_N() + 1), active_ranks_X(ESA.get_N() + 1),
+          flat_nodes_Y(ESA.get_N()), rank_offsets_Y(ESA.get_N() + 1), rank_active_counts_Y(ESA.get_N() + 1), active_ranks_Y(ESA.get_N() + 1),
+          flat_ranks_Y(ESA.get_N()), node_offsets_Y(V_size), node_active_counts_Y(V_size),
+          rank_table_X(ell, ESA), rank_table_Y(ell, ESA),
+          uniq_ranks_per_node_buffer(ESA.get_N()), rank_timestamp(ESA.get_N() + 1),
+          edge_timestamp(E_size),
+          has_rank_X(V_size, false)
+    {}
+
+    void build_csr(const std::vector<std::string>& V, const rank_table_t& rank_table,
+                   uint32_t max_rank)
+    {
+        size_t ell = rank_table.get_ell();
+
+        uniq_ranks_per_node_buffer.clear();
+        std::fill(rank_timestamp.begin(), rank_timestamp.end(), 0);
+
+        // TODO: perhaps refactor a separate struct to handle this.
+        bool is_table_X = (&rank_table == &this->rank_table_X);
+        auto& active_ranks = is_table_X ? active_ranks_X : active_ranks_Y;
+        auto& rank_active_counts = is_table_X ? rank_active_counts_X : rank_active_counts_Y;
+        auto& rank_offsets = is_table_X ? rank_offsets_X : rank_offsets_Y;
+        auto& flat_nodes = is_table_X ? flat_nodes_X : flat_nodes_Y;
+
+        for (auto r : active_ranks)
+            rank_active_counts[r] = 0;
+        active_ranks.clear();
+
+        // scan strings, deduplicate, and count ranks
+        for (uint32_t u = 0; u < V.size(); u++) {
+            if (!is_table_X)
+                node_active_counts_Y[u] = 0;
+            for (size_t i = 0; i + ell <= V[u].length(); i++) {
+                uint32_t r = rank_table.get_rank_of_substr(i, u);
+                if (rank_timestamp[r] != u + 1) {
+                    rank_timestamp[r] = u + 1;
+                    if (rank_active_counts[r] == 0)
+                        active_ranks.push_back(r);
+                    rank_active_counts[r]++;
+                    if (!is_table_X)
+                        node_active_counts_Y[u]++;
+                    uniq_ranks_per_node_buffer.push_back({u, r});
+                }
+            }
+        }
+
+        // prefix sum and cursor setup
+        size_t rank_acc = 0;
+        for (auto r : active_ranks) {
+            rank_offsets[r] = rank_acc;
+            rank_acc += rank_active_counts[r];
+            rank_active_counts[r] = 0;
+        }
+
+        if (!is_table_X) {
+            size_t node_acc = 0;
+            for (uint32_t u = 0; u < V.size(); u++) {
+                node_offsets_Y[u] = node_acc;
+                node_acc += node_active_counts_Y[u];
+                node_active_counts_Y[u] = 0;
+            }
+        }
+
+        // placement
+        for (const auto& [node, rank] : uniq_ranks_per_node_buffer)
+            flat_nodes[rank_offsets[rank] + rank_active_counts[rank]++] = node;
+
+        if (!is_table_X)
+            for (uint32_t rank = 0; rank <= max_rank; rank++) {
+                uint32_t cnt = rank_active_counts[rank];
+                if (cnt == 0) continue;
+                const uint32_t *nodes = &flat_nodes[rank_offsets[rank]];
+                for (uint32_t j = 0; j < cnt; j++) {
+                    uint32_t node = nodes[j];
+                    flat_ranks_Y[node_offsets_Y[node] + node_active_counts_Y[node]++] = rank;
+                }
+            }
+    }
+};
 
 template <typename Tag>
 std::vector<motif_pair_record_t> merge_top_k(std::vector<motif_pair_record_t> pairs, size_t k)
