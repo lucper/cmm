@@ -165,13 +165,15 @@ std::vector<motif_pair_record_t> merge_top_k(std::vector<motif_pair_record_t> pa
     return pairs;
 }
 
-// Searches the cells of block `part` of `num_parts` of the shuffled cells (all of them by default),
-// and returns the top k motif pairs found there, best first, with the counters of the search.
-template <typename Tag>
-search_result_t main_algo(const std::vector<std::string>& V,
-                          const std::vector<std::vector<std::pair<uint32_t, uint32_t>>>& G,
-                          size_t ell, size_t d, size_t k, size_t requested_num_threads,
-                          size_t num_parts, size_t part)
+/* Checks the input of main_algo: k, ell and the number of threads are positive, d is in [0, ell),
+ * the pairs of wildcard combinations can be counted, and there are at least two sequences, none
+ * shorter than ell. Throws std::invalid_argument, with the reason, if a check fails.
+ *
+ * Input:
+ * Sequences V, motif length ell, number d of wildcards, number k of motif pairs, and number
+ * requested_num_threads of threads, as given to main_algo. */
+static void check_main_algo_input(const std::vector<std::string>& V, size_t ell, size_t d, size_t k,
+                                  size_t requested_num_threads)
 {
     if (k <= 0) throw std::invalid_argument("k must be positive");
     if (ell < 1) throw std::invalid_argument("ell must be positive");
@@ -201,6 +203,17 @@ search_result_t main_algo(const std::vector<std::string>& V,
         throw std::invalid_argument(std::to_string(num_short) + " sequence(s) shorter than the motif length (" +
                                     std::to_string(ell) + "). " +
                                     "Remove them from the input or use a smaller motif length.");
+}
+
+// Searches the cells of block `part` of `num_parts` of the shuffled cells (all of them by default),
+// and returns the top k motif pairs found there, best first, with the counters of the search.
+template <typename Tag>
+search_result_t main_algo(const std::vector<std::string>& V,
+                          const std::vector<std::vector<std::pair<uint32_t, uint32_t>>>& G,
+                          size_t ell, size_t d, size_t k, size_t requested_num_threads,
+                          size_t num_parts, size_t part)
+{
+    check_main_algo_input(V, ell, d, k, requested_num_threads);
 
     using motif_comparator_t = motif_pair_record_comp_t<Tag>;
 
