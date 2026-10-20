@@ -156,7 +156,10 @@ struct motif_occurrences_t {
     csr_t nodes_of_rank;
 
     motif_occurrences_t(size_t ell, const esa_t& ESA)
-        : rank_table(ell, ESA), active_ranks(ESA.get_N() + 1), nodes_of_rank(ESA.get_N() + 1, ESA.get_N()) {}
+        : rank_table(ell, ESA), nodes_of_rank(ESA.get_N() + 1, ESA.get_N())
+    {
+        active_ranks.reserve(ESA.get_N() + 1);
+    }
 
     /* Ranks the ell-mers of the sequences masked by H, and fills active_ranks and nodes_of_rank
      * with the ranks that occur and their nodes. The buffers are scratch space, which X and Y
@@ -244,13 +247,16 @@ struct thread_workspace_t {
     std::vector<bool> has_rank_X;
 
     thread_workspace_t(const esa_t& ESA, size_t ell, size_t V_size, size_t E_size)
-        : intersec_nodes_count(ESA.get_N()), intersec_nodes_count_set_indices(ESA.get_N()),
-          edge_count(ESA.get_N()), edge_count_set_indices(ESA.get_N()),
+        : intersec_nodes_count(ESA.get_N()), edge_count(ESA.get_N()),
           X(ell, ESA), Y(ell, ESA), ranks_of_node_Y(V_size, ESA.get_N()),
-          uniq_ranks_per_node_buffer(ESA.get_N()), rank_timestamp(ESA.get_N() + 1),
+          rank_timestamp(ESA.get_N() + 1),
           edge_timestamp(E_size),
           has_rank_X(V_size, false)
-    {}
+    {
+        intersec_nodes_count_set_indices.reserve(ESA.get_N());
+        edge_count_set_indices.reserve(ESA.get_N());
+        uniq_ranks_per_node_buffer.reserve(ESA.get_N());
+    }
 };
 
 /* What a thread of main_algo finds over all its cells. topK holds the best k motif pairs found so
