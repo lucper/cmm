@@ -14,6 +14,7 @@ logs/
 *.txt
 *.png
 *.o
+*.d
 *.a
 *.pdf
 *.tsv
@@ -26,9 +27,16 @@ logs/
 .idea/
 benchmark/FlameGraph/
 /cmm
+/cmm_mpi
+/test/tests
 experiments/bin/
 output/
 __pycache__/
 *.plotted
 *.panels
 *.tmp
+
+# Inputs and expected outputs of the tests.
+!test/instances/**/*.fa
+!test/instances/**/*.int
+!test/expected/*.out

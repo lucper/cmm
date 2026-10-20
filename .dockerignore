@@ -16,6 +16,7 @@ data/figures
 **/*.txt
 **/*.png
 **/*.o
+**/*.d
 **/*.a
 **/*.pdf
 **/*.tsv
@@ -26,6 +27,7 @@ data/figures
 **/.idea
 benchmark/FlameGraph
 cmm
+test/tests
 experiments/bin
 **/output
 **/__pycache__
@@ -36,3 +38,7 @@ experiments/bin
 # Tracked files that match the patterns above.
 !experiments/data/slider_data.tar.gz
 !experiments/rq1-2_accuracy/methods.csv
+
+# Inputs and expected outputs of the tests.
+!test/instances/**
+!test/expected/**
