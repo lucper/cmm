@@ -52,7 +52,7 @@ static std::vector<std::pair<size_t, size_t>> shuffled_cells(size_t num_H)
     return cells;
 }
 
-template <typename Comparator>
+// Scratch space of a thread of main_algo, reused for every cell.
 struct thread_workspace_t {
     std::vector<uint32_t> intersec_nodes_count, intersec_nodes_count_set_indices;
     std::vector<uint32_t> edge_count, edge_count_set_indices;
@@ -60,7 +60,6 @@ struct thread_workspace_t {
     std::vector<uint32_t> flat_nodes_Y, rank_offsets_Y, rank_active_counts_Y, active_ranks_Y;
     std::vector<uint32_t> flat_ranks_Y, node_offsets_Y, node_active_counts_Y;
     rank_table_t rank_table_X, rank_table_Y;
-    std::priority_queue<motif_pair_record_t, std::vector<motif_pair_record_t>, Comparator> topK;
 
     struct rank_occ_t { uint32_t node; uint32_t rank; };
     std::vector<rank_occ_t> uniq_ranks_per_node_buffer;
@@ -69,8 +68,6 @@ struct thread_workspace_t {
     std::vector<uint32_t> edge_timestamp;
 
     std::vector<bool> has_rank_X;
-
-    motif_pair_search_stats_t stats;
 
     thread_workspace_t(const esa_t& ESA, size_t ell, size_t V_size, size_t E_size)
         : intersec_nodes_count(ESA.get_N()), intersec_nodes_count_set_indices(ESA.get_N()),
@@ -155,6 +152,13 @@ struct thread_workspace_t {
     }
 };
 
+// What a thread of main_algo finds over all its cells: the best k motif pairs, and the counters.
+template <typename Comparator>
+struct thread_result_t {
+    std::priority_queue<motif_pair_record_t, std::vector<motif_pair_record_t>, Comparator> topK;
+    motif_pair_search_stats_t stats;
+};
+
 template <typename Tag>
 std::vector<motif_pair_record_t> merge_top_k(std::vector<motif_pair_record_t> pairs, size_t k)
 {
@@ -213,7 +217,8 @@ static void check_main_algo_input(const std::vector<std::string>& V, size_t ell,
  * same_d they are the same combination (a cell on the diagonal, where only the pairs with
  * rank_X <= rank_Y are counted), number k of motif pairs, and edge density of G. */
 template <typename Comparator>
-static void process_cell(thread_workspace_t<Comparator>& ws, const std::vector<std::string>& V,
+static void process_cell(thread_workspace_t& ws, thread_result_t<Comparator>& result,
+                         const std::vector<std::string>& V,
                          const std::vector<std::vector<std::pair<uint32_t, uint32_t>>>& G,
                          const std::vector<uint16_t>& H_u, const std::vector<uint16_t>& H_v,
                          bool same_d, size_t k, double edge_density)
@@ -221,7 +226,7 @@ static void process_cell(thread_workspace_t<Comparator>& ws, const std::vector<s
     Comparator motif_comparator;
 
     uint32_t cell_max_rank_X = ws.rank_table_X.sort_by_prefix(H_u);
-    ws.stats.count_cell(cell_max_rank_X);
+    result.stats.count_cell(cell_max_rank_X);
     ws.build_csr(V, ws.rank_table_X, cell_max_rank_X);
 
     uint32_t cell_max_rank_Y = ws.rank_table_Y.sort_by_prefix(H_v);
@@ -308,20 +313,20 @@ static void process_cell(thread_workspace_t<Comparator>& ws, const std::vector<s
             candidate.countE = countE;
             candidate.x2 = x2;
             // X and Y of candidate are still empty, so this holds only if the k-th has a higher score.
-            bool worse_than_kth = ws.topK.size() >= k && motif_comparator(ws.topK.top(), candidate);
+            bool worse_than_kth = result.topK.size() >= k && motif_comparator(result.topK.top(), candidate);
             if (!worse_than_kth) {
                 // Build X and Y to break a tie with the k-th.
                 candidate.X = apply_mask(ws.rank_table_X.get_substr_with_rank(rank_X), H_u, 'x');
                 candidate.Y = apply_mask(ws.rank_table_Y.get_substr_with_rank(rank_Y), H_v, 'x');
-                if (ws.topK.size() < k || motif_comparator(candidate, ws.topK.top())) {
+                if (result.topK.size() < k || motif_comparator(candidate, result.topK.top())) {
                     candidate.rankX = rank_X;
                     candidate.rankY = rank_Y;
                     candidate.countE_bar = countE_bar;
                     candidate.countX = countX;
                     candidate.countY = countY;
                     candidate.countXY = countXY;
-                    if (ws.topK.size() >= k) ws.topK.pop();
-                    ws.topK.push(candidate);
+                    if (result.topK.size() >= k) result.topK.pop();
+                    result.topK.push(candidate);
                 }
             }
             ws.edge_count[rank_Y] = 0;
@@ -365,22 +370,24 @@ motif_pair_search_result_t main_algo(const std::vector<std::string>& V,
 
     size_t num_threads = std::min(c_end - c_begin, requested_num_threads);
     omp_set_num_threads(num_threads);
-    std::vector<thread_workspace_t<motif_comparator_t>> workspaces;
+    std::vector<thread_workspace_t> workspaces;
     workspaces.reserve(num_threads);
     for (size_t i = 0; i < num_threads; i++)
         workspaces.emplace_back(ESA, ell, V.size(), number_of_edges);
+    std::vector<thread_result_t<motif_comparator_t>> thread_results(num_threads);
 
     progress_bar_t bar(c_end - c_begin);
 
     #pragma omp parallel
     {
     size_t tid = omp_get_thread_num();
-    thread_workspace_t<motif_comparator_t>& ws = workspaces[tid];
+    thread_workspace_t& ws = workspaces[tid];
+    thread_result_t<motif_comparator_t>& thread_result = thread_results[tid];
 
     #pragma omp for schedule(dynamic)
     for (size_t c = c_begin; c < c_end; c++) {
         auto [d_u, d_v] = cells[c];
-        process_cell(ws, V, G, all_H[d_u], all_H[d_v], d_u == d_v, k, edge_density);
+        process_cell(ws, thread_result, V, G, all_H[d_u], all_H[d_v], d_u == d_v, k, edge_density);
 
         bar.advance();
     }
@@ -388,11 +395,11 @@ motif_pair_search_result_t main_algo(const std::vector<std::string>& V,
 
     motif_pair_search_result_t result;
     std::vector<motif_pair_record_t> candidates;
-    for (auto& ws : workspaces) {
-        result.stats.add(ws.stats);
-        while (!ws.topK.empty()) {
-            candidates.push_back(ws.topK.top());
-            ws.topK.pop();
+    for (auto& thread_result : thread_results) {
+        result.stats.add(thread_result.stats);
+        while (!thread_result.topK.empty()) {
+            candidates.push_back(thread_result.topK.top());
+            thread_result.topK.pop();
         }
     }
     result.stats.num_threads = num_threads;
