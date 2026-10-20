@@ -83,7 +83,62 @@ struct csr_t {
      * Output:
      * INT number of items of row i. */
     uint32_t row_size(uint32_t i) const { return counts[i]; }
+
+    /* Fills the rows with the transpose of rows [0, num_src_rows) of src: row i lists the rows of
+     * src that hold i, in increasing order. Every item of those rows of src must be a row of this
+     * CSR.
+     *
+     * For example, transposing the nodes_of_rank of the example of motif_occurrences_t::build
+     * gives the ranks of each node:
+     *
+     *     node      0  1  2  ...
+     *     offsets   0  2  4  ...
+     *     counts    2  2  1  ...
+     *
+     *     items     1  4 | 1  6 | 6 | (unused)
+     *               ^      ^      ^
+     *               |      |      row of node 2
+     *               |      row of node 1
+     *               row of node 0
+     *
+     * The rows are stored in the order of the rows.
+     *
+     * Input:
+     * CSR src, and INT number num_src_rows of its rows to transpose. */
+    void fill_transposed(const csr_t& src, uint32_t num_src_rows)
+    {
+        std::fill(counts.begin(), counts.end(), 0);
+        for (uint32_t r = 0; r < num_src_rows; r++) {
+            uint32_t cnt = src.row_size(r);
+            if (cnt == 0) continue;
+            const uint32_t *src_row = src.row(r);
+            for (uint32_t j = 0; j < cnt; j++)
+                counts[src_row[j]]++;
+        }
+
+        // prefix sum and cursor setup
+        size_t acc = 0;
+        for (size_t i = 0; i < offsets.size(); i++) {
+            offsets[i] = acc;
+            acc += counts[i];
+            counts[i] = 0;
+        }
+
+        // placement
+        for (uint32_t r = 0; r < num_src_rows; r++) {
+            uint32_t cnt = src.row_size(r);
+            if (cnt == 0) continue;
+            const uint32_t *src_row = src.row(r);
+            for (uint32_t j = 0; j < cnt; j++) {
+                uint32_t i = src_row[j];
+                items[offsets[i] + counts[i]++] = r;
+            }
+        }
+    }
 };
+
+// A motif (rank) occurring in a node (sequence).
+struct rank_occ_t { uint32_t node; uint32_t rank; };
 
 /* The motifs of one side (X or Y) of a cell, i.e., the ell-mers of the sequences masked by one
  * wildcard combination H, and where they occur. rank_table gives each masked ell-mer its rank
@@ -102,6 +157,76 @@ struct motif_occurrences_t {
 
     motif_occurrences_t(size_t ell, const esa_t& ESA)
         : rank_table(ell, ESA), active_ranks(ESA.get_N() + 1), nodes_of_rank(ESA.get_N() + 1, ESA.get_N()) {}
+
+    /* Ranks the ell-mers of the sequences masked by H, and fills active_ranks and nodes_of_rank
+     * with the ranks that occur and their nodes. The buffers are scratch space, which X and Y
+     * share.
+     *
+     * For example, if the ell-mers of nodes 0, 1 and 2 have ranks 4 1 4, 1 6 and 6:
+     *
+     *     active_ranks = [4, 1, 6]
+     *
+     *     rank      0  1  2  3  4  5  6  ...
+     *     offsets   .  1  .  .  0  .  3  ...     (.: empty row, meaningless offset)
+     *     counts    0  2  0  0  1  0  2  ...
+     *
+     *     items     0 | 0  1 | 1  2 | (unused)
+     *               ^   ^      ^
+     *               |   |      row of rank 6
+     *               |   row of rank 1
+     *               row of rank 4
+     *
+     * The rows are stored in the order of active_ranks, not of the ranks.
+     *
+     * Input:
+     * Sequences V (those of the ESA), sorted vector H of positions of wildcards from
+     * {0,...,ell-1}, buffer uniq_ranks_per_node_buffer with room for N pairs, and buffer
+     * rank_timestamp with N+1 entries.
+     *
+     * Output:
+     * INT value of maximum rank. */
+    uint32_t build(const std::vector<std::string>& V, const std::vector<uint16_t>& H,
+                   std::vector<rank_occ_t>& uniq_ranks_per_node_buffer,
+                   std::vector<uint32_t>& rank_timestamp)
+    {
+        uint32_t max_rank = rank_table.sort_by_prefix(H);
+        size_t ell = rank_table.get_ell();
+
+        uniq_ranks_per_node_buffer.clear();
+        std::fill(rank_timestamp.begin(), rank_timestamp.end(), 0);
+
+        for (auto r : active_ranks)
+            nodes_of_rank.counts[r] = 0;
+        active_ranks.clear();
+
+        // scan strings, deduplicate, and count ranks
+        for (uint32_t u = 0; u < V.size(); u++) {
+            for (size_t i = 0; i + ell <= V[u].length(); i++) {
+                uint32_t r = rank_table.get_rank_of_substr(i, u);
+                if (rank_timestamp[r] != u + 1) {
+                    rank_timestamp[r] = u + 1;
+                    if (nodes_of_rank.counts[r] == 0)
+                        active_ranks.push_back(r);
+                    nodes_of_rank.counts[r]++;
+                    uniq_ranks_per_node_buffer.push_back({u, r});
+                }
+            }
+        }
+
+        // prefix sum and cursor setup
+        size_t acc = 0;
+        for (auto r : active_ranks) {
+            nodes_of_rank.offsets[r] = acc;
+            acc += nodes_of_rank.counts[r];
+            nodes_of_rank.counts[r] = 0;
+        }
+
+        // placement
+        for (const auto& [node, rank] : uniq_ranks_per_node_buffer)
+            nodes_of_rank.items[nodes_of_rank.offsets[rank] + nodes_of_rank.counts[rank]++] = node;
+
+        return max_rank;
+    }
 };
 
 // Scratch space of a thread of main_algo, reused for every cell.
@@ -111,7 +236,6 @@ struct thread_workspace_t {
     motif_occurrences_t X, Y;
     csr_t ranks_of_node_Y;  // for each node, its ranks of Y, in increasing order
 
-    struct rank_occ_t { uint32_t node; uint32_t rank; };
     std::vector<rank_occ_t> uniq_ranks_per_node_buffer;
     std::vector<uint32_t> rank_timestamp;
 
@@ -127,79 +251,6 @@ struct thread_workspace_t {
           edge_timestamp(E_size),
           has_rank_X(V_size, false)
     {}
-
-    void build_csr(const std::vector<std::string>& V, motif_occurrences_t& occ, uint32_t max_rank)
-    {
-        const rank_table_t& rank_table = occ.rank_table;
-        size_t ell = rank_table.get_ell();
-
-        uniq_ranks_per_node_buffer.clear();
-        std::fill(rank_timestamp.begin(), rank_timestamp.end(), 0);
-
-        // TODO: perhaps refactor a separate struct to handle this.
-        bool is_table_X = (&occ == &X);
-        auto& active_ranks = occ.active_ranks;
-        auto& rank_active_counts = occ.nodes_of_rank.counts;
-        auto& rank_offsets = occ.nodes_of_rank.offsets;
-        auto& flat_nodes = occ.nodes_of_rank.items;
-        auto& node_active_counts_Y = ranks_of_node_Y.counts;
-        auto& node_offsets_Y = ranks_of_node_Y.offsets;
-        auto& flat_ranks_Y = ranks_of_node_Y.items;
-
-        for (auto r : active_ranks)
-            rank_active_counts[r] = 0;
-        active_ranks.clear();
-
-        // scan strings, deduplicate, and count ranks
-        for (uint32_t u = 0; u < V.size(); u++) {
-            if (!is_table_X)
-                node_active_counts_Y[u] = 0;
-            for (size_t i = 0; i + ell <= V[u].length(); i++) {
-                uint32_t r = rank_table.get_rank_of_substr(i, u);
-                if (rank_timestamp[r] != u + 1) {
-                    rank_timestamp[r] = u + 1;
-                    if (rank_active_counts[r] == 0)
-                        active_ranks.push_back(r);
-                    rank_active_counts[r]++;
-                    if (!is_table_X)
-                        node_active_counts_Y[u]++;
-                    uniq_ranks_per_node_buffer.push_back({u, r});
-                }
-            }
-        }
-
-        // prefix sum and cursor setup
-        size_t rank_acc = 0;
-        for (auto r : active_ranks) {
-            rank_offsets[r] = rank_acc;
-            rank_acc += rank_active_counts[r];
-            rank_active_counts[r] = 0;
-        }
-
-        if (!is_table_X) {
-            size_t node_acc = 0;
-            for (uint32_t u = 0; u < V.size(); u++) {
-                node_offsets_Y[u] = node_acc;
-                node_acc += node_active_counts_Y[u];
-                node_active_counts_Y[u] = 0;
-            }
-        }
-
-        // placement
-        for (const auto& [node, rank] : uniq_ranks_per_node_buffer)
-            flat_nodes[rank_offsets[rank] + rank_active_counts[rank]++] = node;
-
-        if (!is_table_X)
-            for (uint32_t rank = 0; rank <= max_rank; rank++) {
-                uint32_t cnt = rank_active_counts[rank];
-                if (cnt == 0) continue;
-                const uint32_t *nodes = &flat_nodes[rank_offsets[rank]];
-                for (uint32_t j = 0; j < cnt; j++) {
-                    uint32_t node = nodes[j];
-                    flat_ranks_Y[node_offsets_Y[node] + node_active_counts_Y[node]++] = rank;
-                }
-            }
-    }
 };
 
 /* What a thread of main_algo finds over all its cells. topK holds the best k motif pairs found so
@@ -282,12 +333,11 @@ static void process_cell(thread_workspace_t& ws, thread_result_t<Comparator>& re
 {
     Comparator motif_comparator;
 
-    uint32_t cell_max_rank_X = ws.X.rank_table.sort_by_prefix(H_u);
+    uint32_t cell_max_rank_X = ws.X.build(V, H_u, ws.uniq_ranks_per_node_buffer, ws.rank_timestamp);
     result.stats.count_cell(cell_max_rank_X);
-    ws.build_csr(V, ws.X, cell_max_rank_X);
 
-    uint32_t cell_max_rank_Y = ws.Y.rank_table.sort_by_prefix(H_v);
-    ws.build_csr(V, ws.Y, cell_max_rank_Y);
+    uint32_t cell_max_rank_Y = ws.Y.build(V, H_v, ws.uniq_ranks_per_node_buffer, ws.rank_timestamp);
+    ws.ranks_of_node_Y.fill_transposed(ws.Y.nodes_of_rank, cell_max_rank_Y + 1);
 
     std::fill(ws.edge_timestamp.begin(), ws.edge_timestamp.end(), 0);
 
