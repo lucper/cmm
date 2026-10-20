@@ -53,12 +53,26 @@ static std::vector<std::pair<size_t, size_t>> shuffled_cells(size_t num_H)
     return cells;
 }
 
-// Scratch space of a thread of main_algo, reused for every cell.
+/* Scratch space of a thread of main_algo, allocated once and reused for every cell (H_u, H_v).
+ * X and Y are the motifs of H_u and H_v and their nodes, and ranks_of_node_Y lists the ranks of Y
+ * that occur in each node, in increasing order; uniq_ranks_per_node_buffer and rank_timestamp are
+ * the scratch space of their build. The other members are filled for one rank_X at a time:
+ * - intersec_nodes_count[rank_Y] counts the nodes where both rank_X and rank_Y occur (countXY);
+ * - edge_count[rank_Y] counts the edges with rank_X in one node and rank_Y in the other (countE);
+ * - the _set_indices list the rank_Y whose count is above 0, so that only those counts are read
+ *   and reset to 0 afterwards;
+ * - has_rank_X[u] tells whether rank_X occurs in node u;
+ * - edge_timestamp[e] == rank_X + 1 if edge e was already counted for rank_X, which happens when
+ *   rank_X occurs in both of its nodes.
+ *
+ * Input:
+ * ESA of the sequences, with N characters (the ranks are below N), INT motif length ell, INT number
+ * V_size of sequences, and INT number E_size of edges of the graph. */
 struct thread_workspace_t {
     std::vector<uint32_t> intersec_nodes_count, intersec_nodes_count_set_indices;
     std::vector<uint32_t> edge_count, edge_count_set_indices;
     motif_nodes_t X, Y;
-    csr_t ranks_of_node_Y;  // for each node, its ranks of Y, in increasing order
+    csr_t ranks_of_node_Y;
 
     std::vector<rank_occ_t> uniq_ranks_per_node_buffer;
     std::vector<uint32_t> rank_timestamp;
@@ -143,14 +157,19 @@ static void check_main_algo_input(const std::vector<std::string>& V, size_t ell,
 }
 
 /* Searches one cell, the pair (H_u, H_v) of wildcard combinations: ranks the ell-mers masked by
- * H_u (motifs X) and by H_v (motifs Y), counts the edges between the occurrences of each pair (X, Y),
- * and keeps the best k pairs in the top-K of the workspace, which also counts the cell in its
- * counters.
+ * H_u (motifs X) and by H_v (motifs Y), and for each pair (X, Y) with an edge between their nodes,
+ * counts the edges with X in one node and Y in the other, and the nodes of X, of Y and of both,
+ * and scores the pair against the edges expected from the edge density.
  *
  * Input:
- * Workspace ws of the thread, sequences V, graph G, wildcard combinations H_u and H_v, whether
- * same_d they are the same combination (a cell on the diagonal, where only the pairs with
- * rank_X <= rank_Y are counted), number k of motif pairs, and edge density of G. */
+ * Workspace ws and result of the thread, sequences V, graph G (for each node, its neighbours and
+ * the indices of the edges to them), wildcard combinations H_u and H_v, whether same_d they are the
+ * same combination (a cell on the diagonal, where only the pairs with rank_X <= rank_Y are
+ * counted), number k of motif pairs, and edge density of G.
+ *
+ * Output:
+ * result, with the cell counted in its stats, and its topK holding the best k pairs among those
+ * it held and those of the cell. */
 template <typename Comparator>
 static void process_cell(thread_workspace_t& ws, thread_result_t<Comparator>& result,
                          const std::vector<std::string>& V,
