@@ -9,9 +9,10 @@ namespace indicators {
 class ProgressBar;
 }
 
-/* Progress bar of the cells of a search, drawn on stderr. It is drawn at 0 when created, and
- * redrawn about every 1% of the cells, with counts that only increase. The threads of the search
- * may call advance at the same time.
+/* Progress bar of the cells of a search, drawn on stderr if it is a terminal (in a file, every
+ * redraw would remain as a line). It is drawn at 0 when created, and redrawn about every 1% of the
+ * cells, with counts that only increase. The threads of the search may call advance at the same
+ * time.
  *
  * Input:
  * Number total of cells to search. */
