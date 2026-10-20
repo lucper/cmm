@@ -1,0 +1,37 @@
+#ifndef H_PROGRESS_BAR
+#define H_PROGRESS_BAR
+
+#include <atomic>
+#include <cstddef>
+#include <memory>
+
+namespace indicators {
+class ProgressBar;
+}
+
+/* Progress bar of the cells of a search, drawn on stderr. It is drawn at 0 when created, and
+ * redrawn about every 1% of the cells. The threads of the search may call advance at the same
+ * time.
+ *
+ * Input:
+ * Number total of cells to search. */
+class progress_bar_t {
+public:
+    progress_bar_t(size_t total);
+    ~progress_bar_t();
+
+    progress_bar_t(const progress_bar_t&) = delete;
+    progress_bar_t& operator=(const progress_bar_t&) = delete;
+
+    /* Counts one more searched cell, and redraws the bar if it reached the next 1%, or the
+     * last cell. */
+    void advance();
+
+private:
+    size_t total;
+    size_t update_interval;
+    std::atomic<size_t> completed;
+    std::unique_ptr<indicators::ProgressBar> bar;
+};
+
+#endif

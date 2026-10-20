@@ -1,17 +1,15 @@
 #include "motifs_search.hpp"
 
-#include <atomic>
 #include <cmath>
-#include <iostream>
 #include <limits>
 #include <omp.h>
 #include <queue>
 #include <random>
 #include <stdexcept>
 #include <string_view>
-#include "indicators.hpp"
 #include "esa.hpp"
 #include "rank_table.hpp"
+#include "progress_bar.hpp"
 
 static std::string apply_mask(std::string_view motif, const std::vector<uint16_t>& H, char wildcard = '*')
 {
@@ -372,28 +370,7 @@ motif_pair_search_result_t main_algo(const std::vector<std::string>& V,
     for (size_t i = 0; i < num_threads; i++)
         workspaces.emplace_back(ESA, ell, V.size(), number_of_edges);
 
-    // Progress bar
-    using namespace indicators;
-    ProgressBar bar(
-        option::BarWidth(50),
-        option::Start("["),
-        option::Fill("#"),
-        option::Lead("#"),
-        option::Remainder(" "),
-        option::End("]"),
-        option::ForegroundColor(Color::white),
-        option::ShowPercentage(true),
-        option::ShowElapsedTime(true),
-        option::PrefixText("Mining motifs "),
-        option::Stream(std::cerr)
-    );
-    size_t total_pairs = c_end - c_begin;
-    std::atomic<size_t> pairs_completed(0);
-    size_t update_interval = std::max(static_cast<size_t>(1), total_pairs / 100);
-
-    bar.set_option(option::PostfixText("[wildcard combinations: 0/" + std::to_string(total_pairs) + "]"));
-    bar.set_progress(0);
-    std::cerr << "\r" << std::flush;
+    progress_bar_t bar(c_end - c_begin);
 
     #pragma omp parallel
     {
@@ -405,17 +382,7 @@ motif_pair_search_result_t main_algo(const std::vector<std::string>& V,
         auto [d_u, d_v] = cells[c];
         process_cell(ws, V, G, all_H[d_u], all_H[d_v], d_u == d_v, k, edge_density);
 
-        // Update progress bar
-        size_t current = ++pairs_completed;
-        if (current % update_interval == 0 || current == total_pairs) {
-            #pragma omp critical
-            {
-                bar.set_option(option::PostfixText("[wildcard combinations: " + std::to_string(current) +
-                                                   "/" + std::to_string(total_pairs) + "]"));
-                bar.set_progress((static_cast<float>(current) / total_pairs) * 100.0f);
-                std::cerr << "\r" << std::flush;
-            }
-        }
+        bar.advance();
     }
     }
 
