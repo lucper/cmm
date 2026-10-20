@@ -9,7 +9,7 @@ ifdef DEBUG
   CXXFLAGS += -g
 endif
 
-OBJS := main.o motifs_search.o rank_table.o data_import.o libsais64.o libsais.o
+OBJS := main.o options_parsing.o motifs_search.o rank_table.o data_import.o libsais64.o libsais.o
 
 all: cmm
 
