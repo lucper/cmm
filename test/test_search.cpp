@@ -30,7 +30,7 @@ static const graph_input_t& instance(const std::string& name) {
 }
 
 // Searches the cells of part `part` of `num_parts` of a test case with the given number of threads.
-static search_result_t search(const test_case_t& c, size_t num_threads, size_t num_parts = 1, size_t part = 0) {
+static motif_pair_search_result_t search(const test_case_t& c, size_t num_threads, size_t num_parts = 1, size_t part = 0) {
     const auto& gi = instance(c.instance);
     return (c.f == "E")
         ? main_algo<sort_by_countE_t>(gi.node_labels, gi.adj_list, c.ell, c.d, c.k, num_threads, num_parts, part)
@@ -118,7 +118,7 @@ TEST_CASE("the pairs of the parts of the cells, merged, are the pairs of all the
         for (size_t num_parts : {2, 3, 25}) {
             INFO(c.name(), ", ", num_parts, " parts");
             std::vector<motif_pair_record_t> pairs;
-            search_stats_t stats;
+            motif_pair_search_stats_t stats;
             for (size_t part = 0; part < num_parts; part++) {
                 auto result = search(c, 2, num_parts, part);
                 pairs.insert(pairs.end(), result.pairs.begin(), result.pairs.end());

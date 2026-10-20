@@ -24,7 +24,7 @@ struct motif_pair_record_t {
  * keep the minimum, maximum, and sum of these values over the cells, so that the counters of
  * disjoint sets of cells (of threads, or of processes) can be combined; the average over the
  * cells is sum_max_rank_X / num_cells. */
-struct search_stats_t {
+struct motif_pair_search_stats_t {
     uint32_t min_max_rank_X = UINT32_MAX;  // minimum over the cells of the maximum rank of X
     uint32_t max_max_rank_X = 0;           // maximum over the cells of the maximum rank of X
     uint64_t sum_max_rank_X = 0;           // sum over the cells of the maximum rank of X
@@ -47,7 +47,7 @@ struct search_stats_t {
      *
      * Input:
      * Counters other of the other cells. */
-    void add(const search_stats_t& other) {
+    void add(const motif_pair_search_stats_t& other) {
         min_max_rank_X = std::min(min_max_rank_X, other.min_max_rank_X);
         max_max_rank_X = std::max(max_max_rank_X, other.max_max_rank_X);
         sum_max_rank_X += other.sum_max_rank_X;
@@ -55,9 +55,9 @@ struct search_stats_t {
     }
 };
 
-struct search_result_t {
+struct motif_pair_search_result_t {
     std::vector<motif_pair_record_t> pairs;  // the top k motif pairs, best first
-    search_stats_t stats;
+    motif_pair_search_stats_t stats;
 };
 
 // tags
@@ -80,10 +80,10 @@ struct motif_pair_record_comp_t {
 };
 
 template <typename Tag>
-search_result_t main_algo(const std::vector<std::string>& V,
-                          const std::vector<std::vector<std::pair<uint32_t, uint32_t>>>& G,
-                          size_t ell, size_t d, size_t k, size_t requested_num_threads,
-                          size_t num_parts = 1, size_t part = 0);
+motif_pair_search_result_t main_algo(const std::vector<std::string>& V,
+                                     const std::vector<std::vector<std::pair<uint32_t, uint32_t>>>& G,
+                                     size_t ell, size_t d, size_t k, size_t requested_num_threads,
+                                     size_t num_parts = 1, size_t part = 0);
 
 // The best k of the given motif pairs, best first.
 template <typename Tag>

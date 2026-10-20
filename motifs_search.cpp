@@ -72,7 +72,7 @@ struct thread_workspace_t {
 
     std::vector<bool> has_rank_X;
 
-    search_stats_t stats;
+    motif_pair_search_stats_t stats;
 
     thread_workspace_t(const esa_t& ESA, size_t ell, size_t V_size, size_t E_size)
         : intersec_nodes_count(ESA.get_N()), intersec_nodes_count_set_indices(ESA.get_N()),
@@ -208,10 +208,10 @@ static void check_main_algo_input(const std::vector<std::string>& V, size_t ell,
 // Searches the cells of block `part` of `num_parts` of the shuffled cells (all of them by default),
 // and returns the top k motif pairs found there, best first, with the counters of the search.
 template <typename Tag>
-search_result_t main_algo(const std::vector<std::string>& V,
-                          const std::vector<std::vector<std::pair<uint32_t, uint32_t>>>& G,
-                          size_t ell, size_t d, size_t k, size_t requested_num_threads,
-                          size_t num_parts, size_t part)
+motif_pair_search_result_t main_algo(const std::vector<std::string>& V,
+                                     const std::vector<std::vector<std::pair<uint32_t, uint32_t>>>& G,
+                                     size_t ell, size_t d, size_t k, size_t requested_num_threads,
+                                     size_t num_parts, size_t part)
 {
     check_main_algo_input(V, ell, d, k, requested_num_threads);
 
@@ -407,7 +407,7 @@ search_result_t main_algo(const std::vector<std::string>& V,
     }
     }
 
-    search_result_t result;
+    motif_pair_search_result_t result;
     std::vector<motif_pair_record_t> candidates;
     for (auto& ws : workspaces) {
         result.stats.add(ws.stats);
@@ -422,13 +422,13 @@ search_result_t main_algo(const std::vector<std::string>& V,
     return result;
 }
 
-template search_result_t main_algo<sort_by_countE_t>(
+template motif_pair_search_result_t main_algo<sort_by_countE_t>(
     const std::vector<std::string>&,
     const std::vector<std::vector<std::pair<uint32_t, uint32_t>>>&,
     size_t, size_t, size_t, size_t, size_t, size_t
 );
 
-template search_result_t main_algo<sort_by_x2_t>(
+template motif_pair_search_result_t main_algo<sort_by_x2_t>(
     const std::vector<std::string>&,
     const std::vector<std::vector<std::pair<uint32_t, uint32_t>>>&,
     size_t, size_t, size_t, size_t, size_t, size_t
