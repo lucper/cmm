@@ -10,8 +10,8 @@ class ProgressBar;
 }
 
 /* Progress bar of the cells of a search, drawn on stderr. It is drawn at 0 when created, and
- * redrawn about every 1% of the cells. The threads of the search may call advance at the same
- * time.
+ * redrawn about every 1% of the cells, with counts that only increase. The threads of the search
+ * may call advance at the same time.
  *
  * Input:
  * Number total of cells to search. */
@@ -31,6 +31,7 @@ private:
     size_t total;
     size_t update_interval;
     std::atomic<size_t> completed;
+    size_t drawn;  // the highest count drawn
     std::unique_ptr<indicators::ProgressBar> bar;
 };
 
