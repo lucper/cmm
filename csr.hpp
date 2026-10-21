@@ -9,7 +9,8 @@
  * other in items, and row i is items[offsets[i] .. offsets[i] + counts[i]). For example, the rows
  * {5, 7}, {} and {3} are stored as offsets = {0, 2, 2}, counts = {2, 0, 1}, items = {5, 7, 3}.
  * The vectors are allocated once, with room for num_rows rows and num_items items in all, and
- * filled again for every cell; while a row is filled, its count is the position of the next item.
+ * filled again for every wildcard configuration; while a row is filled, its count is the position
+ * of the next item.
  * The offset of an empty row is meaningless.
  *
  * Input:

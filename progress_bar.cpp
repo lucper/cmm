@@ -29,7 +29,8 @@ progress_bar_t::progress_bar_t(size_t total)
         option::PrefixText("Mining motifs "),
         option::Stream(std::cerr)
     );
-    bar->set_option(option::PostfixText("[wildcard combinations: 0/" + std::to_string(total) + "]"));
+    bar->set_option(option::PostfixText("[wildcard configurations: 0/" + std::to_string(total) +
+                                        "]"));
     bar->set_progress(0);
     std::cerr << "\r" << std::flush;
 }
@@ -50,8 +51,9 @@ void progress_bar_t::advance()
             // drawn would move the bar back.
             if (current > drawn) {
                 drawn = current;
-                bar->set_option(option::PostfixText("[wildcard combinations: " + std::to_string(current) +
-                                                    "/" + std::to_string(total) + "]"));
+                bar->set_option(option::PostfixText("[wildcard configurations: " +
+                                                    std::to_string(current) + "/" +
+                                                    std::to_string(total) + "]"));
                 bar->set_progress((static_cast<float>(current) / total) * 100.0f);
                 std::cerr << "\r" << std::flush;
             }

@@ -9,13 +9,13 @@ namespace indicators {
 class ProgressBar;
 }
 
-/* Progress bar of the cells of a search, drawn on stderr if it is a terminal (in a file, every
- * redraw would remain as a line). It is drawn at 0 when created, and redrawn about every 1% of the
- * cells, with counts that only increase. The threads of the search may call advance at the same
- * time.
+/* Progress bar of the wildcard configurations of a search, drawn on stderr if it is a terminal (in
+ * a file, every redraw would remain as a line). It is drawn at 0 when created, and redrawn about
+ * every 1% of the configurations, with counts that only increase. The threads of the search may
+ * call advance at the same time.
  *
  * Input:
- * Number total of cells to search. */
+ * Number total of configurations to search. */
 class progress_bar_t {
 public:
     progress_bar_t(size_t total);
@@ -24,8 +24,8 @@ public:
     progress_bar_t(const progress_bar_t&) = delete;
     progress_bar_t& operator=(const progress_bar_t&) = delete;
 
-    /* Counts one more searched cell, and redraws the bar if it reached the next 1%, or the
-     * last cell. */
+    /* Counts one more searched configuration, and redraws the bar if it reached the next 1%, or the
+     * last configuration. */
     void advance();
 
 private:

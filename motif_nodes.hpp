@@ -12,14 +12,14 @@
 // A motif (rank) occurring in a node (sequence).
 struct rank_occ_t { uint32_t node; uint32_t rank; };
 
-/* The motifs of one side (X or Y) of a cell, i.e., the ell-mers of the sequences masked by one
- * wildcard combination H, and the nodes where they occur. A motif occurs in a node (the index of a
- * sequence) if at least one ell-mer of the sequence, masked by H, is the motif; the node counts
- * once, however many positions of the sequence hold the motif. rank_table gives each masked
- * ell-mer its rank (sort_by_prefix with H), so that equal motifs have the same rank. active_ranks
- * lists the ranks that occur, in the order they are first found when the sequences are scanned
- * from node 0, and nodes_of_rank has a row for each rank: the nodes where it occurs, in increasing
- * order. The rows of the ranks that do not occur are empty.
+/* The motifs of one side (X or Y) of a wildcard configuration, i.e., the ell-mers of the sequences
+ * masked by one wildcard combination H, and the nodes where they occur. A motif occurs in a node
+ * (the index of a sequence) if at least one ell-mer of the sequence, masked by H, is the motif; the
+ * node counts once, however many positions of the sequence hold the motif. rank_table gives each
+ * masked ell-mer its rank (sort_by_prefix with H), so that equal motifs have the same rank.
+ * active_ranks lists the ranks that occur, in the order they are first found when the sequences
+ * are scanned from node 0, and nodes_of_rank has a row for each rank: the nodes where it occurs, in
+ * increasing order. The rows of the ranks that do not occur are empty.
  *
  * Input:
  * INT motif length ell, and the ESA of the sequences, with N characters: the ranks are in [0, N],

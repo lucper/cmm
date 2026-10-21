@@ -105,8 +105,9 @@ int main(int argc, char* argv[]) {
             ell,
             d,
             static_cast<size_t>(stats.max_max_rank_X),
-            static_cast<size_t>(stats.num_cells > 0 ? stats.min_max_rank_X : 0),
-            stats.num_cells > 0 ? static_cast<double>(stats.sum_max_rank_X) / stats.num_cells : 0.0,
+            static_cast<size_t>(stats.num_configurations > 0 ? stats.min_max_rank_X : 0),
+            stats.num_configurations > 0
+                ? static_cast<double>(stats.sum_max_rank_X) / stats.num_configurations : 0.0,
             num_threads,
             stats.num_threads,
             ms,

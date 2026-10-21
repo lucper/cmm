@@ -29,7 +29,8 @@ static const graph_input_t& instance(const std::string& name) {
     return it->second;
 }
 
-// Searches the cells of part `part` of `num_parts` of a test case with the given number of threads.
+// Searches the wildcard configurations of part `part` of `num_parts` of a test case with the given
+// number of threads.
 static motif_pair_search_result_t search(const test_case_t& c, size_t num_threads, size_t num_parts = 1, size_t part = 0) {
     const auto& gi = instance(c.instance);
     return (c.f == "E")
@@ -113,7 +114,7 @@ TEST_CASE("main_algo finds the same pairs with any number of threads") {
         }
 }
 
-TEST_CASE("the pairs of the parts of the cells, merged, are the pairs of all the cells") {
+TEST_CASE("the pairs of the parts of the configurations, merged, are the pairs of all of them") {
     for (const auto& c : all_cases())
         for (size_t num_parts : {2, 3, 25}) {
             INFO(c.name(), ", ", num_parts, " parts");
@@ -125,7 +126,7 @@ TEST_CASE("the pairs of the parts of the cells, merged, are the pairs of all the
                 stats.add(result.stats);
             }
             check_expected(c, merge(c, std::move(pairs)));
-            CHECK(stats.num_cells == search(c, 1).stats.num_cells);
+            CHECK(stats.num_configurations == search(c, 1).stats.num_configurations);
         }
 }
 
