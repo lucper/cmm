@@ -173,7 +173,7 @@ static void check_main_algo_input(const std::vector<std::string>& V, size_t ell,
 template <typename Comparator>
 static void process_cell(thread_workspace_t& ws, thread_result_t<Comparator>& result,
                          const std::vector<std::string>& V,
-                         const std::vector<std::vector<std::pair<uint32_t, uint32_t>>>& G,
+                         const graph_t& G,
                          const std::vector<uint16_t>& H_u, const std::vector<uint16_t>& H_v,
                          bool same_d, size_t k, double edge_density)
 {
@@ -295,7 +295,7 @@ static void process_cell(thread_workspace_t& ws, thread_result_t<Comparator>& re
 // and returns the top k motif pairs found there, best first, with the counters of the search.
 template <typename Tag>
 motif_pair_search_result_t main_algo(const std::vector<std::string>& V,
-                                     const std::vector<std::vector<std::pair<uint32_t, uint32_t>>>& G,
+                                     const graph_t& G,
                                      size_t ell, size_t d, size_t k, size_t requested_num_threads,
                                      size_t num_parts, size_t part)
 {
@@ -363,13 +363,13 @@ motif_pair_search_result_t main_algo(const std::vector<std::string>& V,
 
 template motif_pair_search_result_t main_algo<sort_by_countE_t>(
     const std::vector<std::string>&,
-    const std::vector<std::vector<std::pair<uint32_t, uint32_t>>>&,
+    const graph_t&,
     size_t, size_t, size_t, size_t, size_t, size_t
 );
 
 template motif_pair_search_result_t main_algo<sort_by_x2_t>(
     const std::vector<std::string>&,
-    const std::vector<std::vector<std::pair<uint32_t, uint32_t>>>&,
+    const graph_t&,
     size_t, size_t, size_t, size_t, size_t, size_t
 );
 

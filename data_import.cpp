@@ -77,8 +77,8 @@ graph_input_t read_graph_files(const std::string &edge_path,
             uint32_t u = it_u->second;
             uint32_t v = it_v->second;
 
-            result.adj_list[u].emplace_back(v, edge_id);
-            result.adj_list[v].emplace_back(u, edge_id);
+            result.adj_list[u].push_back({v, edge_id});
+            result.adj_list[v].push_back({u, edge_id});
             ++edge_id;
         }
 

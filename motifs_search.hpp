@@ -8,6 +8,7 @@
 #include <type_traits>
 #include <utility>
 #include <vector>
+#include "graph.hpp"
 
 struct motif_pair_record_t {
     uint32_t rankX, rankY;
@@ -81,7 +82,7 @@ struct motif_pair_record_comp_t {
 
 template <typename Tag>
 motif_pair_search_result_t main_algo(const std::vector<std::string>& V,
-                                     const std::vector<std::vector<std::pair<uint32_t, uint32_t>>>& G,
+                                     const graph_t& G,
                                      size_t ell, size_t d, size_t k, size_t requested_num_threads,
                                      size_t num_parts = 1, size_t part = 0);
 

@@ -9,9 +9,10 @@
 #include <string>
 #include <utility>
 #include <cstdint>
+#include "graph.hpp"
 
 struct graph_input_t {
-    std::vector<std::vector<std::pair<uint32_t, uint32_t>>> adj_list; // (u,v) endpoints (0-based after import)
+    graph_t adj_list;                        // interactions, between the nodes indexed as node_labels
     std::vector<std::string> node_labels;    // node_id -> label/sequence
 };
 
