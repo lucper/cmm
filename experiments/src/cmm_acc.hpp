@@ -1,5 +1,5 @@
-#ifndef CMM_ACC_HPP
-#define CMM_ACC_HPP
+#ifndef H_CMM_ACC
+#define H_CMM_ACC
 
 #include <cstdint>
 #include <string>
@@ -81,4 +81,4 @@ void write_best_match_table(const std::string& path,
                             const std::vector<motif_pair_t>& soln_other,
                             const std::vector<best_match_t>& matches);
 
-#endif // CMM_ACC_HPP
+#endif

@@ -1,14 +1,8 @@
-#ifndef BPM_DATAIMPORT_H
-#define BPM_DATAIMPORT_H
+#ifndef H_DATA_IMPORT
+#define H_DATA_IMPORT
 
-#include <fstream>
-#include <sstream>
-#include <unordered_map>
-#include <stdexcept>
-#include <vector>
 #include <string>
-#include <utility>
-#include <cstdint>
+#include <vector>
 #include "graph.hpp"
 
 struct graph_input_t {
@@ -19,4 +13,4 @@ struct graph_input_t {
 graph_input_t read_graph_files(const std::string &edge_path,
                                const std::string &labels_path);
 
-#endif //BPM_DATAIMPORT_H
+#endif

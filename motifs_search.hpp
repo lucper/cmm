@@ -1,12 +1,11 @@
-#ifndef H_MOTIF_SEARCH
-#define H_MOTIF_SEARCH
+#ifndef H_MOTIFS_SEARCH
+#define H_MOTIFS_SEARCH
 
 #include <algorithm>
 #include <cstddef>
 #include <cstdint>
 #include <string>
 #include <type_traits>
-#include <utility>
 #include <vector>
 #include "graph.hpp"
 

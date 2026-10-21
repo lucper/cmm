@@ -7,10 +7,12 @@
 #include <random>
 #include <stdexcept>
 #include <string_view>
+#include <utility>
+#include "csr.hpp"
 #include "esa.hpp"
 #include "motif_nodes.hpp"
-#include "rank_table.hpp"
 #include "progress_bar.hpp"
+#include "rank_table.hpp"
 
 static std::string apply_mask(std::string_view motif, const std::vector<uint16_t>& H, char wildcard = '*')
 {

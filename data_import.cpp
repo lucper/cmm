@@ -1,5 +1,12 @@
 #include "data_import.hpp"
 
+#include <cstdint>
+#include <fstream>
+#include <sstream>
+#include <stdexcept>
+#include <unordered_map>
+#include <utility>
+
 static void flush_fasta_entry(const std::string &current_id,
                               const std::string &current_seq,
                               std::unordered_map<std::string, uint32_t> &id_to_index,

@@ -1,11 +1,10 @@
-#ifndef H_PREPROC
-#define H_PREPROC
+#ifndef H_RANK_TABLE
+#define H_RANK_TABLE
 
-#include <cstdlib>
-#include <cstring>
+#include <cstddef>
+#include <cstdint>
+#include <string_view>
 #include <vector>
-#include <algorithm>
-#include <stdexcept>
 #include "esa.hpp"
 
 class rank_table_t {

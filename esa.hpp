@@ -1,13 +1,15 @@
 #ifndef H_ESA
 #define H_ESA
 
-#include <vector>
-#include <string>
+#include <cstdint>
+#include <cstdlib>
 #include <cstring>
 #include <stdexcept>
+#include <string>
+#include <vector>
 #include "libsais64.h"
 
-#define SEP 0
+constexpr uint8_t SEP = 0;  // ends each sequence in the concatenated string
 
 class esa_t {
 public:

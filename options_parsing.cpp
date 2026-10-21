@@ -1,7 +1,11 @@
-#include <iostream>
-#include <cstdlib>
-#include "cxxopts.hpp"
 #include "options_parsing.hpp"
+
+#include <cstdlib>
+#include <exception>
+#include <iostream>
+#include <stdexcept>
+#include <string>
+#include "cxxopts.hpp"
 
 std::optional<cmm_options_t> parse_options(int argc, char* argv[], int& exit_status) {
     cxxopts::Options options("cmm", "Correlated Motif Miner\n");

@@ -1,5 +1,11 @@
 #include "rank_table.hpp"
 
+#include <algorithm>
+#include <iterator>
+#include <stdexcept>
+#include <string>
+#include <utility>
+
 rank_table_t::rank_table_t(size_t ell, const esa_t& ESA)
     : ell(ell), N(ESA.get_N()), S(ESA.get_S()), S_offset(ESA.get_S_offset()), SA(ESA.get_SA()), LCP(ESA.get_LCP()), max_rank_R1(0)
 {

@@ -1,13 +1,13 @@
-#include <iostream>
-#include <cstdlib>
-#include <vector>
 #include <chrono>
-#include <cstring>
 #include <clocale>
+#include <cstdio>
+#include <cstdlib>
+#include <exception>
+#include <iostream>
 #include <optional>
 #include <sys/resource.h>
-#include "motifs_search.hpp"
 #include "data_import.hpp"
+#include "motifs_search.hpp"
 #include "options_parsing.hpp"
 
 #ifdef CMM_MPI
