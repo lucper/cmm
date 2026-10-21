@@ -4,9 +4,11 @@ LDFLAGS  := -fopenmp
 DEPFLAGS := -MMD -MP
 
 ALG_DIR   := ..
-CORE_OBJS := $(ALG_DIR)/motifs_search.o $(ALG_DIR)/motif_nodes.o $(ALG_DIR)/csr.o $(ALG_DIR)/progress_bar.o \
-             $(ALG_DIR)/rank_table.o $(ALG_DIR)/data_import.o $(ALG_DIR)/libsais64.o $(ALG_DIR)/libsais.o
-OBJS      := main.o test_search.o test_errors.o test_programs.o test_csr.o test_motif_nodes.o
+CORE_OBJS := $(ALG_DIR)/motifs_search.o $(ALG_DIR)/motif_pair_searcher.o $(ALG_DIR)/motif_nodes.o $(ALG_DIR)/csr.o \
+             $(ALG_DIR)/progress_bar.o $(ALG_DIR)/rank_table.o $(ALG_DIR)/data_import.o $(ALG_DIR)/libsais64.o \
+             $(ALG_DIR)/libsais.o
+OBJS      := main.o test_search.o test_errors.o test_programs.o test_csr.o test_motif_nodes.o \
+             test_motif_pair_searcher.o
 
 # Runs the tests, of the search and of the programs cmm and cmm_test.
 .PHONY: check
