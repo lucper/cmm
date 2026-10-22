@@ -8,7 +8,7 @@
 #include <utility>
 
 static void flush_fasta_entry(const std::string &current_id,
-                              const std::string &current_seq,
+                              std::string &current_seq,
                               std::unordered_map<std::string, uint32_t> &id_to_index,
                               graph_input_t &result) {
     if (current_id.empty()) return;
@@ -56,8 +56,6 @@ graph_input_t read_graph_files(const std::string &edge_path,
 
     if (result.node_labels.empty())
         throw std::runtime_error("No sequences found in FASTA file: " + labels_path);
-
-    result.adj_list.resize(result.node_labels.size());
 
     {
         std::ifstream edges(edge_path);
