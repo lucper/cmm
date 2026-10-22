@@ -79,13 +79,11 @@ static std::map<std::pair<std::string, std::string>, counts_t> brute_force(
     return pairs;
 }
 
-// What a search of instances/<name> needs: the input, its ESA, number of edges and edge density.
+// What a search of instances/<name> needs: the input, and its ESA.
 struct instance_t {
     std::vector<std::string> V;
     graph_t G;
     esa_t ESA;
-    size_t num_edges;
-    double edge_density;
 
     explicit instance_t(const std::string& name)
         : instance_t(read_graph_files("instances/" + name + ".fa", "instances/" + name + ".int"))
@@ -93,8 +91,7 @@ struct instance_t {
     }
 
     explicit instance_t(graph_input_t input)
-        : V(std::move(input.sequences)), G(std::move(input.graph)), ESA(V),
-          num_edges(G.get_num_edges()), edge_density(G.compute_edge_density())
+        : V(std::move(input.sequences)), G(std::move(input.graph)), ESA(V)
     {
     }
 };
@@ -112,7 +109,7 @@ TEST_CASE("search_configuration counts every pair of the configuration with an e
                 for (size_t j = i; j < all_H.size(); j++) {
                     INFO(name, ", d = ", d, ", configuration (", i, ", ", j, ")");
                     motif_pair_searcher_t<motif_pair_record_comp_t<sort_by_x2_t>> searcher(
-                        in.ESA, in.G, in.num_edges, ell, 1000000, in.edge_density);
+                        in.ESA, in.G, ell, 1000000);
                     searcher.search_configuration(all_H[i], all_H[j]);
                     CHECK(searcher.get_stats().num_configurations == 1);
 
@@ -134,8 +131,7 @@ TEST_CASE("a searcher keeps the best k pairs of all the configurations it search
         INFO(name);
         instance_t in(name);
         auto all_H = combinations(ell, d);
-        motif_pair_searcher_t<comp_t> searcher(in.ESA, in.G, in.num_edges, ell, k,
-                                               in.edge_density);
+        motif_pair_searcher_t<comp_t> searcher(in.ESA, in.G, ell, k);
 
         std::vector<motif_pair_record_t> expected;
         for (size_t i = 0; i < all_H.size(); i++)

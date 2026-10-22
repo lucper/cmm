@@ -38,13 +38,12 @@
 template <typename Comparator>
 class motif_pair_searcher_t {
 public:
-    motif_pair_searcher_t(const esa_t& ESA, const graph_t& G, size_t num_edges, size_t ell,
-                          size_t k, double edge_density)
-        : G(G), k(k), edge_density(edge_density),
+    motif_pair_searcher_t(const esa_t& ESA, const graph_t& G, size_t ell, size_t k)
+        : G(G), k(k), edge_density(G.compute_edge_density()),
           intersec_nodes_count(ESA.get_N()), edge_count(ESA.get_N()),
           X(ell, ESA), Y(ell, ESA), ranks_of_node_Y(ESA.get_num_sequences(), ESA.get_N()),
           deduplication_buffers(ESA),
-          edge_timestamp(num_edges),
+          edge_timestamp(G.get_num_edges()),
           has_rank_X(ESA.get_num_sequences(), false)
     {
         intersec_nodes_count_set_indices.reserve(ESA.get_N());

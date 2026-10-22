@@ -125,10 +125,6 @@ motif_pair_search_result_t main_algo(const std::vector<std::string>& V,
 
     using motif_comparator_t = motif_pair_record_comp_t<Tag>;
 
-    // Edge density for x2, which depends on graph topology only.
-    size_t number_of_edges = G.get_num_edges();
-    double edge_density = G.compute_edge_density();
-
     auto all_H = all_H_combinations(ell, d);
 
     auto configurations = shuffled_configurations(all_H.size(), num_parts, part);
@@ -142,7 +138,7 @@ motif_pair_search_result_t main_algo(const std::vector<std::string>& V,
     std::vector<motif_pair_searcher_t<motif_comparator_t>> searchers;
     searchers.reserve(num_threads);
     for (size_t i = 0; i < num_threads; i++)
-        searchers.emplace_back(ESA, G, number_of_edges, ell, k, edge_density);
+        searchers.emplace_back(ESA, G, ell, k);
 
     progress_bar_t bar(configurations.size());
 
