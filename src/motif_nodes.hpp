@@ -15,7 +15,7 @@ struct rank_occ_t { uint32_t node; uint32_t rank; };
 /* The motifs of one side (X or Y) of a wildcard configuration, i.e., the ell-mers of the sequences
  * masked by one wildcard combination H, and the nodes where they occur. A motif occurs in a node
  * (the index of a sequence) if at least one ell-mer of the sequence, masked by H, is the motif.
- * rank_table gives each motif its rank (see rank_table_t), and keeps pointers into the ESA, which
+ * rank_table gives each motif its rank (see rank_table_t), and keeps a reference to the ESA, which
  * must outlive it. After build(H), active_ranks lists each rank that occurs once, in the order
  * they are first found when the sequences are scanned from node 0, and row r of nodes_of_rank
  * lists the nodes where rank r occurs, each once and in increasing order; it is empty if r is not

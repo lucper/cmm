@@ -7,8 +7,11 @@
 #include <utility>
 
 rank_table_t::rank_table_t(size_t ell, const esa_t& ESA)
-    : ell(ell), N(ESA.get_N()), S(ESA.get_S()), S_offset(ESA.get_S_offset()), SA(ESA.get_SA()), LCP(ESA.get_LCP()), max_rank_R1(0)
+    : ell(ell), ESA(ESA), max_rank_R1(0)
 {
+    const size_t N = ESA.get_N();
+    const auto& S_offset = ESA.get_S_offset();
+    const int64_t *SA = ESA.get_SA();
 
     R1.resize(N);
     R2.resize(N);
@@ -35,6 +38,7 @@ size_t rank_table_t::get_ell() const
 
 uint32_t rank_table_t::get_rank_of_substr(size_t i, size_t k) const
 {
+    const auto& S_offset = ESA.get_S_offset();
     size_t suff = S_offset[k] + i;
     if (suff + ell >= S_offset[k + 1]) // ell-mer covers a SEP symbol.
         throw std::out_of_range("Invalid substring access: substring in invalid suffix (" +
@@ -47,7 +51,7 @@ std::string_view rank_table_t::get_substr_with_rank(uint32_t r) const
     if (r > max_rank_R1)
         throw std::out_of_range("Invalid rank access: rank " + std::to_string(r) +
                                 " is outside current valid range [0, " + std::to_string(max_rank_R1) + "].");
-    return std::string_view((const char *) S + IR1[r], ell);
+    return std::string_view((const char *) ESA.get_S() + IR1[r], ell);
 }
 
 uint32_t rank_table_t::sort_by_prefix(const std::vector<uint16_t>& H)
@@ -61,6 +65,10 @@ uint32_t rank_table_t::sort_by_prefix(const std::vector<uint16_t>& H)
     }
 
     std::fill(R1.begin(), R1.end(), 0);
+
+    const size_t N = ESA.get_N();
+    const int64_t *SA = ESA.get_SA();
+    const int64_t *LCP = ESA.get_LCP();
 
     size_t d = H.size();
     size_t i = 0;

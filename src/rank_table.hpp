@@ -9,7 +9,7 @@
 
 /* Ranks of the ell-mers of the sequences of an ESA, masked by the wildcard combination H of the
  * last call to sort_by_prefix. Only the ell-mers within one sequence (without SEP) are ranked. The
- * table keeps pointers into the ESA, which must outlive it.
+ * table keeps a reference to the ESA, which must outlive it.
  *
  * Invariants, after sort_by_prefix(H):
  * - two ell-mers have the same rank if and only if they are equal outside the positions H;
@@ -52,11 +52,7 @@ public:
 
 private:
     size_t ell;
-    size_t N;
-    const uint8_t *S;
-    const std::vector<uint32_t>& S_offset;
-    const int64_t *SA;
-    const int64_t *LCP;
+    const esa_t& ESA;
 
     uint32_t max_rank_R1;
 

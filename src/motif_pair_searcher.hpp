@@ -17,7 +17,7 @@
  * pairs are ordered by Comparator (motif_pair_record_comp_t<Tag>), true if its first pair is better
  * than the second. main_algo gives each of its threads a searcher, and merges their pairs at the
  * end. V, G and the ESA must outlive the searcher, which keeps references to V and G, and whose X
- * and Y keep pointers into the ESA.
+ * and Y keep references to the ESA.
  *
  * The searcher allocates its scratch space once and reuses it for every configuration. X and Y are
  * the motifs of H_u and H_v and their nodes, and ranks_of_node_Y lists the ranks of Y that occur in
