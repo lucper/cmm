@@ -39,8 +39,7 @@ public:
      * ell-length substring of S with rank r. */
     std::string_view get_substr_with_rank(uint32_t r) const;
 
-    /* Returns the rank of the ell-mer at position i of sequence k. Throws std::out_of_range if the
-     * ell-mer does not fit in the sequence.
+    /* Returns the rank of the ell-mer at position i of sequence k.
      *
      * Input:
      * INT position i, with i + ell at most the length of sequence k, and INT index k of the

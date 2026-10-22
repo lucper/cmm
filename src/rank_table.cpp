@@ -1,6 +1,7 @@
 #include "rank_table.hpp"
 
 #include <algorithm>
+#include <cassert>
 #include <iterator>
 #include <stdexcept>
 #include <string>
@@ -40,9 +41,7 @@ uint32_t rank_table_t::get_rank_of_substr(size_t i, size_t k) const
 {
     const auto& S_offset = ESA.get_S_offset();
     size_t suff = S_offset[k] + i;
-    if (suff + ell >= S_offset[k + 1]) // ell-mer covers a SEP symbol.
-        throw std::out_of_range("Invalid substring access: substring in invalid suffix (" +
-                                std::to_string(suff) + ").\n");
+    assert(suff + ell < S_offset[k + 1]);  // the ell-mer does not cover a SEP
     return R1[suff];
 }
 
