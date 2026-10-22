@@ -17,7 +17,6 @@ static void flush_fasta_entry(const std::string &current_id,
     if (!inserted)
         throw std::runtime_error("Duplicate identifier in FASTA file: " + current_id);
     result.node_labels.push_back(std::move(current_seq));
-    result.adj_list.emplace_back();
 }
 
 graph_input_t read_graph_files(const std::string &labels_path,
@@ -57,12 +56,13 @@ graph_input_t read_graph_files(const std::string &labels_path,
     if (result.node_labels.empty())
         throw std::runtime_error("No sequences found in FASTA file: " + labels_path);
 
+    result.adj_list = graph_t(result.node_labels.size());
+
     {
         std::ifstream edges(edge_path);
         if (!edges.is_open())
             throw std::runtime_error("Cannot open interactions file: " + edge_path);
 
-        uint32_t edge_id = 0;
         std::string line;
 
         while (std::getline(edges, line)) {
@@ -79,15 +79,10 @@ graph_input_t read_graph_files(const std::string &labels_path,
             if (it_v == id_to_index.end())
                 throw std::runtime_error("Unknown node in interactions file: " + v_label);
 
-            uint32_t u = it_u->second;
-            uint32_t v = it_v->second;
-
-            result.adj_list[u].push_back({v, edge_id});
-            result.adj_list[v].push_back({u, edge_id});
-            ++edge_id;
+            result.adj_list.add_edge(it_u->second, it_v->second);
         }
 
-        if (edge_id == 0)
+        if (result.adj_list.get_num_edges() == 0)
             throw std::runtime_error("No interactions found in interactions file: " + edge_path);
     }
 

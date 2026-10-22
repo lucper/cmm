@@ -3,6 +3,7 @@
 #include <cstdio>
 #include <filesystem>
 #include <iostream>
+#include "graph.hpp"
 
 namespace fs = std::filesystem;
 
@@ -47,10 +48,8 @@ int main(int argc, char* argv[]) {
         size_t N = 0;
         for (const auto& s : gi.node_labels) N += s.size();
         size_t V = gi.node_labels.size();
-        size_t E = 0;
-        for (const auto& node : gi.adj_list) E += node.size();
-        E /= 2;
-        double edge_density = V >= 2 ? static_cast<double>(E) / ((V * (V - 1)) / 2.0) : 0.0;
+        size_t E = gi.adj_list.get_num_edges();
+        double edge_density = gi.adj_list.compute_edge_density();
 
         std::vector<motif_pair_t> soln_a = read_solution_file(soln_a_path.string());
         std::vector<motif_pair_t> soln_b = read_solution_file(soln_b_path.string());

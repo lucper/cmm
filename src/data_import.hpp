@@ -6,9 +6,8 @@
 #include "graph.hpp"
 
 /* The input graph of a search: the nodes are the records of a FASTA file, in the order of the
- * file, and the edges the lines of an interactions file. Node u has sequence node_labels[u] and
- * neighbours adj_list[u]. The edges have indices from 0 to the number of edges - 1, in the order
- * of the file, and edge e between u and v is {v, e} in adj_list[u] and {u, e} in adj_list[v]. */
+ * file, and the edges the lines of an interactions file, indexed in the order of the file. Node u
+ * has sequence node_labels[u] and neighbours adj_list.get_neighbours(u). */
 struct graph_input_t {
     graph_t adj_list;
     std::vector<std::string> node_labels;

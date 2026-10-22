@@ -51,7 +51,7 @@ void motif_pair_searcher_t<Comparator>::search_configuration(const std::vector<u
             }
 
             // Edge count
-            for (auto [v, edge_id] : G[u])
+            for (auto [v, edge_id] : G.get_neighbours(u))
                 if (edge_timestamp[edge_id] != rank_X + 1) {
                     edge_timestamp[edge_id] = rank_X + 1;
                     const uint32_t *ranksY_in_node_v = ranks_of_node_Y.row(v);

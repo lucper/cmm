@@ -10,6 +10,7 @@
 
 #include "motifs_search.hpp"
 #include "data_import.hpp"
+#include "graph.hpp"
 
 namespace fs = std::filesystem;
 
@@ -62,10 +63,7 @@ int main(int argc, char* argv[]) {
         size_t N = 0;
         for (const auto& s : gi.node_labels) N += s.size();
         size_t V = gi.node_labels.size();
-        size_t E = 0;
-        for (const auto& node : gi.adj_list) E += node.size();
-        E /= 2;
-        double edge_density = V >= 2 ? static_cast<double>(E) / ((V * (V - 1)) / 2.0) : 0.0;
+        double edge_density = gi.adj_list.compute_edge_density();
 
         std::fprintf(stderr, "Instance          : %s\n", instance_name.c_str());
         std::fprintf(stderr, "Edge density      : %.4f\n", edge_density);

@@ -1,6 +1,7 @@
 #include "doctest.h"
 #include "motif_pair_searcher.hpp"
 #include "data_import.hpp"
+#include "graph.hpp"
 #include "esa.hpp"
 
 #include <algorithm>
@@ -65,7 +66,7 @@ static std::map<std::pair<std::string, std::string>, counts_t> brute_force(
             };
             size_t countE = 0;
             for (uint32_t u = 0; u < V.size(); u++)
-                for (auto [v, e] : gi.adj_list[u])
+                for (auto [v, e] : gi.adj_list.get_neighbours(u))
                     if (u < v && ((in(NX, u) && in(NY, v)) || (in(NX, v) && in(NY, u))))
                         countE++;
             if (countE == 0)
@@ -82,17 +83,13 @@ static std::map<std::pair<std::string, std::string>, counts_t> brute_force(
 struct instance_t {
     graph_input_t gi;
     esa_t ESA;
-    size_t num_edges = 0;
+    size_t num_edges;
     double edge_density;
 
     explicit instance_t(const std::string& name)
-        : gi(read_graph_files("instances/" + name + ".fa", "instances/" + name + ".int")), ESA(gi.node_labels)
+        : gi(read_graph_files("instances/" + name + ".fa", "instances/" + name + ".int")), ESA(gi.node_labels),
+          num_edges(gi.adj_list.get_num_edges()), edge_density(gi.adj_list.compute_edge_density())
     {
-        for (const auto& neighbours : gi.adj_list)
-            num_edges += neighbours.size();
-        num_edges /= 2;
-        size_t n = gi.node_labels.size();
-        edge_density = static_cast<double>(num_edges) / (n * (n - 1) / 2);
     }
 };
 
