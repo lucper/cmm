@@ -1,5 +1,5 @@
 #include "doctest.h"
-#include "motif_nodes.hpp"
+#include "motif_to_node_index.hpp"
 #include "esa.hpp"
 
 #include <algorithm>
@@ -30,7 +30,7 @@ static std::map<std::string, std::vector<uint32_t>> brute_force(const std::vecto
 }
 
 // Checks what build left in mn against the brute force, for the sequences V masked by H.
-static void check_build(motif_nodes_t& mn, const std::vector<std::string>& V, size_t ell,
+static void check_build(motif_to_node_index_t& mn, const std::vector<std::string>& V, size_t ell,
                         const std::vector<uint16_t>& H, uint32_t max_rank) {
     INFO("H of size ", H.size());
     std::map<std::string, std::vector<uint32_t>> nodes;
@@ -66,7 +66,7 @@ TEST_CASE("build lists the nodes of each motif, and rebuilding leaves nothing of
     const std::vector<std::string> V = {"MLHCML", "HCMLMA", "AAAA", "MLH", "CAMLHA"};
     const size_t ell = 3;
     esa_t ESA(V);
-    motif_nodes_t mn(ell, ESA);
+    motif_to_node_index_t mn(ell, ESA);
     std::vector<rank_occ_t> buffer;
     buffer.reserve(ESA.get_N());
     std::vector<uint32_t> rank_timestamp(ESA.get_N() + 1);

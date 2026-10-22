@@ -8,7 +8,7 @@
 #include <string>
 #include <sys/resource.h>
 
-#include "motifs_search.hpp"
+#include "exact_algorithm.hpp"
 #include "data_import.hpp"
 #include "graph.hpp"
 

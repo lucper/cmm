@@ -7,7 +7,7 @@
 #include <optional>
 #include <sys/resource.h>
 #include "data_import.hpp"
-#include "motifs_search.hpp"
+#include "exact_algorithm.hpp"
 #include "options_parsing.hpp"
 
 #ifdef CMM_MPI

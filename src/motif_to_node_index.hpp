@@ -1,5 +1,5 @@
-#ifndef H_MOTIF_NODES
-#define H_MOTIF_NODES
+#ifndef H_MOTIF_TO_NODE_INDEX
+#define H_MOTIF_TO_NODE_INDEX
 
 #include <cstddef>
 #include <cstdint>
@@ -20,12 +20,12 @@ struct rank_occ_t { uint32_t node; uint32_t rank; };
  * they are first found when the sequences are scanned from node 0, and row r of nodes_of_rank
  * lists the nodes where rank r occurs, each once and in increasing order; it is empty if r is not
  * in active_ranks. */
-struct motif_nodes_t {
+struct motif_to_node_index_t {
     rank_table_t rank_table;
     std::vector<uint32_t> active_ranks;
     csr_t nodes_of_rank;
 
-    motif_nodes_t(size_t ell, const esa_t& ESA)
+    motif_to_node_index_t(size_t ell, const esa_t& ESA)
         : rank_table(ell, ESA), nodes_of_rank(ESA.get_N() + 1, ESA.get_N())
     {
         active_ranks.reserve(ESA.get_N() + 1);

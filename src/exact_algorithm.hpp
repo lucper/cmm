@@ -1,5 +1,5 @@
-#ifndef H_MOTIFS_SEARCH
-#define H_MOTIFS_SEARCH
+#ifndef H_EXACT_ALGORITHM
+#define H_EXACT_ALGORITHM
 
 #include <cstddef>
 #include <string>

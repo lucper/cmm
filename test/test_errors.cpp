@@ -1,5 +1,5 @@
 #include "doctest.h"
-#include "motifs_search.hpp"
+#include "exact_algorithm.hpp"
 #include "data_import.hpp"
 
 #include <string>

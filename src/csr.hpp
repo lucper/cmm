@@ -38,7 +38,7 @@ struct csr_t {
      * src that hold i, in increasing order. Every item of those rows of src must be a row of this
      * CSR.
      *
-     * For example, transposing the nodes_of_rank of the example of motif_nodes_t::build
+     * For example, transposing the nodes_of_rank of the example of motif_to_node_index_t::build
      * gives the ranks of each node:
      *
      *     node      0  1  2  ...

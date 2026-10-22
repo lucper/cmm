@@ -1,8 +1,8 @@
-#include "motif_nodes.hpp"
+#include "motif_to_node_index.hpp"
 
 #include <algorithm>
 
-uint32_t motif_nodes_t::build(const std::vector<uint16_t>& H,
+uint32_t motif_to_node_index_t::build(const std::vector<uint16_t>& H,
                               std::vector<rank_occ_t>& uniq_ranks_per_node_buffer,
                               std::vector<uint32_t>& rank_timestamp)
 {

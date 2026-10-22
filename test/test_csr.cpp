@@ -25,7 +25,7 @@ static csr_t csr_of(const std::vector<std::vector<uint32_t>>& rows, size_t num_i
 }
 
 TEST_CASE("fill_transposed lists the rows of src that hold each row, in increasing order") {
-    // nodes_of_rank of the example of motif_nodes_t::build.
+    // nodes_of_rank of the example of motif_to_node_index_t::build.
     csr_t src = csr_of({{}, {0, 1}, {}, {}, {0}, {}, {1, 2}}, 8);
     csr_t t(3, 8);
 

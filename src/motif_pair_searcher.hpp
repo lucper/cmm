@@ -9,8 +9,8 @@
 #include "csr.hpp"
 #include "esa.hpp"
 #include "graph.hpp"
-#include "motif_nodes.hpp"
 #include "motif_pair.hpp"
+#include "motif_to_node_index.hpp"
 
 /* Searcher of the best k motif pairs over the wildcard configurations it is given, one at a time:
  * search_configuration keeps the best pairs of a configuration among the best k found so far. The
@@ -90,7 +90,7 @@ private:
 
     std::vector<uint32_t> intersec_nodes_count, intersec_nodes_count_set_indices;
     std::vector<uint32_t> edge_count, edge_count_set_indices;
-    motif_nodes_t X, Y;
+    motif_to_node_index_t X, Y;
     csr_t ranks_of_node_Y;
 
     std::vector<rank_occ_t> uniq_ranks_per_node_buffer;

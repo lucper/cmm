@@ -1,4 +1,4 @@
-#include "motifs_search.hpp"
+#include "exact_algorithm.hpp"
 
 #include <algorithm>
 #include <cstdint>
