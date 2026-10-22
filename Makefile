@@ -15,7 +15,8 @@ endif
 
 # The objects are built in build/, from the sources of src/ and external/.
 CORE_OBJS := build/motifs_search.o build/motif_pair_searcher.o build/motif_nodes.o build/csr.o \
-             build/progress_bar.o build/rank_table.o build/data_import.o build/libsais64.o build/libsais.o
+             build/progress_bar.o build/rank_table.o build/esa.o build/data_import.o build/libsais64.o \
+             build/libsais.o
 OBJS      := build/main.o build/options_parsing.o $(CORE_OBJS)
 
 all: cmm
