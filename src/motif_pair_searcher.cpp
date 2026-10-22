@@ -19,17 +19,17 @@ void motif_pair_searcher_t<Comparator>::search_configuration(const std::vector<u
     const bool same_H = H_u == H_v;
     Comparator motif_comparator;
 
-    uint32_t max_rank_X = X.build(H_u, uniq_ranks_per_node_buffer, rank_timestamp);
+    uint32_t max_rank_X = X.build(H_u, deduplication_buffers);
     stats.count_configuration(max_rank_X);
 
-    uint32_t max_rank_Y = Y.build(H_v, uniq_ranks_per_node_buffer, rank_timestamp);
-    ranks_of_node_Y.fill_transposed(Y.nodes_of_rank, max_rank_Y + 1);
+    uint32_t max_rank_Y = Y.build(H_v, deduplication_buffers);
+    ranks_of_node_Y.fill_transposed(Y.get_nodes_of_rank(), max_rank_Y + 1);
 
     std::fill(edge_timestamp.begin(), edge_timestamp.end(), 0);
 
-    for (auto rank_X : X.active_ranks) {
-        size_t countX = X.nodes_of_rank.row_size(rank_X);
-        const uint32_t *nodes_with_rank_X = X.nodes_of_rank.row(rank_X);
+    for (auto rank_X : X.get_active_ranks()) {
+        size_t countX = X.get_nodes_of_rank().row_size(rank_X);
+        const uint32_t *nodes_with_rank_X = X.get_nodes_of_rank().row(rank_X);
 
         edge_count_set_indices.clear();
 
@@ -96,7 +96,7 @@ void motif_pair_searcher_t<Comparator>::search_configuration(const std::vector<u
 
         for (auto rank_Y : edge_count_set_indices) {
             size_t countXY = intersec_nodes_count[rank_Y];
-            size_t countY = Y.nodes_of_rank.row_size(rank_Y);
+            size_t countY = Y.get_nodes_of_rank().row_size(rank_Y);
             size_t Emax = (countX * countY) - ((countXY * (countXY - 1))/2) - countXY;
             size_t countE = edge_count[rank_Y];
             double countE_bar = edge_density * Emax;
@@ -109,8 +109,8 @@ void motif_pair_searcher_t<Comparator>::search_configuration(const std::vector<u
             bool worse_than_kth = topK.size() >= k && motif_comparator(topK.top(), candidate);
             if (!worse_than_kth) {
                 // Build X and Y to break a tie with the k-th.
-                candidate.X = apply_mask(X.rank_table.get_substr_with_rank(rank_X), H_u, 'x');
-                candidate.Y = apply_mask(Y.rank_table.get_substr_with_rank(rank_Y), H_v, 'x');
+                candidate.X = apply_mask(X.get_ell_mer(rank_X), H_u, 'x');
+                candidate.Y = apply_mask(Y.get_ell_mer(rank_Y), H_v, 'x');
                 if (topK.size() < k || motif_comparator(candidate, topK.top())) {
                     candidate.rankX = rank_X;
                     candidate.rankY = rank_Y;

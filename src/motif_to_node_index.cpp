@@ -2,14 +2,19 @@
 
 #include <algorithm>
 
+motif_to_node_index_t::deduplication_buffers_t::deduplication_buffers_t(const esa_t& ESA)
+    : rank_timestamp(ESA.get_N() + 1)
+{
+    uniq_ranks_per_node.reserve(ESA.get_N());
+}
+
 uint32_t motif_to_node_index_t::build(const std::vector<uint16_t>& H,
-                              std::vector<rank_occ_t>& uniq_ranks_per_node_buffer,
-                              std::vector<uint32_t>& rank_timestamp)
+                                      deduplication_buffers_t& buffers)
 {
     uint32_t max_rank = rank_table.sort_by_prefix(H);
 
-    uniq_ranks_per_node_buffer.clear();
-    std::fill(rank_timestamp.begin(), rank_timestamp.end(), 0);
+    buffers.uniq_ranks_per_node.clear();
+    std::fill(buffers.rank_timestamp.begin(), buffers.rank_timestamp.end(), 0);
 
     for (auto r : active_ranks)
         nodes_of_rank.counts[r] = 0;
@@ -22,12 +27,12 @@ uint32_t motif_to_node_index_t::build(const std::vector<uint16_t>& H,
         const size_t num_ell_mers = rank_table.get_num_ell_mers(u);
         for (size_t i = 0; i < num_ell_mers; i++) {
             uint32_t r = ranks[i];
-            if (rank_timestamp[r] != u + 1) {
-                rank_timestamp[r] = u + 1;
+            if (buffers.rank_timestamp[r] != u + 1) {
+                buffers.rank_timestamp[r] = u + 1;
                 if (nodes_of_rank.counts[r] == 0)
                     active_ranks.push_back(r);
                 nodes_of_rank.counts[r]++;
-                uniq_ranks_per_node_buffer.push_back({u, r});
+                buffers.uniq_ranks_per_node.push_back({u, r});
             }
         }
     }
@@ -41,7 +46,7 @@ uint32_t motif_to_node_index_t::build(const std::vector<uint16_t>& H,
     }
 
     // placement
-    for (const auto& [node, rank] : uniq_ranks_per_node_buffer)
+    for (const auto& [node, rank] : buffers.uniq_ranks_per_node)
         nodes_of_rank.items[nodes_of_rank.offsets[rank] + nodes_of_rank.counts[rank]++] = node;
 
     return max_rank;

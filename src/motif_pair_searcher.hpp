@@ -21,8 +21,8 @@
  *
  * The searcher allocates its scratch space once and reuses it for every configuration. X and Y are
  * the motifs of H_u and H_v and their nodes, and ranks_of_node_Y lists the ranks of Y that occur in
- * each node, in increasing order; uniq_ranks_per_node_buffer and rank_timestamp are the scratch
- * space of their build. The other members are filled for one rank_X at a time:
+ * each node, in increasing order; X and Y share deduplication_buffers, as they build one after
+ * the other. The other members are filled for one rank_X at a time:
  * - intersec_nodes_count[rank_Y] counts the nodes where both rank_X and rank_Y occur (countXY);
  * - edge_count[rank_Y] counts the edges with rank_X in one node and rank_Y in the other (countE);
  * - the _set_indices list the rank_Y whose count is above 0, so that only those counts are read
@@ -43,13 +43,12 @@ public:
         : G(G), k(k), edge_density(edge_density),
           intersec_nodes_count(ESA.get_N()), edge_count(ESA.get_N()),
           X(ell, ESA), Y(ell, ESA), ranks_of_node_Y(ESA.get_num_sequences(), ESA.get_N()),
-          rank_timestamp(ESA.get_N() + 1),
+          deduplication_buffers(ESA),
           edge_timestamp(num_edges),
           has_rank_X(ESA.get_num_sequences(), false)
     {
         intersec_nodes_count_set_indices.reserve(ESA.get_N());
         edge_count_set_indices.reserve(ESA.get_N());
-        uniq_ranks_per_node_buffer.reserve(ESA.get_N());
     }
 
     /* The basic algorithm of the paper. Searches one wildcard configuration, the pair (H_u, H_v)
@@ -93,8 +92,7 @@ private:
     motif_to_node_index_t X, Y;
     csr_t ranks_of_node_Y;
 
-    std::vector<rank_occ_t> uniq_ranks_per_node_buffer;
-    std::vector<uint32_t> rank_timestamp;
+    motif_to_node_index_t::deduplication_buffers_t deduplication_buffers;
 
     std::vector<uint32_t> edge_timestamp;
 
