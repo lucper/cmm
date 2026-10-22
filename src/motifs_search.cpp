@@ -9,6 +9,13 @@
 #include "motif_pair_searcher.hpp"
 #include "progress_bar.hpp"
 
+/* Returns the wildcard combinations of d of the positions {0,...,ell-1}, in a fixed order.
+ *
+ * Input:
+ * INT motif length ell, and INT number d of wildcards.
+ *
+ * Output:
+ * The C(ell, d) wildcard combinations, each sorted; only the empty one if d = 0. */
 static std::vector<std::vector<uint16_t>> all_H_combinations(size_t ell, size_t d)
 {
     if (d == 0) return {{}};
@@ -91,9 +98,6 @@ static void check_main_algo_input(const std::vector<std::string>& V, size_t ell,
                                     "Remove them from the input or use a smaller motif length.");
 }
 
-// Searches the wildcard configurations of block `part` of `num_parts` of the shuffled
-// configurations (all of them by default), and returns the top k motif pairs found there, best
-// first, with the counters of the search.
 template <typename Tag>
 motif_pair_search_result_t main_algo(const std::vector<std::string>& V,
                                      const graph_t& G,
