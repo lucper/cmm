@@ -11,11 +11,9 @@ class ProgressBar;
 
 /* Progress bar of the wildcard configurations of a search, drawn on stderr if it is a terminal (in
  * a file, every redraw would remain as a line). It is drawn at 0 when created, and redrawn about
- * every 1% of the configurations, with counts that only increase. The threads of the search may
- * call advance at the same time.
+ * every 1% of the configurations. The threads of the search may call advance at the same time.
  *
- * Input:
- * Number total of configurations to search. */
+ * Invariant: the count drawn only increases, and is at most the configurations counted so far. */
 class progress_bar_t {
 public:
     progress_bar_t(size_t total);

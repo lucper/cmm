@@ -12,17 +12,17 @@
 #include "motif_nodes.hpp"
 #include "motifs_search.hpp"
 
-/* Searcher of the best k motif pairs over the wildcard configurations it is given, one at a time.
- * A wildcard configuration is a pair (H_u, H_v) of wildcard combinations; search_configuration
- * keeps the best pairs of each configuration among the best k found so far, and counts the
- * configuration in the counters. main_algo gives each of its threads a searcher, and merges their
- * pairs at the end.
+/* Searcher of the best k motif pairs over the wildcard configurations it is given, one at a time:
+ * search_configuration keeps the best pairs of a configuration among the best k found so far. The
+ * pairs are ordered by Comparator (motif_pair_record_comp_t<Tag>), true if its first pair is better
+ * than the second. main_algo gives each of its threads a searcher, and merges their pairs at the
+ * end. V, G and the ESA must outlive the searcher, which keeps references to V and G, and whose X
+ * and Y keep pointers into the ESA.
  *
  * The searcher allocates its scratch space once and reuses it for every configuration. X and Y are
  * the motifs of H_u and H_v and their nodes, and ranks_of_node_Y lists the ranks of Y that occur in
  * each node, in increasing order; uniq_ranks_per_node_buffer and rank_timestamp are the scratch
- * space of their build. The other members are filled for one rank_X at a time, and are all 0 or
- * false between two configurations:
+ * space of their build. The other members are filled for one rank_X at a time:
  * - intersec_nodes_count[rank_Y] counts the nodes where both rank_X and rank_Y occur (countXY);
  * - edge_count[rank_Y] counts the edges with rank_X in one node and rank_Y in the other (countE);
  * - the _set_indices list the rank_Y whose count is above 0, so that only those counts are read
@@ -30,16 +30,11 @@
  * - has_rank_X[u] tells whether rank_X occurs in node u;
  * - edge_timestamp[e] == rank_X + 1 if edge e was already counted for rank_X, which happens when
  *   rank_X occurs in both of its nodes.
- * topK holds the best k pairs found so far, in a priority queue whose top is the worst of them, so
- * that a candidate only has to be compared with the top to enter it.
  *
- * Input:
- * Type Comparator of the order of the motif pairs, motif_pair_record_comp_t<Tag>, which is true if
- * its first pair is better than the second. ESA of the sequences V, with N characters (the ranks
- * are below N), graph G (for each node, its neighbours and the indices of the edges to them), INT
- * number num_edges of edges of G, INT motif length ell, INT number k of motif pairs, and edge
- * density of G. V, G and the ESA must outlive the searcher, which keeps references to V and G,
- * and whose X and Y keep pointers into the ESA. */
+ * Invariants, between two calls to search_configuration:
+ * - intersec_nodes_count and edge_count are all 0, and has_rank_X all false;
+ * - topK holds the best k pairs (or fewer) found so far, and its top is the worst of them, so that
+ *   a candidate only has to be compared with the top to enter it. */
 template <typename Comparator>
 class motif_pair_searcher_t {
 public:
