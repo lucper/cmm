@@ -1,7 +1,6 @@
 #include "rank_table.hpp"
 
 #include <algorithm>
-#include <cassert>
 #include <iterator>
 #include <stdexcept>
 #include <string>
@@ -30,19 +29,6 @@ rank_table_t::rank_table_t(size_t ell, const esa_t& ESA)
     sSA_buffer.resize(sSA.size());
     packed_ranks_sSA.resize(sSA.size());
     packed_ranks_sSA_buffer.resize(sSA.size());
-}
-
-size_t rank_table_t::get_ell() const
-{
-    return ell;
-}
-
-uint32_t rank_table_t::get_rank_of_substr(size_t i, size_t k) const
-{
-    const auto& S_offset = ESA.get_S_offset();
-    size_t suff = S_offset[k] + i;
-    assert(suff + ell < S_offset[k + 1]);  // the ell-mer does not cover a SEP
-    return R1[suff];
 }
 
 std::string_view rank_table_t::get_substr_with_rank(uint32_t r) const

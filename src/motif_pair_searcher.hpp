@@ -16,8 +16,8 @@
  * search_configuration keeps the best pairs of a configuration among the best k found so far. The
  * pairs are ordered by Comparator (motif_pair_record_comp_t<Tag>), true if its first pair is better
  * than the second. main_algo gives each of its threads a searcher, and merges their pairs at the
- * end. V, G and the ESA must outlive the searcher, which keeps references to V and G, and whose X
- * and Y keep references to the ESA.
+ * end. G and the ESA must outlive the searcher, which keeps a reference to G, and whose X and Y
+ * keep references to the ESA.
  *
  * The searcher allocates its scratch space once and reuses it for every configuration. X and Y are
  * the motifs of H_u and H_v and their nodes, and ranks_of_node_Y lists the ranks of Y that occur in
@@ -38,14 +38,14 @@
 template <typename Comparator>
 class motif_pair_searcher_t {
 public:
-    motif_pair_searcher_t(const esa_t& ESA, const std::vector<std::string>& V, const graph_t& G,
-                          size_t num_edges, size_t ell, size_t k, double edge_density)
-        : V(V), G(G), k(k), edge_density(edge_density),
+    motif_pair_searcher_t(const esa_t& ESA, const graph_t& G, size_t num_edges, size_t ell,
+                          size_t k, double edge_density)
+        : G(G), k(k), edge_density(edge_density),
           intersec_nodes_count(ESA.get_N()), edge_count(ESA.get_N()),
-          X(ell, ESA), Y(ell, ESA), ranks_of_node_Y(V.size(), ESA.get_N()),
+          X(ell, ESA), Y(ell, ESA), ranks_of_node_Y(ESA.get_num_sequences(), ESA.get_N()),
           rank_timestamp(ESA.get_N() + 1),
           edge_timestamp(num_edges),
-          has_rank_X(V.size(), false)
+          has_rank_X(ESA.get_num_sequences(), false)
     {
         intersec_nodes_count_set_indices.reserve(ESA.get_N());
         edge_count_set_indices.reserve(ESA.get_N());
@@ -84,7 +84,6 @@ public:
     const motif_pair_search_stats_t& get_stats() const { return stats; }
 
 private:
-    const std::vector<std::string>& V;
     const graph_t& G;
     size_t k;
     double edge_density;

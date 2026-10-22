@@ -9,6 +9,7 @@
 
 /* Ranks of the ell-mers of the sequences of an ESA, masked by the wildcard combination H of the
  * last call to sort_by_prefix. Only the ell-mers within one sequence (without SEP) are ranked. The
+ * table has a row per sequence: the ranks of its ell-mers, in the order of their positions. The
  * table keeps a reference to the ESA, which must outlive it.
  *
  * Invariants, after sort_by_prefix(H):
@@ -18,7 +19,33 @@ class rank_table_t {
 public:
     rank_table_t(size_t ell, const esa_t& ESA);
 
-    size_t get_ell() const;
+    size_t get_num_sequences() const { return ESA.get_num_sequences(); }
+
+    /* Returns the row of sequence k: the ranks of its ell-mers, in the order of their positions.
+     *
+     * Input:
+     * INT index k of the sequence, below get_num_sequences().
+     *
+     * Output:
+     * Pointer to the first of the get_num_ell_mers(k) ranks of sequence k. */
+    const uint32_t* get_ranks_of_sequence(size_t k) const
+    {
+        return R1.data() + ESA.get_S_offset()[k];
+    }
+
+    /* Returns the number of ell-mers of sequence k, one per position i with i + ell at most its
+     * length; 0 if it is shorter than ell.
+     *
+     * Input:
+     * INT index k of the sequence, below get_num_sequences().
+     *
+     * Output:
+     * INT number of ell-mers of sequence k. */
+    size_t get_num_ell_mers(size_t k) const
+    {
+        size_t length = ESA.get_sequence_length(k);
+        return length >= ell ? length - ell + 1 : 0;
+    }
 
     /* Ranks the ell-mers masked by H, replacing the ranks of the previous call.
      *
@@ -38,16 +65,6 @@ public:
      * Output:
      * ell-length substring of S with rank r. */
     std::string_view get_substr_with_rank(uint32_t r) const;
-
-    /* Returns the rank of the ell-mer at position i of sequence k.
-     *
-     * Input:
-     * INT position i, with i + ell at most the length of sequence k, and INT index k of the
-     * sequence.
-     *
-     * Output:
-     * INT rank of the ell-mer. */
-    uint32_t get_rank_of_substr(size_t i, size_t k) const;
 
 private:
     size_t ell;

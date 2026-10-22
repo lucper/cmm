@@ -142,7 +142,7 @@ motif_pair_search_result_t main_algo(const std::vector<std::string>& V,
     std::vector<motif_pair_searcher_t<motif_comparator_t>> searchers;
     searchers.reserve(num_threads);
     for (size_t i = 0; i < num_threads; i++)
-        searchers.emplace_back(ESA, V, G, number_of_edges, ell, k, edge_density);
+        searchers.emplace_back(ESA, G, number_of_edges, ell, k, edge_density);
 
     progress_bar_t bar(configurations.size());
 

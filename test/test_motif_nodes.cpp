@@ -50,12 +50,15 @@ static void check_build(motif_nodes_t& mn, const std::vector<std::string>& V, si
 
     // The ranks are in order of first occurrence in the sequences.
     std::vector<uint32_t> first;
-    for (uint32_t u = 0; u < V.size(); u++)
-        for (size_t i = 0; i + ell <= V[u].size(); i++) {
-            uint32_t r = mn.rank_table.get_rank_of_substr(i, u);
+    for (uint32_t u = 0; u < V.size(); u++) {
+        size_t num_ell_mers = V[u].size() >= ell ? V[u].size() - ell + 1 : 0;
+        REQUIRE(mn.rank_table.get_num_ell_mers(u) == num_ell_mers);
+        for (size_t i = 0; i < mn.rank_table.get_num_ell_mers(u); i++) {
+            uint32_t r = mn.rank_table.get_ranks_of_sequence(u)[i];
             if (std::find(first.begin(), first.end(), r) == first.end())
                 first.push_back(r);
         }
+    }
     CHECK(mn.active_ranks == first);
 }
 
@@ -69,7 +72,7 @@ TEST_CASE("build lists the nodes of each motif, and rebuilding leaves nothing of
     std::vector<uint32_t> rank_timestamp(ESA.get_N() + 1);
 
     for (const std::vector<uint16_t>& H : std::vector<std::vector<uint16_t>>{{}, {1}, {0, 2}, {}}) {
-        uint32_t max_rank = mn.build(V, H, buffer, rank_timestamp);
+        uint32_t max_rank = mn.build(H, buffer, rank_timestamp);
         check_build(mn, V, ell, H, max_rank);
     }
 }

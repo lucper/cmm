@@ -1,6 +1,7 @@
 #ifndef H_ESA
 #define H_ESA
 
+#include <cstddef>
 #include <cstdint>
 #include <string>
 #include <vector>
@@ -25,6 +26,21 @@ public:
     const std::vector<uint32_t>& get_S_offset() const { return S_offset; }
     const int64_t *get_SA() const { return SA; }
     const int64_t *get_LCP() const { return LCP; }
+
+    /* Returns the number of sequences.
+     *
+     * Output:
+     * INT number of sequences of S. */
+    size_t get_num_sequences() const { return S_offset.size() - 1; }
+
+    /* Returns the length of sequence k, without its SEP.
+     *
+     * Input:
+     * INT index k of the sequence, below get_num_sequences().
+     *
+     * Output:
+     * INT length of sequence k. */
+    size_t get_sequence_length(size_t k) const { return S_offset[k + 1] - S_offset[k] - 1; }
 
 private:
     int64_t *SA = nullptr;

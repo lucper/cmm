@@ -19,10 +19,10 @@ void motif_pair_searcher_t<Comparator>::search_configuration(const std::vector<u
     const bool same_H = H_u == H_v;
     Comparator motif_comparator;
 
-    uint32_t max_rank_X = X.build(V, H_u, uniq_ranks_per_node_buffer, rank_timestamp);
+    uint32_t max_rank_X = X.build(H_u, uniq_ranks_per_node_buffer, rank_timestamp);
     stats.count_configuration(max_rank_X);
 
-    uint32_t max_rank_Y = Y.build(V, H_v, uniq_ranks_per_node_buffer, rank_timestamp);
+    uint32_t max_rank_Y = Y.build(H_v, uniq_ranks_per_node_buffer, rank_timestamp);
     ranks_of_node_Y.fill_transposed(Y.nodes_of_rank, max_rank_Y + 1);
 
     std::fill(edge_timestamp.begin(), edge_timestamp.end(), 0);

@@ -2,12 +2,11 @@
 
 #include <algorithm>
 
-uint32_t motif_nodes_t::build(const std::vector<std::string>& V, const std::vector<uint16_t>& H,
-                                    std::vector<rank_occ_t>& uniq_ranks_per_node_buffer,
-                                    std::vector<uint32_t>& rank_timestamp)
+uint32_t motif_nodes_t::build(const std::vector<uint16_t>& H,
+                              std::vector<rank_occ_t>& uniq_ranks_per_node_buffer,
+                              std::vector<uint32_t>& rank_timestamp)
 {
     uint32_t max_rank = rank_table.sort_by_prefix(H);
-    size_t ell = rank_table.get_ell();
 
     uniq_ranks_per_node_buffer.clear();
     std::fill(rank_timestamp.begin(), rank_timestamp.end(), 0);
@@ -17,9 +16,12 @@ uint32_t motif_nodes_t::build(const std::vector<std::string>& V, const std::vect
     active_ranks.clear();
 
     // scan strings, deduplicate, and count ranks
-    for (uint32_t u = 0; u < V.size(); u++) {
-        for (size_t i = 0; i + ell <= V[u].length(); i++) {
-            uint32_t r = rank_table.get_rank_of_substr(i, u);
+    const size_t num_sequences = rank_table.get_num_sequences();
+    for (uint32_t u = 0; u < num_sequences; u++) {
+        const uint32_t* ranks = rank_table.get_ranks_of_sequence(u);
+        const size_t num_ell_mers = rank_table.get_num_ell_mers(u);
+        for (size_t i = 0; i < num_ell_mers; i++) {
+            uint32_t r = ranks[i];
             if (rank_timestamp[r] != u + 1) {
                 rank_timestamp[r] = u + 1;
                 if (nodes_of_rank.counts[r] == 0)

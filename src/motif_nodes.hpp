@@ -31,9 +31,9 @@ struct motif_nodes_t {
         active_ranks.reserve(ESA.get_N() + 1);
     }
 
-    /* Ranks the ell-mers of the sequences masked by H, and fills active_ranks and nodes_of_rank
-     * with the ranks that occur and their nodes. The buffers are scratch space, which X and Y
-     * share.
+    /* Ranks the ell-mers of the sequences of the ESA masked by H, and fills active_ranks and
+     * nodes_of_rank with the ranks that occur and their nodes. The buffers are scratch space, which
+     * X and Y share.
      *
      * For example, if the ell-mers of nodes 0, 1 and 2 have ranks 4 1 4, 1 6 and 6:
      *
@@ -52,13 +52,13 @@ struct motif_nodes_t {
      * The rows are stored in the order of active_ranks, not of the ranks.
      *
      * Input:
-     * Sequences V (those of the ESA), sorted vector H of positions of wildcards from
-     * {0,...,ell-1}, buffer uniq_ranks_per_node_buffer with room for N pairs, and buffer
-     * rank_timestamp with N+1 entries.
+     * Sorted vector H of positions of wildcards from {0,...,ell-1}, buffer
+     * uniq_ranks_per_node_buffer with room for N pairs, and buffer rank_timestamp with N+1
+     * entries.
      *
      * Output:
      * INT value of maximum rank. */
-    uint32_t build(const std::vector<std::string>& V, const std::vector<uint16_t>& H,
+    uint32_t build(const std::vector<uint16_t>& H,
                    std::vector<rank_occ_t>& uniq_ranks_per_node_buffer,
                    std::vector<uint32_t>& rank_timestamp);
 };

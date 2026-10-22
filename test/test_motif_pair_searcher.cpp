@@ -112,7 +112,7 @@ TEST_CASE("search_configuration counts every pair of the configuration with an e
                 for (size_t j = i; j < all_H.size(); j++) {
                     INFO(name, ", d = ", d, ", configuration (", i, ", ", j, ")");
                     motif_pair_searcher_t<motif_pair_record_comp_t<sort_by_x2_t>> searcher(
-                        in.ESA, in.V, in.G, in.num_edges, ell, 1000000, in.edge_density);
+                        in.ESA, in.G, in.num_edges, ell, 1000000, in.edge_density);
                     searcher.search_configuration(all_H[i], all_H[j]);
                     CHECK(searcher.get_stats().num_configurations == 1);
 
@@ -134,7 +134,7 @@ TEST_CASE("a searcher keeps the best k pairs of all the configurations it search
         INFO(name);
         instance_t in(name);
         auto all_H = combinations(ell, d);
-        motif_pair_searcher_t<comp_t> searcher(in.ESA, in.V, in.G, in.num_edges, ell, k,
+        motif_pair_searcher_t<comp_t> searcher(in.ESA, in.G, in.num_edges, ell, k,
                                                in.edge_density);
 
         std::vector<motif_pair_record_t> expected;
