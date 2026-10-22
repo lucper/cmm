@@ -10,7 +10,7 @@ struct graph_input_t {
     std::vector<std::string> node_labels;    // node_id -> label/sequence
 };
 
-graph_input_t read_graph_files(const std::string &edge_path,
-                               const std::string &labels_path);
+graph_input_t read_graph_files(const std::string &labels_path,
+                               const std::string &edge_path);
 
 #endif

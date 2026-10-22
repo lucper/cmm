@@ -32,7 +32,7 @@ int main(int argc, char* argv[]) {
         opts = parse_options(argc, argv, status);
     if (opts) {
         try {
-            auto gi = read_graph_files(opts->path_to_edges, opts->path_to_nodes);
+            auto gi = read_graph_files(opts->path_to_nodes, opts->path_to_edges);
 
             auto start_time = std::chrono::steady_clock::now();
 

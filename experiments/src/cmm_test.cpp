@@ -58,7 +58,7 @@ int main(int argc, char* argv[]) {
 
         std::string instance_name = fa_path.stem().string();
 
-        graph_input_t gi = read_graph_files(int_path.string(), fa_path.string());
+        graph_input_t gi = read_graph_files(fa_path.string(), int_path.string());
         size_t N = 0;
         for (const auto& s : gi.node_labels) N += s.size();
         size_t V = gi.node_labels.size();

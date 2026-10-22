@@ -25,7 +25,7 @@ static const graph_input_t& instance(const std::string& name) {
     static std::map<std::string, graph_input_t> instances;
     auto it = instances.find(name);
     if (it == instances.end())
-        it = instances.emplace(name, read_graph_files("instances/" + name + ".int", "instances/" + name + ".fa")).first;
+        it = instances.emplace(name, read_graph_files("instances/" + name + ".fa", "instances/" + name + ".int")).first;
     return it->second;
 }
 

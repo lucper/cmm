@@ -86,7 +86,7 @@ struct instance_t {
     double edge_density;
 
     explicit instance_t(const std::string& name)
-        : gi(read_graph_files("instances/" + name + ".int", "instances/" + name + ".fa")), ESA(gi.node_labels)
+        : gi(read_graph_files("instances/" + name + ".fa", "instances/" + name + ".int")), ESA(gi.node_labels)
     {
         for (const auto& neighbours : gi.adj_list)
             num_edges += neighbours.size();

@@ -38,7 +38,7 @@ int main(int argc, char* argv[]) {
 
         std::string instance_name = fa_path.stem().string();
 
-        graph_input_t gi = read_graph_files(int_path.string(), fa_path.string());
+        graph_input_t gi = read_graph_files(fa_path.string(), int_path.string());
         size_t V = gi.node_labels.size();
 
         std::vector<motif_pair_t> soln = read_solution_file(soln_in_path.string());

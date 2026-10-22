@@ -20,8 +20,8 @@ static void flush_fasta_entry(const std::string &current_id,
     result.adj_list.emplace_back();
 }
 
-graph_input_t read_graph_files(const std::string &edge_path,
-                               const std::string &labels_path) {
+graph_input_t read_graph_files(const std::string &labels_path,
+                               const std::string &edge_path) {
     graph_input_t result;
     std::unordered_map<std::string, uint32_t> id_to_index;
 
