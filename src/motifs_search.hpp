@@ -13,12 +13,13 @@ struct motif_pair_search_result_t {
     motif_pair_search_stats_t stats;
 };
 
-/* Searches the best k motif pairs (X, Y) of the graph G, scored by Tag: X and Y are motifs of
- * length ell with d wildcards each, occurring in the sequences V of the nodes. The wildcard
- * configurations are shuffled in a fixed pseudo-random order and split into num_parts blocks, and
- * only block part is searched (all of them by default), on at most requested_num_threads threads.
- * Throws std::invalid_argument if k, ell or the number of threads is 0, d is not below ell, there
- * are too many configurations, fewer than two sequences, or a sequence shorter than ell.
+/* The main algorithm of the paper. Searches the best k motif pairs (X, Y) of the graph G, scored
+ * by Tag: X and Y are motifs of length ell with d wildcards each, occurring in the sequences V of
+ * the nodes. The wildcard configurations are shuffled in a fixed pseudo-random order and split
+ * into num_parts blocks, and only block part is searched (all of them by default), on at most
+ * requested_num_threads threads. Throws std::invalid_argument if k, ell or the number of threads
+ * is 0, d is not below ell, there are too many configurations, fewer than two sequences, or a
+ * sequence shorter than ell.
  *
  * Input:
  * Sequences V of the nodes, graph G, INT motif length ell, INT number d of wildcards, INT number

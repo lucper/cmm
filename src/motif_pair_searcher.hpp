@@ -52,12 +52,12 @@ public:
         uniq_ranks_per_node_buffer.reserve(ESA.get_N());
     }
 
-    /* Searches one wildcard configuration, the pair (H_u, H_v) of wildcard combinations: ranks the
-     * ell-mers masked by H_u (motifs X) and by H_v (motifs Y), and for each pair (X, Y) with an
-     * edge between their nodes, counts the edges with X in one node and Y in the other, and the
-     * nodes of X, of Y and of both, and scores the pair against the edges expected from the edge
-     * density. If H_u and H_v are the same combination, only the pairs with rank_X <= rank_Y are
-     * counted, so that each pair of motifs is counted once.
+    /* The basic algorithm of the paper. Searches one wildcard configuration, the pair (H_u, H_v)
+     * of wildcard combinations: ranks the ell-mers masked by H_u (motifs X) and by H_v (motifs Y),
+     * and for each pair (X, Y) with an edge between their nodes, counts the edges with X in one
+     * node and Y in the other, and the nodes of X, of Y and of both, and scores the pair against
+     * the edges expected from the edge density. If H_u and H_v are the same combination, only the
+     * pairs with rank_X <= rank_Y are counted, so that each pair of motifs is counted once.
      *
      * Input:
      * Wildcard combinations H_u and H_v. */

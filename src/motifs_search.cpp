@@ -37,10 +37,20 @@ static std::vector<std::vector<uint16_t>> all_H_combinations(size_t ell, size_t 
     return all_H;
 }
 
-// The wildcard configurations, i.e., the pairs (d_u, d_v) of indices of wildcard combinations with
-// d_u <= d_v, in a fixed pseudo-random order, so that every block of them has about the same amount
-// of work.
-static std::vector<std::pair<size_t, size_t>> shuffled_configurations(size_t num_H)
+/* Returns the wildcard configurations of one part of the search. The configurations, i.e., the
+ * pairs (d_u, d_v) of indices of wildcard combinations with d_u <= d_v, are shuffled in a fixed
+ * pseudo-random order, so that every block of them has about the same amount of work, and split
+ * into num_parts blocks of consecutive configurations; part gets block part.
+ *
+ * Input:
+ * INT number num_H of wildcard combinations, INT number num_parts of parts, and INT index part of
+ * the part.
+ *
+ * Output:
+ * The configurations of block part, in the shuffled order; none if there are fewer
+ * configurations than parts and this part gets an empty block. */
+static std::vector<std::pair<size_t, size_t>> shuffled_configurations(size_t num_H,
+                                                                      size_t num_parts, size_t part)
 {
     std::vector<std::pair<size_t, size_t>> configurations;
     configurations.reserve(num_H * (num_H + 1) / 2);
@@ -49,6 +59,11 @@ static std::vector<std::pair<size_t, size_t>> shuffled_configurations(size_t num
             configurations.emplace_back(d_u, d_v);
     std::mt19937_64 rng(0xC0FFEEULL);
     std::shuffle(configurations.begin(), configurations.end(), rng);
+
+    size_t begin = part * configurations.size() / num_parts;
+    size_t end = (part + 1) * configurations.size() / num_parts;
+    configurations.erase(configurations.begin() + end, configurations.end());
+    configurations.erase(configurations.begin(), configurations.begin() + begin);
     return configurations;
 }
 
@@ -116,31 +131,27 @@ motif_pair_search_result_t main_algo(const std::vector<std::string>& V,
 
     auto all_H = all_H_combinations(ell, d);
 
-    // This part's block [c_begin, c_end) of the shuffled configurations; it is empty when there are
-    // fewer configurations than parts, and then there is nothing to search.
-    auto configurations = shuffled_configurations(all_H.size());
-    size_t c_begin = part * configurations.size() / num_parts;
-    size_t c_end = (part + 1) * configurations.size() / num_parts;
-    if (c_begin == c_end)
+    auto configurations = shuffled_configurations(all_H.size(), num_parts, part);
+    if (configurations.empty())
         return {};
 
     esa_t ESA(V);
 
-    size_t num_threads = std::min(c_end - c_begin, requested_num_threads);
+    size_t num_threads = std::min(configurations.size(), requested_num_threads);
     omp_set_num_threads(num_threads);
     std::vector<motif_pair_searcher_t<motif_comparator_t>> searchers;
     searchers.reserve(num_threads);
     for (size_t i = 0; i < num_threads; i++)
         searchers.emplace_back(ESA, V, G, number_of_edges, ell, k, edge_density);
 
-    progress_bar_t bar(c_end - c_begin);
+    progress_bar_t bar(configurations.size());
 
     #pragma omp parallel
     {
     motif_pair_searcher_t<motif_comparator_t>& searcher = searchers[omp_get_thread_num()];
 
     #pragma omp for schedule(dynamic)
-    for (size_t c = c_begin; c < c_end; c++) {
+    for (size_t c = 0; c < configurations.size(); c++) {
         auto [d_u, d_v] = configurations[c];
         searcher.search_configuration(all_H[d_u], all_H[d_v]);
 
