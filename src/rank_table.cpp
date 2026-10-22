@@ -60,7 +60,7 @@ uint32_t rank_table_t::sort_by_prefix(const std::vector<uint16_t>& H)
 
     // No suffix has an ell-length prefix without SEP, so there is nothing to rank.
     if (sSA.empty()) {
-        this->max_rank_R1 = 0;
+        max_rank_R1 = 0;
         return 0;
     }
 
@@ -86,13 +86,13 @@ uint32_t rank_table_t::sort_by_prefix(const std::vector<uint16_t>& H)
 
             for (size_t j = 0; j < sSA.size(); j++)
                 packed_ranks_sSA[j] = (static_cast<uint64_t>(R1[sSA[j]]) << 32) | static_cast<uint64_t>(R2[sSA[j] + h_start]);
-            radix_pass_over_sSA(max_rank_R2, this->max_rank_R1);
+            radix_pass_over_sSA(max_rank_R2);
 
-            this->max_rank_R1 = 0;
+            max_rank_R1 = 0;
             R1[sSA[0]] = 0;
             for (size_t j = 1; j < sSA.size(); j++)
                 R1[sSA[j]] = packed_ranks_sSA[j] != packed_ranks_sSA[j-1] ?
-                             ++this->max_rank_R1 : this->max_rank_R1;
+                             ++max_rank_R1 : max_rank_R1;
         }
 
         h_start = i < d ? H[i] + 1 : ell;
@@ -104,10 +104,10 @@ uint32_t rank_table_t::sort_by_prefix(const std::vector<uint16_t>& H)
     for (size_t j = 0; j < sSA.size(); j++)
         IR1[R1[sSA[j]]] = sSA[j];
 
-    return this->max_rank_R1;
+    return max_rank_R1;
 }
 
-void rank_table_t::radix_pass_over_sSA(uint32_t max_rank_R2, uint32_t max_rank_R1)
+void rank_table_t::radix_pass_over_sSA(uint32_t max_rank_R2)
 {
     if (packed_ranks_sSA.empty()) return;
 

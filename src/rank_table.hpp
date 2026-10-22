@@ -66,7 +66,20 @@ private:
     std::vector<uint64_t> packed_ranks_sSA;
     std::vector<uint64_t> packed_ranks_sSA_buffer;
 
-    void radix_pass_over_sSA(uint32_t max_rank_R2, uint32_t max_rank_R1);
+    /* Sorts sSA by the keys of packed_ranks_sSA, moving each key with its position: key j holds
+     * in its upper 32 bits the rank in R1 of the ell-mer at sSA[j] by the fragments ranked so
+     * far, and in its lower 32 bits the rank in R2 of its next fragment. It is a radix sort of two
+     * counting sorts, by the lower half and then by the upper half, both stable, so the positions
+     * end up sorted by R1 rank, then by R2 rank, and positions with equal keys keep their order.
+     * The buffers sSA_buffer and packed_ranks_sSA_buffer hold the output of each counting sort.
+     *
+     * Input:
+     * INT maximum rank max_rank_R2 in the lower halves; the upper halves are at most the member
+     * max_rank_R1.
+     *
+     * Output:
+     * sSA and packed_ranks_sSA, sorted by key. */
+    void radix_pass_over_sSA(uint32_t max_rank_R2);
 };
 
 #endif
