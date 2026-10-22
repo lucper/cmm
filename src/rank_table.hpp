@@ -65,6 +65,7 @@ private:
     std::vector<uint32_t> sSA_buffer;
     std::vector<uint64_t> packed_ranks_sSA;
     std::vector<uint64_t> packed_ranks_sSA_buffer;
+    std::vector<uint32_t> counts;  // the bins of radix_pass_over_sSA, kept to reuse their memory
 
     /* Sorts sSA by the keys of packed_ranks_sSA, moving each key with its position: key j holds
      * in its upper 32 bits the rank in R1 of the ell-mer at sSA[j] by the fragments ranked so

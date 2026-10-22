@@ -65,6 +65,7 @@ uint32_t rank_table_t::sort_by_prefix(const std::vector<uint16_t>& H)
     }
 
     std::fill(R1.begin(), R1.end(), 0);
+    max_rank_R1 = 0;
 
     const size_t N = ESA.get_N();
     const int64_t *SA = ESA.get_SA();
@@ -119,15 +120,14 @@ void rank_table_t::radix_pass_over_sSA(uint32_t max_rank_R2)
     uint32_t max_ranks[2] = {max_rank_R2, max_rank_R1};
     uint32_t shifts[2] = {0, 32};
 
-    std::vector<size_t> counts;
     for (size_t p = 0; p < 2; p++) {
         uint32_t bins = max_ranks[p] + 1;
         counts.assign(bins, 0);
         for (size_t i = 0; i < packed_ranks_sSA.size(); i++)
             counts[(src_key[i] >> shifts[p]) & 0xFFFFFFFF]++;
-        size_t pos = 0;
+        uint32_t pos = 0;
         for (size_t i = 0; i < bins; i++) {
-            size_t c = counts[i];
+            uint32_t c = counts[i];
             counts[i] = pos;
             pos += c;
         }
