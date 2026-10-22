@@ -1,5 +1,7 @@
 #include "motifs_search.hpp"
 
+#include <algorithm>
+#include <cstdint>
 #include <limits>
 #include <omp.h>
 #include <random>

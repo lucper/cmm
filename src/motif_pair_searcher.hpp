@@ -10,7 +10,7 @@
 #include "esa.hpp"
 #include "graph.hpp"
 #include "motif_nodes.hpp"
-#include "motifs_search.hpp"
+#include "motif_pair.hpp"
 
 /* Searcher of the best k motif pairs over the wildcard configurations it is given, one at a time:
  * search_configuration keeps the best pairs of a configuration among the best k found so far. The
