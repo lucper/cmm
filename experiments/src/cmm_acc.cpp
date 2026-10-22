@@ -37,9 +37,9 @@ std::vector<int> find_occs(const std::string& p, const std::string& t, char wild
     return positions;
 }
 
-motif_comparator_t::motif_comparator_t(const graph_input_t& gi,
+motif_comparator_t::motif_comparator_t(const std::vector<std::string>& V, const graph_t& G,
                                        const std::vector<motif_pair_t>& soln)
-    : gi(gi)
+    : V(V), G(G)
 {
     for (const auto& [X, Y, _] : soln) {
         intern(X);
@@ -47,14 +47,14 @@ motif_comparator_t::motif_comparator_t(const graph_input_t& gi,
     }
 
     const size_t M = motifs.size();
-    const size_t n = gi.node_labels.size();
+    const size_t n = V.size();
     occs.assign(M, std::vector<std::vector<int>>(n));
     has.assign(M, std::vector<char>(n));
 
     #pragma omp parallel for schedule(dynamic)
     for (size_t m = 0; m < M; ++m)
         for (size_t u = 0; u < n; ++u) {
-            occs[m][u] = find_occs(motifs[m], gi.node_labels[u]);
+            occs[m][u] = find_occs(motifs[m], V[u]);
             has[m][u]  = !occs[m][u].empty();
         }
 }
@@ -69,7 +69,6 @@ uint32_t motif_comparator_t::motif_id(const std::string& motif) const
 
 double motif_comparator_t::similarity(uint32_t X, uint32_t Y, uint32_t Z, uint32_t W, int h) const
 {
-    const auto& G = gi.adj_list;
     size_t card_inter = 0;
     size_t card_union = 0;
 
@@ -98,7 +97,6 @@ double motif_comparator_t::similarity(uint32_t X, uint32_t Y, uint32_t Z, uint32
 
 bool motif_comparator_t::are_identical(uint32_t X, uint32_t Y, uint32_t Z, uint32_t W) const
 {
-    const auto& G = gi.adj_list;
     bool any_union = false;
 
     for (uint32_t u = 0; u < G.get_num_nodes(); ++u)

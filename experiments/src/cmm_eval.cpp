@@ -3,6 +3,7 @@
 #include <cstdio>
 #include <filesystem>
 #include <iostream>
+#include "data_import.hpp"
 #include "graph.hpp"
 
 namespace fs = std::filesystem;
@@ -44,12 +45,12 @@ int main(int argc, char* argv[]) {
 
         std::string instance_name = fa_path.stem().string();
 
-        graph_input_t gi = read_graph_files(fa_path.string(), int_path.string());
+        auto [V, G] = read_graph_files(fa_path.string(), int_path.string());
         size_t N = 0;
-        for (const auto& s : gi.node_labels) N += s.size();
-        size_t V = gi.node_labels.size();
-        size_t E = gi.adj_list.get_num_edges();
-        double edge_density = gi.adj_list.compute_edge_density();
+        for (const auto& s : V) N += s.size();
+        size_t num_nodes = V.size();
+        size_t E = G.get_num_edges();
+        double edge_density = G.compute_edge_density();
 
         std::vector<motif_pair_t> soln_a = read_solution_file(soln_a_path.string());
         std::vector<motif_pair_t> soln_b = read_solution_file(soln_b_path.string());
@@ -57,7 +58,7 @@ int main(int argc, char* argv[]) {
         std::fprintf(stderr, "Instance              : %s\n", instance_name.c_str());
         std::fprintf(stderr, "Edge density          : %.4f\n", edge_density);
         std::fprintf(stderr, "h                     : %d\n", h);
-        std::fprintf(stderr, "V                     : %zu\n", V);
+        std::fprintf(stderr, "V                     : %zu\n", num_nodes);
         std::fprintf(stderr, "N                     : %zu\n", N);
         std::fprintf(stderr, "E                     : %zu\n", E);
         std::fprintf(stderr, "Motif pairs in sol A  : %zu\n", soln_a.size());
@@ -71,7 +72,7 @@ int main(int argc, char* argv[]) {
         all_pairs.insert(all_pairs.end(), soln_b.begin(), soln_b.end());
 
         std::fprintf(stderr, "Building comparator...\n");
-        motif_comparator_t comp(gi, all_pairs);
+        motif_comparator_t comp(V, G, all_pairs);
 
         std::fprintf(stderr, "Computing similarity matrix (%zu x %zu)...\n",
                      soln_a.size(), soln_b.size());

@@ -6,7 +6,7 @@
 #include <unordered_map>
 #include <vector>
 
-#include "data_import.hpp"
+#include "graph.hpp"
 
 /* Returns the starting positions of `p` in `t`, in ascending order.
  * The wildcard char (default 'x') in `p` matches any character in `t`.
@@ -25,9 +25,11 @@ struct motif_pair_t {
 
 class motif_comparator_t {
 public:
-    motif_comparator_t(const graph_input_t& gi,
+    motif_comparator_t(const std::vector<std::string>& V, const graph_t& G,
                        const std::vector<motif_pair_t>& soln);
-    motif_comparator_t(graph_input_t&&,
+    motif_comparator_t(std::vector<std::string>&&, const graph_t&,
+                       const std::vector<motif_pair_t>&) = delete;
+    motif_comparator_t(const std::vector<std::string>&, graph_t&&,
                        const std::vector<motif_pair_t>&) = delete;
 
     uint32_t motif_id(const std::string& motif) const;
@@ -37,7 +39,8 @@ public:
     bool are_identical(uint32_t X, uint32_t Y, uint32_t Z, uint32_t W) const;
 
 private:
-    const graph_input_t& gi;
+    const std::vector<std::string>& V;
+    const graph_t& G;
     std::vector<std::string> motifs;
     std::unordered_map<std::string, uint32_t> id_of;
     std::vector<std::vector<std::vector<int>>> occs; // occs[motif_id][node]

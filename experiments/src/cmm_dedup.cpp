@@ -3,6 +3,7 @@
 #include <cstdio>
 #include <filesystem>
 #include <iostream>
+#include "data_import.hpp"
 
 namespace fs = std::filesystem;
 
@@ -38,18 +39,18 @@ int main(int argc, char* argv[]) {
 
         std::string instance_name = fa_path.stem().string();
 
-        graph_input_t gi = read_graph_files(fa_path.string(), int_path.string());
-        size_t V = gi.node_labels.size();
+        auto [V, G] = read_graph_files(fa_path.string(), int_path.string());
+        size_t num_nodes = V.size();
 
         std::vector<motif_pair_t> soln = read_solution_file(soln_in_path.string());
 
         std::fprintf(stderr, "Instance              : %s\n", instance_name.c_str());
         std::fprintf(stderr, "h                     : %d\n", h);
-        std::fprintf(stderr, "V                     : %zu\n", V);
+        std::fprintf(stderr, "V                     : %zu\n", num_nodes);
         std::fprintf(stderr, "Motif pairs in        : %zu\n", soln.size());
 
         std::fprintf(stderr, "Building comparator...\n");
-        motif_comparator_t comp(gi, soln);
+        motif_comparator_t comp(V, G, soln);
 
         std::fprintf(stderr, "Deduplicating...\n");
         auto kept = deduplicate_solution(comp, soln);

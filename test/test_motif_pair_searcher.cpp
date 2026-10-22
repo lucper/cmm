@@ -52,8 +52,8 @@ using counts_t = std::tuple<size_t, size_t, size_t, size_t>;
  * from the definitions: an edge {u, v} counts if X occurs in u and Y in v, or X in v and Y in u.
  * When H_u = H_v, only the pairs with X <= Y count, as the ranks follow the order of the motifs. */
 static std::map<std::pair<std::string, std::string>, counts_t> brute_force(
-    const graph_input_t& gi, size_t ell, const std::vector<uint16_t>& H_u, const std::vector<uint16_t>& H_v) {
-    const auto& V = gi.node_labels;
+    const std::vector<std::string>& V, const graph_t& G, size_t ell,
+    const std::vector<uint16_t>& H_u, const std::vector<uint16_t>& H_v) {
     auto nodes_X = nodes_of_motifs(V, ell, H_u);
     auto nodes_Y = nodes_of_motifs(V, ell, H_v);
     std::map<std::pair<std::string, std::string>, counts_t> pairs;
@@ -66,7 +66,7 @@ static std::map<std::pair<std::string, std::string>, counts_t> brute_force(
             };
             size_t countE = 0;
             for (uint32_t u = 0; u < V.size(); u++)
-                for (auto [v, e] : gi.adj_list.get_neighbours(u))
+                for (auto [v, e] : G.get_neighbours(u))
                     if (u < v && ((in(NX, u) && in(NY, v)) || (in(NX, v) && in(NY, u))))
                         countE++;
             if (countE == 0)
@@ -81,14 +81,20 @@ static std::map<std::pair<std::string, std::string>, counts_t> brute_force(
 
 // What a search of instances/<name> needs: the input, its ESA, number of edges and edge density.
 struct instance_t {
-    graph_input_t gi;
+    std::vector<std::string> V;
+    graph_t G;
     esa_t ESA;
     size_t num_edges;
     double edge_density;
 
     explicit instance_t(const std::string& name)
-        : gi(read_graph_files("instances/" + name + ".fa", "instances/" + name + ".int")), ESA(gi.node_labels),
-          num_edges(gi.adj_list.get_num_edges()), edge_density(gi.adj_list.compute_edge_density())
+        : instance_t(read_graph_files("instances/" + name + ".fa", "instances/" + name + ".int"))
+    {
+    }
+
+    explicit instance_t(graph_input_t input)
+        : V(std::move(input.sequences)), G(std::move(input.graph)), ESA(V),
+          num_edges(G.get_num_edges()), edge_density(G.compute_edge_density())
     {
     }
 };
@@ -106,7 +112,7 @@ TEST_CASE("search_configuration counts every pair of the configuration with an e
                 for (size_t j = i; j < all_H.size(); j++) {
                     INFO(name, ", d = ", d, ", configuration (", i, ", ", j, ")");
                     motif_pair_searcher_t<motif_pair_record_comp_t<sort_by_x2_t>> searcher(
-                        in.ESA, in.gi.node_labels, in.gi.adj_list, in.num_edges, ell, 1000000, in.edge_density);
+                        in.ESA, in.V, in.G, in.num_edges, ell, 1000000, in.edge_density);
                     searcher.search_configuration(all_H[i], all_H[j]);
                     CHECK(searcher.get_stats().num_configurations == 1);
 
@@ -115,7 +121,7 @@ TEST_CASE("search_configuration counts every pair of the configuration with an e
                         CHECK(found.count({p.X, p.Y}) == 0);
                         found[{p.X, p.Y}] = {p.countE, p.countX, p.countY, p.countXY};
                     }
-                    CHECK(found == brute_force(in.gi, ell, all_H[i], all_H[j]));
+                    CHECK(found == brute_force(in.V, in.G, ell, all_H[i], all_H[j]));
                 }
         }
     }
@@ -128,14 +134,14 @@ TEST_CASE("a searcher keeps the best k pairs of all the configurations it search
         INFO(name);
         instance_t in(name);
         auto all_H = combinations(ell, d);
-        motif_pair_searcher_t<comp_t> searcher(in.ESA, in.gi.node_labels, in.gi.adj_list, in.num_edges, ell, k,
+        motif_pair_searcher_t<comp_t> searcher(in.ESA, in.V, in.G, in.num_edges, ell, k,
                                                in.edge_density);
 
         std::vector<motif_pair_record_t> expected;
         for (size_t i = 0; i < all_H.size(); i++)
             for (size_t j = i; j < all_H.size(); j++) {
                 searcher.search_configuration(all_H[i], all_H[j]);
-                for (const auto& [XY, counts] : brute_force(in.gi, ell, all_H[i], all_H[j])) {
+                for (const auto& [XY, counts] : brute_force(in.V, in.G, ell, all_H[i], all_H[j])) {
                     motif_pair_record_t p;
                     p.X = XY.first;
                     p.Y = XY.second;

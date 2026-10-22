@@ -34,9 +34,11 @@ TEST_CASE("invalid input raises an exception with its message") {
     };
     for (const auto& e : cases) {
         INFO(e.fasta, " ", e.interactions, ", ell = ", e.ell, ", d = ", e.d, ", k = ", e.k, ", ", e.num_threads, " threads");
-        CHECK_THROWS_WITH([&] {
-            auto gi = read_graph_files("instances/" + e.fasta, "instances/" + e.interactions);
-            main_algo<sort_by_x2_t>(gi.node_labels, gi.adj_list, e.ell, e.d, e.k, e.num_threads);
-        }(), doctest::Contains(e.message.c_str()));
+        // Outside the macro, whose arguments the comma of [V, G] would split.
+        auto read_and_search = [&] {
+            auto [V, G] = read_graph_files("instances/" + e.fasta, "instances/" + e.interactions);
+            main_algo<sort_by_x2_t>(V, G, e.ell, e.d, e.k, e.num_threads);
+        };
+        CHECK_THROWS_WITH(read_and_search(), doctest::Contains(e.message.c_str()));
     }
 }

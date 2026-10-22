@@ -32,10 +32,10 @@ static const graph_input_t& instance(const std::string& name) {
 // Searches the wildcard configurations of part `part` of `num_parts` of a test case with the given
 // number of threads.
 static motif_pair_search_result_t search(const test_case_t& c, size_t num_threads, size_t num_parts = 1, size_t part = 0) {
-    const auto& gi = instance(c.instance);
+    const auto& [V, G] = instance(c.instance);
     return (c.f == "E")
-        ? main_algo<sort_by_countE_t>(gi.node_labels, gi.adj_list, c.ell, c.d, c.k, num_threads, num_parts, part)
-        : main_algo<sort_by_x2_t>(gi.node_labels, gi.adj_list, c.ell, c.d, c.k, num_threads, num_parts, part);
+        ? main_algo<sort_by_countE_t>(V, G, c.ell, c.d, c.k, num_threads, num_parts, part)
+        : main_algo<sort_by_x2_t>(V, G, c.ell, c.d, c.k, num_threads, num_parts, part);
 }
 
 static std::vector<motif_pair_record_t> merge(const test_case_t& c, std::vector<motif_pair_record_t> pairs) {

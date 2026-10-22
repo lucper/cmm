@@ -69,9 +69,8 @@ TEST_CASE("read_graph_files adds one edge per line of the interactions file") {
         size_t lines = 0;
         for (std::string line; std::getline(in, line);)
             lines += !line.empty();
-        auto gi = read_graph_files("instances/" + name + ".fa", "instances/" + name + ".int");
-        const auto& G = gi.adj_list;
-        CHECK(G.get_num_nodes() == gi.node_labels.size());
+        auto [V, G] = read_graph_files("instances/" + name + ".fa", "instances/" + name + ".int");
+        CHECK(G.get_num_nodes() == V.size());
         CHECK(G.get_num_edges() == lines);
         size_t n = G.get_num_nodes();
         CHECK(G.compute_edge_density() == static_cast<double>(lines) / (n * (n - 1) / 2));

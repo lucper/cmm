@@ -5,12 +5,12 @@
 #include <vector>
 #include "graph.hpp"
 
-/* The input graph of a search: the nodes are the records of a FASTA file, in the order of the
- * file, and the edges the lines of an interactions file, indexed in the order of the file. Node u
- * has sequence node_labels[u] and neighbours adj_list.get_neighbours(u). */
+/* The input of a search, as read by read_graph_files: the sequence of each node, from the records
+ * of a FASTA file in their order, and the graph, whose edges are the lines of an interactions file
+ * in their order. Callers unpack it where they read it: auto [V, G] = read_graph_files(...). */
 struct graph_input_t {
-    graph_t adj_list;
-    std::vector<std::string> node_labels;
+    std::vector<std::string> sequences;
+    graph_t graph;
 };
 
 /* Reads a graph from a FASTA file and an interactions file. The identifier of a FASTA record is
@@ -23,7 +23,7 @@ struct graph_input_t {
  * Path labels_path of the FASTA file, and path edge_path of the interactions file.
  *
  * Output:
- * The graph, as graph_input_t. */
+ * The sequences and the graph, as graph_input_t. */
 graph_input_t read_graph_files(const std::string &labels_path,
                                const std::string &edge_path);
 
