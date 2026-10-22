@@ -14,7 +14,7 @@ static std::string apply_mask(std::string_view motif, const std::vector<uint16_t
 
 template <typename Comparator>
 void motif_pair_searcher_t<Comparator>::search_configuration(const std::vector<uint16_t>& H_u,
-                                                              const std::vector<uint16_t>& H_v)
+                                                             const std::vector<uint16_t>& H_v)
 {
     const bool same_H = H_u == H_v;
     Comparator motif_comparator;
