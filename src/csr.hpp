@@ -6,15 +6,11 @@
 #include <vector>
 
 /* Lists of numbers in compressed sparse rows (CSR): the lists (rows) are stored one after the
- * other in items. For example, the rows {5, 7}, {} and {3} are stored as offsets = {0, 2, 2},
- * counts = {2, 0, 1}, items = {5, 7, 3}. The vectors are allocated once, for a number of rows and
- * of items in all, and filled again for every wildcard configuration.
- *
- * Invariants, once filled:
- * - row i is items[offsets[i] .. offsets[i] + counts[i]), and the offset of an empty row is
- *   meaningless;
- * - the rows do not overlap.
- * While a row is filled, its count is the position of its next item. */
+ * other in items, without overlapping, and row i is items[offsets[i] .. offsets[i] + counts[i]).
+ * For example, the rows {5, 7}, {} and {3} are stored as offsets = {0, 2, 2}, counts = {2, 0, 1},
+ * items = {5, 7, 3}. The offset of an empty row is meaningless. The vectors are allocated once,
+ * for a number of rows and of items in all, and filled again for every wildcard configuration;
+ * while a row is filled, its count is the position of its next item. */
 struct csr_t {
     std::vector<uint32_t> offsets, counts, items;
 

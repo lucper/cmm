@@ -16,13 +16,10 @@ struct rank_occ_t { uint32_t node; uint32_t rank; };
  * masked by one wildcard combination H, and the nodes where they occur. A motif occurs in a node
  * (the index of a sequence) if at least one ell-mer of the sequence, masked by H, is the motif.
  * rank_table gives each motif its rank (see rank_table_t), and keeps pointers into the ESA, which
- * must outlive it.
- *
- * Invariants, after build(H):
- * - active_ranks lists each rank that occurs once, in the order they are first found when the
- *   sequences are scanned from node 0;
- * - row r of nodes_of_rank lists the nodes where rank r occurs, each once and in increasing order,
- *   and is empty if r is not in active_ranks. */
+ * must outlive it. After build(H), active_ranks lists each rank that occurs once, in the order
+ * they are first found when the sequences are scanned from node 0, and row r of nodes_of_rank
+ * lists the nodes where rank r occurs, each once and in increasing order; it is empty if r is not
+ * in active_ranks. */
 struct motif_nodes_t {
     rank_table_t rank_table;
     std::vector<uint32_t> active_ranks;
