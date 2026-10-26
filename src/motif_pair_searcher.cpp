@@ -22,14 +22,14 @@ void motif_pair_searcher_t<Comparator>::search_configuration(const std::vector<u
     uint32_t max_rank_X = X.build(H_u, deduplication_buffers);
     stats.count_configuration(max_rank_X);
 
-    uint32_t max_rank_Y = Y.build(H_v, deduplication_buffers);
-    ranks_of_node_Y.fill_transposed(Y.get_nodes_of_rank(), max_rank_Y + 1);
+    Y.build(H_v, deduplication_buffers);
+    Y.fill_ranks_of_nodes(ranks_of_node_Y);
 
     std::fill(edge_timestamp.begin(), edge_timestamp.end(), 0);
 
     for (auto rank_X : X.get_active_ranks()) {
-        size_t countX = X.get_nodes_of_rank().row_size(rank_X);
-        const uint32_t *nodes_with_rank_X = X.get_nodes_of_rank().row(rank_X);
+        size_t countX = X.get_num_nodes(rank_X);
+        const uint32_t *nodes_with_rank_X = X.get_nodes(rank_X);
 
         edge_count_set_indices.clear();
 
@@ -96,7 +96,7 @@ void motif_pair_searcher_t<Comparator>::search_configuration(const std::vector<u
 
         for (auto rank_Y : edge_count_set_indices) {
             size_t countXY = intersec_nodes_count[rank_Y];
-            size_t countY = Y.get_nodes_of_rank().row_size(rank_Y);
+            size_t countY = Y.get_num_nodes(rank_Y);
             size_t Emax = (countX * countY) - ((countXY * (countXY - 1))/2) - countXY;
             size_t countE = edge_count[rank_Y];
             double countE_bar = edge_density * Emax;

@@ -11,7 +11,7 @@ motif_to_node_index_t::deduplication_buffers_t::deduplication_buffers_t(const es
 uint32_t motif_to_node_index_t::build(const std::vector<uint16_t>& H,
                                       deduplication_buffers_t& buffers)
 {
-    uint32_t max_rank = rank_table.sort_by_prefix(H);
+    max_rank = rank_table.sort_by_prefix(H);
 
     buffers.uniq_ranks_per_node.clear();
     std::fill(buffers.rank_timestamp.begin(), buffers.rank_timestamp.end(), 0);

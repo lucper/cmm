@@ -1,5 +1,6 @@
 #include "doctest.h"
 #include "motif_to_node_index.hpp"
+#include "csr.hpp"
 #include "esa.hpp"
 
 #include <algorithm>
@@ -35,7 +36,6 @@ static void check_build(motif_to_node_index_t& mn, const std::vector<std::string
     INFO("H of size ", H.size());
     std::map<std::string, std::vector<uint32_t>> nodes;
     const auto& active_ranks = mn.get_active_ranks();
-    const csr_t& rows = mn.get_nodes_of_rank();
     std::set<uint32_t> active(active_ranks.begin(), active_ranks.end());
     CHECK(active.size() == active_ranks.size());
     std::map<std::string, uint32_t> rank_of;
@@ -43,14 +43,14 @@ static void check_build(motif_to_node_index_t& mn, const std::vector<std::string
         CHECK(r <= max_rank);
         std::string m = masked(std::string(mn.get_ell_mer(r)), 0, ell, H);
         CHECK(nodes.count(m) == 0);
-        nodes[m].assign(rows.row(r), rows.row(r) + rows.row_size(r));
+        nodes[m].assign(mn.get_nodes(r), mn.get_nodes(r) + mn.get_num_nodes(r));
         rank_of[m] = r;
     }
     CHECK(nodes == brute_force(V, ell, H));
 
     for (uint32_t r = 0; r <= max_rank; r++)
         if (active.count(r) == 0)
-            CHECK(rows.row_size(r) == 0);
+            CHECK(mn.get_num_nodes(r) == 0);
 
     // The ranks are in order of first occurrence in the sequences.
     std::vector<uint32_t> first;
@@ -61,6 +61,22 @@ static void check_build(motif_to_node_index_t& mn, const std::vector<std::string
                 first.push_back(r);
         }
     CHECK(active_ranks == first);
+
+    // The other way round: the ranks of each node, each once, in increasing order.
+    size_t num_positions = 0;
+    for (const auto& seq : V)
+        num_positions += seq.size();
+    csr_t ranks_of_node(V.size(), num_positions);
+    mn.fill_ranks_of_nodes(ranks_of_node);
+    for (uint32_t u = 0; u < V.size(); u++) {
+        std::set<uint32_t> ranks;
+        for (size_t i = 0; i + ell <= V[u].size(); i++)
+            ranks.insert(rank_of.at(masked(V[u], i, ell, H)));
+        std::vector<uint32_t> expected(ranks.begin(), ranks.end());
+        const uint32_t* row = ranks_of_node.row(u);
+        std::vector<uint32_t> found(row, row + ranks_of_node.row_size(u));
+        CHECK(found == expected);
+    }
 }
 
 TEST_CASE("build lists the nodes of each motif, and rebuilding leaves nothing of the previous build") {

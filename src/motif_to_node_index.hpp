@@ -19,9 +19,9 @@
  * Invariants, after build(H):
  * - get_active_ranks() lists each rank that occurs, once, in the order they are first found when
  *   the sequences are scanned from node 0;
- * - row r of get_nodes_of_rank() lists the nodes where rank r occurs, each once and in increasing
+ * - get_nodes(r) lists the get_num_nodes(r) nodes where rank r occurs, each once and in increasing
  *   order;
- * - the rows of the ranks not in get_active_ranks() are empty, which the next build relies on, as
+ * - no node is listed for the ranks not in get_active_ranks(), which the next build relies on, as
  *   it clears only the rows of the active ranks. */
 class motif_to_node_index_t {
 public:
@@ -70,7 +70,37 @@ public:
     uint32_t build(const std::vector<uint16_t>& H, deduplication_buffers_t& buffers);
 
     const std::vector<uint32_t>& get_active_ranks() const { return active_ranks; }
-    const csr_t& get_nodes_of_rank() const { return nodes_of_rank; }
+
+    /* Returns the nodes where the motif of rank r occurs, in increasing order.
+     *
+     * Input:
+     * INT rank r, at most the maximum rank of the last build.
+     *
+     * Output:
+     * Pointer to the first of the get_num_nodes(r) nodes. */
+    const uint32_t* get_nodes(uint32_t r) const { return nodes_of_rank.row(r); }
+
+    /* Returns the number of nodes where the motif of rank r occurs; 0 if it does not occur.
+     *
+     * Input:
+     * INT rank r, at most the maximum rank of the last build.
+     *
+     * Output:
+     * INT number of nodes. */
+    uint32_t get_num_nodes(uint32_t r) const { return nodes_of_rank.row_size(r); }
+
+    /* Fills ranks_of_node with the index the other way round, from nodes to motifs: row u lists the
+     * ranks that occur in node u, in increasing order.
+     *
+     * Input:
+     * CSR ranks_of_node, with a row per node and room for N items.
+     *
+     * Output:
+     * None; the rows of ranks_of_node are replaced. */
+    void fill_ranks_of_nodes(csr_t& ranks_of_node) const
+    {
+        ranks_of_node.fill_transposed(nodes_of_rank, max_rank + 1);
+    }
 
     /* Returns one of the ell-mers of rank r, as it is in the sequences (not masked).
      *
@@ -85,6 +115,7 @@ private:
     rank_table_t rank_table;
     std::vector<uint32_t> active_ranks;
     csr_t nodes_of_rank;
+    uint32_t max_rank = 0;  // of the last build
 };
 
 #endif
