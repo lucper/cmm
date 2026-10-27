@@ -1,7 +1,8 @@
 #include "doctest.h"
-#include "motif_to_node_index.hpp"
+#include "occurrence_matrix.hpp"
 #include "csr.hpp"
 #include "esa.hpp"
+#include "rank_table.hpp"
 
 #include <algorithm>
 #include <map>
@@ -30,27 +31,28 @@ static std::map<std::string, std::vector<uint32_t>> brute_force(const std::vecto
     return nodes;
 }
 
-// Checks what build left in mn against the brute force, for the sequences V masked by H.
-static void check_build(motif_to_node_index_t& mn, const std::vector<std::string>& V, size_t ell,
+// Checks what build_occurrence_matrix left in At and first_found against the brute force, for the
+// sequences V masked by H.
+static void check_build(const rank_table_t& table, const csr_t& At,
+                        const std::vector<uint32_t>& active_ranks,
+                        const std::vector<std::string>& V, size_t ell,
                         const std::vector<uint16_t>& H, uint32_t max_rank) {
     INFO("H of size ", H.size());
     std::map<std::string, std::vector<uint32_t>> nodes;
-    const auto& active_ranks = mn.get_active_ranks();
+    // Every rank from 0 to max_rank occurs, once in active_ranks, and is a row of At.
     std::set<uint32_t> active(active_ranks.begin(), active_ranks.end());
     CHECK(active.size() == active_ranks.size());
+    CHECK(active.size() == max_rank + 1);
+    CHECK(At.get_num_rows() == max_rank + 1);
     std::map<std::string, uint32_t> rank_of;
     for (auto r : active_ranks) {
         CHECK(r <= max_rank);
-        std::string m = masked(std::string(mn.get_ell_mer(r)), 0, ell, H);
+        std::string m = masked(std::string(table.get_substr_with_rank(r)), 0, ell, H);
         CHECK(nodes.count(m) == 0);
-        nodes[m].assign(mn.get_nodes(r), mn.get_nodes(r) + mn.get_num_nodes(r));
+        nodes[m].assign(At.row(r), At.row(r) + At.row_size(r));
         rank_of[m] = r;
     }
     CHECK(nodes == brute_force(V, ell, H));
-
-    for (uint32_t r = 0; r <= max_rank; r++)
-        if (active.count(r) == 0)
-            CHECK(mn.get_num_nodes(r) == 0);
 
     // The ranks are in order of first occurrence in the sequences.
     std::vector<uint32_t> first;
@@ -67,7 +69,7 @@ static void check_build(motif_to_node_index_t& mn, const std::vector<std::string
     for (const auto& seq : V)
         num_positions += seq.size();
     csr_t ranks_of_node(V.size(), num_positions);
-    mn.fill_ranks_of_nodes(ranks_of_node);
+    ranks_of_node.assign_transpose(At, V.size());
     for (uint32_t u = 0; u < V.size(); u++) {
         std::set<uint32_t> ranks;
         for (size_t i = 0; i + ell <= V[u].size(); i++)
@@ -79,15 +81,25 @@ static void check_build(motif_to_node_index_t& mn, const std::vector<std::string
     }
 }
 
-TEST_CASE("build lists the nodes of each motif, and rebuilding leaves nothing of the previous build") {
+TEST_CASE("build_occurrence_matrix lists the nodes of each motif, and a new build replaces the last") {
     const std::vector<std::string> V = {"MLHCML", "HCMLMA", "AAAA", "MLH", "CAMLHA"};
     const size_t ell = 3;
     esa_t ESA(V);
-    motif_to_node_index_t mn(ell, ESA);
-    motif_to_node_index_t::deduplication_buffers_t buffers(ESA);
+    rank_table_t table(ell, ESA);
+    csr_t At(ESA.get_N() + 1, ESA.get_N());
+    std::vector<uint32_t> first_found;
+    deduplication_buffers_t buffers(ESA);
 
     for (const std::vector<uint16_t>& H : std::vector<std::vector<uint16_t>>{{}, {1}, {0, 2}, {}}) {
-        uint32_t max_rank = mn.build(H, buffers);
-        check_build(mn, V, ell, H, max_rank);
+        uint32_t max_rank = build_occurrence_matrix(table, H, buffers, At, &first_found);
+        check_build(table, At, first_found, V, ell, H, max_rank);
     }
+
+    // Without first_found, the same matrix.
+    csr_t At2(ESA.get_N() + 1, ESA.get_N());
+    uint32_t max_rank = build_occurrence_matrix(table, {1}, buffers, At2, nullptr);
+    build_occurrence_matrix(table, {1}, buffers, At, &first_found);
+    for (uint32_t r = 0; r <= max_rank; r++)
+        CHECK(std::vector<uint32_t>(At2.row(r), At2.row(r) + At2.row_size(r)) ==
+              std::vector<uint32_t>(At.row(r), At.row(r) + At.row_size(r)));
 }

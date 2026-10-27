@@ -58,7 +58,7 @@ public:
     /* Makes this the transpose of m, with num_rows rows: row i lists the rows of m that hold i, in
      * increasing order. Every column of m must be below num_rows.
      *
-     * For example, transposing the nodes_of_rank of the example of motif_to_node_index_t::build
+     * For example, transposing the occurrence matrix of the example of build_occurrence_matrix
      * gives the ranks of each node:
      *
      *     node      0  1  2

@@ -51,7 +51,7 @@ TEST_CASE("the rows are stored one after the other, in the order of the rows") {
 }
 
 TEST_CASE("assign_transpose lists the rows of m that hold each column, in increasing order") {
-    // nodes_of_rank of the example of motif_to_node_index_t::build.
+    // The occurrence matrix of the example of build_occurrence_matrix.
     csr_t m = csr_of({{}, {0, 1}, {}, {}, {0}, {}, {1, 2}}, 8);
     csr_t t(3, 8);
 

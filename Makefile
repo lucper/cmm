@@ -16,7 +16,7 @@ else
 endif
 
 # The objects are built in build/, from the sources of src/ and external/.
-CORE_OBJS := build/exact_algorithm.o build/motif_pair_searcher.o build/motif_to_node_index.o \
+CORE_OBJS := build/exact_algorithm.o build/motif_pair_searcher.o build/occurrence_matrix.o \
              build/csr.o build/progress_bar.o build/rank_table.o build/esa.o build/data_import.o \
              build/graph.o build/libsais64.o build/libsais.o
 OBJS      := build/main.o build/options_parsing.o $(CORE_OBJS)

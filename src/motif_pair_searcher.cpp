@@ -19,17 +19,18 @@ void motif_pair_searcher_t<Comparator>::search_configuration(const std::vector<u
     const bool same_H = H_u == H_v;
     Comparator motif_comparator;
 
-    uint32_t max_rank_X = X.build(H_u, deduplication_buffers);
+    uint32_t max_rank_X = build_occurrence_matrix(table_X, H_u, deduplication_buffers, At_X,
+                                                  &order_X);
     stats.count_configuration(max_rank_X);
 
-    Y.build(H_v, deduplication_buffers);
-    Y.fill_ranks_of_nodes(ranks_of_node_Y);
+    build_occurrence_matrix(table_Y, H_v, deduplication_buffers, At_Y, nullptr);
+    A_Y.assign_transpose(At_Y, table_Y.get_num_sequences());
 
     std::fill(edge_timestamp.begin(), edge_timestamp.end(), 0);
 
-    for (auto rank_X : X.get_active_ranks()) {
-        size_t countX = X.get_num_nodes(rank_X);
-        const uint32_t *nodes_with_rank_X = X.get_nodes(rank_X);
+    for (auto rank_X : order_X) {
+        size_t countX = At_X.row_size(rank_X);
+        const uint32_t *nodes_with_rank_X = At_X.row(rank_X);
 
         edge_count_set_indices.clear();
 
@@ -39,8 +40,8 @@ void motif_pair_searcher_t<Comparator>::search_configuration(const std::vector<u
         for (size_t i = 0; i < countX; i++) {
             uint32_t u = nodes_with_rank_X[i];
 
-            const uint32_t *ranksY_in_node_u = ranks_of_node_Y.row(u);
-            uint32_t number_of_ranksY_in_node_u = ranks_of_node_Y.row_size(u);
+            const uint32_t *ranksY_in_node_u = A_Y.row(u);
+            uint32_t number_of_ranksY_in_node_u = A_Y.row_size(u);
 
             // Intersection count
             for (size_t j = 0; j < number_of_ranksY_in_node_u; j++) {
@@ -54,8 +55,8 @@ void motif_pair_searcher_t<Comparator>::search_configuration(const std::vector<u
             for (auto [v, edge_id] : G.get_neighbours(u))
                 if (edge_timestamp[edge_id] != rank_X + 1) {
                     edge_timestamp[edge_id] = rank_X + 1;
-                    const uint32_t *ranksY_in_node_v = ranks_of_node_Y.row(v);
-                    uint32_t number_of_ranksY_in_node_v = ranks_of_node_Y.row_size(v);
+                    const uint32_t *ranksY_in_node_v = A_Y.row(v);
+                    uint32_t number_of_ranksY_in_node_v = A_Y.row_size(v);
 
                     // every rank is credited if H_u and H_v differ;
                     // only rank_Y >= rank_X if they are the same.
@@ -96,7 +97,7 @@ void motif_pair_searcher_t<Comparator>::search_configuration(const std::vector<u
 
         for (auto rank_Y : edge_count_set_indices) {
             size_t countXY = intersec_nodes_count[rank_Y];
-            size_t countY = Y.get_num_nodes(rank_Y);
+            size_t countY = At_Y.row_size(rank_Y);
             size_t Emax = (countX * countY) - ((countXY * (countXY - 1))/2) - countXY;
             size_t countE = edge_count[rank_Y];
             double countE_bar = edge_density * Emax;
@@ -109,8 +110,8 @@ void motif_pair_searcher_t<Comparator>::search_configuration(const std::vector<u
             bool worse_than_kth = topK.size() >= k && motif_comparator(topK.top(), candidate);
             if (!worse_than_kth) {
                 // Build X and Y to break a tie with the k-th.
-                candidate.X = apply_mask(X.get_ell_mer(rank_X), H_u, 'x');
-                candidate.Y = apply_mask(Y.get_ell_mer(rank_Y), H_v, 'x');
+                candidate.X = apply_mask(table_X.get_substr_with_rank(rank_X), H_u, 'x');
+                candidate.Y = apply_mask(table_Y.get_substr_with_rank(rank_Y), H_v, 'x');
                 if (topK.size() < k || motif_comparator(candidate, topK.top())) {
                     candidate.rankX = rank_X;
                     candidate.rankY = rank_Y;
