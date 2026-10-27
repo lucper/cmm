@@ -40,15 +40,18 @@ struct deduplication_buffers_t {
  *
  * Input:
  * Rank table of the sequences, sorted vector H of positions of wildcards from {0,...,ell-1},
- * deduplication buffers for the same ESA, CSR At with room for N + 1 rows and N non-zeros, and
- * optionally a vector first_found (nullptr if not wanted).
+ * deduplication buffers for the same ESA, CSR At with room for N + 1 rows and N non-zeros, a
+ * vector representative of N + 1 entries, and optionally a vector first_found (nullptr if not
+ * wanted).
  *
  * Output:
- * INT maximum rank. The rank table holds the ranks of H; At is replaced; first_found, if given,
- * lists every rank once, in the order they are first found when the sequences are scanned from
- * node 0. */
+ * INT maximum rank. The rank table holds the ranks of H; At is replaced; representative[r] is the
+ * position in S (see rank_table_t::get_ell_mer) of the first ell-mer of rank r found when the
+ * sequences are scanned from node 0, so the ell-mers of rank r stay readable after the rank table
+ * ranks another H; first_found, if given, lists every rank once, in the order of that scan. */
 uint32_t build_occurrence_matrix(rank_table_t& table, const std::vector<uint16_t>& H,
                                  deduplication_buffers_t& buffers, csr_t& At,
+                                 std::vector<uint32_t>& representative,
                                  std::vector<uint32_t>* first_found);
 
 #endif

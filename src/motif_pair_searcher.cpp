@@ -19,12 +19,12 @@ void motif_pair_searcher_t<Comparator>::search_configuration(const std::vector<u
     const bool same_H = H_u == H_v;
     Comparator motif_comparator;
 
-    uint32_t max_rank_X = build_occurrence_matrix(table_X, H_u, deduplication_buffers, At_X,
-                                                  &order_X);
+    uint32_t max_rank_X = build_occurrence_matrix(table, H_u, deduplication_buffers, At_X,
+                                                  representative_X, &order_X);
     stats.count_configuration(max_rank_X);
 
-    build_occurrence_matrix(table_Y, H_v, deduplication_buffers, At_Y, nullptr);
-    A_Y.assign_transpose(At_Y, table_Y.get_num_sequences());
+    build_occurrence_matrix(table, H_v, deduplication_buffers, At_Y, representative_Y, nullptr);
+    A_Y.assign_transpose(At_Y, table.get_num_sequences());
 
     std::fill(edge_timestamp.begin(), edge_timestamp.end(), 0);
 
@@ -110,8 +110,8 @@ void motif_pair_searcher_t<Comparator>::search_configuration(const std::vector<u
             bool worse_than_kth = topK.size() >= k && motif_comparator(topK.top(), candidate);
             if (!worse_than_kth) {
                 // Build X and Y to break a tie with the k-th.
-                candidate.X = apply_mask(table_X.get_substr_with_rank(rank_X), H_u, 'x');
-                candidate.Y = apply_mask(table_Y.get_substr_with_rank(rank_Y), H_v, 'x');
+                candidate.X = apply_mask(table.get_ell_mer(representative_X[rank_X]), H_u, 'x');
+                candidate.Y = apply_mask(table.get_ell_mer(representative_Y[rank_Y]), H_v, 'x');
                 if (topK.size() < k || motif_comparator(candidate, topK.top())) {
                     candidate.rankX = rank_X;
                     candidate.rankY = rank_Y;

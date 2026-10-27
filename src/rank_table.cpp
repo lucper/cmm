@@ -2,8 +2,6 @@
 
 #include <algorithm>
 #include <iterator>
-#include <stdexcept>
-#include <string>
 #include <utility>
 
 rank_table_t::rank_table_t(size_t ell, const esa_t& ESA)
@@ -15,7 +13,6 @@ rank_table_t::rank_table_t(size_t ell, const esa_t& ESA)
 
     R1.resize(N);
     R2.resize(N);
-    IR1.resize(N);
 
     // Get suffixes whose prefixes have >= ell characters without SEP.
     for (size_t i = 0; i < N; i++) {
@@ -29,14 +26,6 @@ rank_table_t::rank_table_t(size_t ell, const esa_t& ESA)
     sSA_buffer.resize(sSA.size());
     packed_ranks_sSA.resize(sSA.size());
     packed_ranks_sSA_buffer.resize(sSA.size());
-}
-
-std::string_view rank_table_t::get_substr_with_rank(uint32_t r) const
-{
-    if (r > max_rank_R1)
-        throw std::out_of_range("Invalid rank access: rank " + std::to_string(r) +
-                                " is outside current valid range [0, " + std::to_string(max_rank_R1) + "].");
-    return std::string_view((const char *) ESA.get_S() + IR1[r], ell);
 }
 
 uint32_t rank_table_t::sort_by_prefix(const std::vector<uint16_t>& H)
@@ -84,11 +73,6 @@ uint32_t rank_table_t::sort_by_prefix(const std::vector<uint16_t>& H)
         h_start = i < d ? H[i] + 1 : ell;
         i++;
     } while (i < d + 1); // d wildcards = d+1 fragments
-
-    // Note that two suffixes sSA[i] and sSA[j] may have the same rank K in R1.
-    // So IR1[K] would be set twice.
-    for (size_t j = 0; j < sSA.size(); j++)
-        IR1[R1[sSA[j]]] = sSA[j];
 
     return max_rank_R1;
 }

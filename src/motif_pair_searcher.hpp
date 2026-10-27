@@ -18,17 +18,19 @@
  * pairs are ordered by Comparator (motif_pair_record_comp_t<Tag>), true if its first pair is better
  * than the second. main_algo gives each of its threads a searcher, and merges their pairs at the
  * end. G and the ESA must outlive the searcher, which keeps a reference to G, and whose rank
- * tables keep references to the ESA.
+ * table keeps a reference to the ESA.
  *
  * The searcher allocates its scratch space once and reuses it for every configuration, and
  * computes the counts of a configuration as rows of products of sparse Boolean matrices, one row
  * per motif X (Gustavson's algorithm): with A_X and A_Y the occurrence matrices (node x motif) of
  * the motifs X of H_u and Y of H_v, and Adj the adjacency matrix of G, row X of A_X^T A_Y gives
- * countXY, and row X of A_X^T Adj A_Y gives countE, once each edge is counted once. table_X and
- * table_Y rank the motifs of H_u and H_v; At_X and At_Y are A_X^T and A_Y^T (motif x node), and
- * A_Y the transpose of At_Y (node x motif); order_X lists the motifs X in the order they are
- * first found, the order in which they are searched. The two builds share deduplication_buffers,
- * as they run one after the other. The other members are filled for one rank_X at a time:
+ * countXY, and row X of A_X^T Adj A_Y gives countE, once each edge is counted once. table ranks
+ * the motifs of H_u, then those of H_v; At_X and At_Y are A_X^T and A_Y^T (motif x node), and A_Y
+ * the transpose of At_Y (node x motif); representative_X and representative_Y give the position
+ * in S of an ell-mer of each motif, to write the motifs of a pair once table holds other ranks;
+ * order_X lists the motifs X in the order they are first found, the order in which they are
+ * searched. The two builds share the table and deduplication_buffers, as they run one after the
+ * other. The other members are filled for one rank_X at a time:
  * - intersec_nodes_count[rank_Y] counts the nodes where both rank_X and rank_Y occur (countXY);
  * - edge_count[rank_Y] counts the edges with rank_X in one node and rank_Y in the other (countE);
  * - the _set_indices list the rank_Y whose count is above 0, so that only those counts are read
@@ -47,9 +49,10 @@ public:
     motif_pair_searcher_t(const esa_t& ESA, const graph_t& G, size_t ell, size_t k)
         : G(G), k(k), edge_density(G.compute_edge_density()),
           intersec_nodes_count(ESA.get_N()), edge_count(ESA.get_N()),
-          table_X(ell, ESA), table_Y(ell, ESA),
+          table(ell, ESA),
           At_X(ESA.get_N() + 1, ESA.get_N()), At_Y(ESA.get_N() + 1, ESA.get_N()),
           A_Y(ESA.get_num_sequences(), ESA.get_N()),
+          representative_X(ESA.get_N() + 1), representative_Y(ESA.get_N() + 1),
           deduplication_buffers(ESA),
           edge_timestamp(G.get_num_edges()),
           has_rank_X(ESA.get_num_sequences(), false)
@@ -97,9 +100,10 @@ private:
 
     std::vector<uint32_t> intersec_nodes_count, intersec_nodes_count_set_indices;
     std::vector<uint32_t> edge_count, edge_count_set_indices;
-    rank_table_t table_X, table_Y;
-    csr_t At_X, At_Y;  // A_X^T, A_Y^T: motif x node
-    csr_t A_Y;         // node x motif
+    rank_table_t table;  // ranks the motifs of H_u, then those of H_v
+    csr_t At_X, At_Y;    // A_X^T, A_Y^T: motif x node
+    csr_t A_Y;           // node x motif
+    std::vector<uint32_t> representative_X, representative_Y;
     std::vector<uint32_t> order_X;
 
     deduplication_buffers_t deduplication_buffers;

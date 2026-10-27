@@ -56,15 +56,27 @@ public:
      * INT value of maximum rank. */
     uint32_t sort_by_prefix(const std::vector<uint16_t>& H);
 
-    /* Returns one of the ell-mers of rank r, as it is in the sequences (not masked). Throws
-     * std::out_of_range if r is above the maximum rank.
+    /* Returns the position in S of the ell-mer at position i of sequence k.
      *
      * Input:
-     * INT rank r.
+     * INT index k of the sequence, below get_num_sequences(), and INT position i, below
+     * get_num_ell_mers(k).
      *
      * Output:
-     * ell-length substring of S with rank r. */
-    std::string_view get_substr_with_rank(uint32_t r) const;
+     * INT position in S. */
+    uint32_t get_position(size_t k, size_t i) const { return ESA.get_S_offset()[k] + i; }
+
+    /* Returns the ell-mer at position p of S, as it is in the sequences (not masked).
+     *
+     * Input:
+     * INT position p of an ell-mer, as given by get_position.
+     *
+     * Output:
+     * ell-length substring of S. */
+    std::string_view get_ell_mer(uint32_t p) const
+    {
+        return std::string_view(reinterpret_cast<const char*>(ESA.get_S()) + p, ell);
+    }
 
 private:
     size_t ell;
@@ -76,7 +88,6 @@ private:
 
     // Buffers.
     std::vector<uint32_t> R1;   // the rank of the ell-mer at each position of S
-    std::vector<uint32_t> IR1;  // a position of S for each rank, for get_substr_with_rank
     std::vector<uint32_t> R2;   // the rank of each suffix by its first characters (one fragment)
     std::vector<uint32_t> sSA_buffer;
     std::vector<uint64_t> packed_ranks_sSA;

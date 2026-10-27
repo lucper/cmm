@@ -10,6 +10,7 @@ deduplication_buffers_t::deduplication_buffers_t(const esa_t& ESA)
 
 uint32_t build_occurrence_matrix(rank_table_t& table, const std::vector<uint16_t>& H,
                                  deduplication_buffers_t& buffers, csr_t& At,
+                                 std::vector<uint32_t>& representative,
                                  std::vector<uint32_t>* first_found)
 {
     uint32_t max_rank = table.sort_by_prefix(H);
@@ -27,8 +28,11 @@ uint32_t build_occurrence_matrix(rank_table_t& table, const std::vector<uint16_t
         for (size_t i = 0; i < num_ell_mers; i++) {
             uint32_t r = ranks[i];
             if (buffers.rank_timestamp[r] != u + 1) {
-                if (first_found && buffers.rank_timestamp[r] == 0)  // not found before
-                    first_found->push_back(r);
+                if (buffers.rank_timestamp[r] == 0) {  // not found before
+                    representative[r] = table.get_position(u, i);
+                    if (first_found)
+                        first_found->push_back(r);
+                }
                 buffers.rank_timestamp[r] = u + 1;
                 buffers.uniq_ranks_per_node.push_back({r, u});
             }
