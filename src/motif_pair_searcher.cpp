@@ -19,11 +19,17 @@ void motif_pair_searcher_t<Comparator>::search_configuration(const std::vector<u
     const bool same_H = H_u == H_v;
     Comparator motif_comparator;
 
-    uint32_t max_rank_X = build_occurrence_matrix(table, H_u, deduplication_buffers, At_X,
-                                                  representative_X, &order_X);
+    uint32_t max_rank_X = build_occurrence_matrix(table, H_u, deduplication_buffers, At_u,
+                                                  representative_u, &order_X);
     stats.count_configuration(max_rank_X);
 
-    build_occurrence_matrix(table, H_v, deduplication_buffers, At_Y, representative_Y, nullptr);
+    // When H_u == H_v, the build for H_v would give the same matrix and representatives.
+    if (!same_H)
+        build_occurrence_matrix(table, H_v, deduplication_buffers, At_v, representative_v, nullptr);
+    const csr_t& At_X = At_u;
+    const csr_t& At_Y = same_H ? At_u : At_v;
+    const std::vector<uint32_t>& representative_X = representative_u;
+    const std::vector<uint32_t>& representative_Y = same_H ? representative_u : representative_v;
     A_Y.assign_transpose(At_Y, table.get_num_sequences());
 
     std::fill(edge_timestamp.begin(), edge_timestamp.end(), 0);

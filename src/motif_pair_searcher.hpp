@@ -25,12 +25,14 @@
  * per motif X (Gustavson's algorithm): with A_X and A_Y the occurrence matrices (node x motif) of
  * the motifs X of H_u and Y of H_v, and Adj the adjacency matrix of G, row X of A_X^T A_Y gives
  * countXY, and row X of A_X^T Adj A_Y gives countE, once each edge is counted once. table ranks
- * the motifs of H_u, then those of H_v; At_X and At_Y are A_X^T and A_Y^T (motif x node), and A_Y
- * the transpose of At_Y (node x motif); representative_X and representative_Y give the position
- * in S of an ell-mer of each motif, to write the motifs of a pair once table holds other ranks;
- * order_X lists the motifs X in the order they are first found, the order in which they are
- * searched. The two builds share the table and deduplication_buffers, as they run one after the
- * other. The other members are filled for one rank_X at a time:
+ * the motifs of H_u, then those of H_v; At_u and At_v are the transposed occurrence matrices
+ * (motif x node) of H_u and H_v, and representative_u and representative_v give the position in S
+ * of an ell-mer of each motif, to write the motifs of a pair once table holds other ranks. X is
+ * always the side of H_u, and Y the side of H_v; when H_u == H_v, the build for H_v is skipped and
+ * Y uses the matrix and representatives of H_u, which are the same. A_Y is the transpose of Y's
+ * matrix (node x motif), and order_X lists the motifs X in the order they are first found, the
+ * order in which they are searched. The builds share the table and deduplication_buffers, as they
+ * run one after the other. The other members are filled for one rank_X at a time:
  * - intersec_nodes_count[rank_Y] counts the nodes where both rank_X and rank_Y occur (countXY);
  * - edge_count[rank_Y] counts the edges with rank_X in one node and rank_Y in the other (countE);
  * - the _set_indices list the rank_Y whose count is above 0, so that only those counts are read
@@ -50,9 +52,9 @@ public:
         : G(G), k(k), edge_density(G.compute_edge_density()),
           intersec_nodes_count(ESA.get_N()), edge_count(ESA.get_N()),
           table(ell, ESA),
-          At_X(ESA.get_N() + 1, ESA.get_N()), At_Y(ESA.get_N() + 1, ESA.get_N()),
+          At_u(ESA.get_N() + 1, ESA.get_N()), At_v(ESA.get_N() + 1, ESA.get_N()),
           A_Y(ESA.get_num_sequences(), ESA.get_N()),
-          representative_X(ESA.get_N() + 1), representative_Y(ESA.get_N() + 1),
+          representative_u(ESA.get_N() + 1), representative_v(ESA.get_N() + 1),
           deduplication_buffers(ESA),
           edge_timestamp(G.get_num_edges()),
           has_rank_X(ESA.get_num_sequences(), false)
@@ -101,9 +103,9 @@ private:
     std::vector<uint32_t> intersec_nodes_count, intersec_nodes_count_set_indices;
     std::vector<uint32_t> edge_count, edge_count_set_indices;
     rank_table_t table;  // ranks the motifs of H_u, then those of H_v
-    csr_t At_X, At_Y;    // A_X^T, A_Y^T: motif x node
+    csr_t At_u, At_v;    // motif x node, for H_u and for H_v
     csr_t A_Y;           // node x motif
-    std::vector<uint32_t> representative_X, representative_Y;
+    std::vector<uint32_t> representative_u, representative_v;
     std::vector<uint32_t> order_X;
 
     deduplication_buffers_t deduplication_buffers;
