@@ -11,16 +11,13 @@ motif_to_node_index_t::deduplication_buffers_t::deduplication_buffers_t(const es
 uint32_t motif_to_node_index_t::build(const std::vector<uint16_t>& H,
                                       deduplication_buffers_t& buffers)
 {
-    max_rank = rank_table.sort_by_prefix(H);
+    uint32_t max_rank = rank_table.sort_by_prefix(H);
 
     buffers.uniq_ranks_per_node.clear();
     std::fill(buffers.rank_timestamp.begin(), buffers.rank_timestamp.end(), 0);
-
-    for (auto r : active_ranks)
-        nodes_of_rank.counts[r] = 0;
     active_ranks.clear();
 
-    // scan strings, deduplicate, and count ranks
+    // scan the ranks of each node, and keep each (rank, node) once
     const size_t num_sequences = rank_table.get_num_sequences();
     for (uint32_t u = 0; u < num_sequences; u++) {
         const uint32_t* ranks = rank_table.get_ranks_of_sequence(u);
@@ -28,26 +25,15 @@ uint32_t motif_to_node_index_t::build(const std::vector<uint16_t>& H,
         for (size_t i = 0; i < num_ell_mers; i++) {
             uint32_t r = ranks[i];
             if (buffers.rank_timestamp[r] != u + 1) {
-                buffers.rank_timestamp[r] = u + 1;
-                if (nodes_of_rank.counts[r] == 0)
+                if (buffers.rank_timestamp[r] == 0)  // r was not found before in this build
                     active_ranks.push_back(r);
-                nodes_of_rank.counts[r]++;
-                buffers.uniq_ranks_per_node.push_back({u, r});
+                buffers.rank_timestamp[r] = u + 1;
+                buffers.uniq_ranks_per_node.push_back({r, u});
             }
         }
     }
 
-    // prefix sum and cursor setup
-    size_t acc = 0;
-    for (auto r : active_ranks) {
-        nodes_of_rank.offsets[r] = acc;
-        acc += nodes_of_rank.counts[r];
-        nodes_of_rank.counts[r] = 0;
-    }
-
-    // placement
-    for (const auto& [node, rank] : buffers.uniq_ranks_per_node)
-        nodes_of_rank.items[nodes_of_rank.offsets[rank] + nodes_of_rank.counts[rank]++] = node;
+    nodes_of_rank.assign_pairs(buffers.uniq_ranks_per_node, max_rank + 1);
 
     return max_rank;
 }

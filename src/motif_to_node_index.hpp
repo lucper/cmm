@@ -17,20 +17,18 @@
  * reference to the ESA, which must outlive it.
  *
  * Invariants, after build(H):
- * - get_active_ranks() lists each rank that occurs, once, in the order they are first found when
- *   the sequences are scanned from node 0;
+ * - every rank from 0 to the maximum rank of the build occurs, and get_active_ranks() lists them,
+ *   each once, in the order they are first found when the sequences are scanned from node 0;
  * - get_nodes(r) lists the get_num_nodes(r) nodes where rank r occurs, each once and in increasing
- *   order;
- * - no node is listed for the ranks not in get_active_ranks(), which the next build relies on, as
- *   it clears only the rows of the active ranks. */
+ *   order. */
 class motif_to_node_index_t {
 public:
-    /* The buffers with which build finds each rank of each node once: the distinct (node, rank)
+    /* The buffers with which build finds each rank of each node once: the distinct (rank, node)
      * pairs of its scan, and for each rank, 1 + the last node that recorded it. They are sized for
      * the ESA, and can be shared by indexes that never build at the same time, such as X and Y of
      * a searcher; their contents mean nothing between two builds. */
     struct deduplication_buffers_t {
-        std::vector<std::pair<uint32_t, uint32_t>> uniq_ranks_per_node;  // (node, rank)
+        std::vector<std::pair<uint32_t, uint32_t>> uniq_ranks_per_node;  // (rank, node)
         std::vector<uint32_t> rank_timestamp;
 
         explicit deduplication_buffers_t(const esa_t& ESA);
@@ -43,23 +41,24 @@ public:
     }
 
     /* Ranks the ell-mers of the sequences of the ESA masked by H, and fills active_ranks and
-     * nodes_of_rank with the ranks that occur and their nodes.
+     * nodes_of_rank with the ranks that occur and their nodes: nodes_of_rank is the Boolean matrix
+     * (motif x node) with a 1 where the motif occurs in the node.
      *
-     * For example, if the ell-mers of nodes 0, 1 and 2 have ranks 4 1 4, 1 6 and 6:
+     * For example, if the ell-mers of nodes 0, 1 and 2 have ranks 4 1 4, 1 6 and 6 (the other
+     * ranks, of other nodes, are left out):
      *
      *     active_ranks = [4, 1, 6]
      *
-     *     rank      0  1  2  3  4  5  6  ...
-     *     offsets   .  1  .  .  0  .  3  ...     (.: empty row, meaningless offset)
-     *     counts    0  2  0  0  1  0  2  ...
+     *     rank      0  1  2  3  4  5  6
+     *     offsets   0  0  2  2  2  3  3
+     *     counts    0  2  0  0  1  0  2
      *
-     *     items     0 | 0  1 | 1  2 | (unused)
-     *               ^   ^      ^
-     *               |   |      row of rank 6
-     *               |   row of rank 1
-     *               row of rank 4
+     *     items     0  1 | 0 | 1  2 | (unused)
+     *               ^      ^   ^
+     *               |      |   row of rank 6
+     *               |      row of rank 4
+     *               row of rank 1
      *
-     * The rows are stored in the order of active_ranks, not of the ranks.
      *
      * Input:
      * Sorted vector H of positions of wildcards from {0,...,ell-1}, and deduplication buffers
@@ -99,7 +98,7 @@ public:
      * None; the rows of ranks_of_node are replaced. */
     void fill_ranks_of_nodes(csr_t& ranks_of_node) const
     {
-        ranks_of_node.fill_transposed(nodes_of_rank, max_rank + 1);
+        ranks_of_node.assign_transpose(nodes_of_rank, rank_table.get_num_sequences());
     }
 
     /* Returns one of the ell-mers of rank r, as it is in the sequences (not masked).
@@ -115,7 +114,6 @@ private:
     rank_table_t rank_table;
     std::vector<uint32_t> active_ranks;
     csr_t nodes_of_rank;
-    uint32_t max_rank = 0;  // of the last build
 };
 
 #endif

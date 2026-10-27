@@ -2,33 +2,43 @@
 
 #include <algorithm>
 
-void csr_t::fill_transposed(const csr_t& src, uint32_t num_src_rows)
+template <typename ForEachPair>
+void csr_t::assign(uint32_t num_rows, ForEachPair for_each_pair)
 {
-    std::fill(counts.begin(), counts.end(), 0);
-    for (uint32_t r = 0; r < num_src_rows; r++) {
-        uint32_t cnt = src.row_size(r);
-        if (cnt == 0) continue;
-        const uint32_t *src_row = src.row(r);
-        for (uint32_t j = 0; j < cnt; j++)
-            counts[src_row[j]]++;
-    }
+    assert(num_rows <= offsets.size());
+    this->num_rows = num_rows;
+
+    std::fill(counts.begin(), counts.begin() + num_rows, 0);
+    for_each_pair([&](uint32_t r, uint32_t) { counts[r]++; });
 
     // prefix sum and cursor setup
-    size_t acc = 0;
-    for (size_t i = 0; i < offsets.size(); i++) {
+    uint32_t acc = 0;
+    for (uint32_t i = 0; i < num_rows; i++) {
         offsets[i] = acc;
         acc += counts[i];
         counts[i] = 0;
     }
 
     // placement
-    for (uint32_t r = 0; r < num_src_rows; r++) {
-        uint32_t cnt = src.row_size(r);
-        if (cnt == 0) continue;
-        const uint32_t *src_row = src.row(r);
-        for (uint32_t j = 0; j < cnt; j++) {
-            uint32_t i = src_row[j];
-            items[offsets[i] + counts[i]++] = r;
+    for_each_pair([&](uint32_t r, uint32_t column) { items[offsets[r] + counts[r]++] = column; });
+}
+
+void csr_t::assign_pairs(const std::vector<std::pair<uint32_t, uint32_t>>& pairs,
+                         uint32_t num_rows)
+{
+    assign(num_rows, [&](auto visit) {
+        for (const auto& [r, column] : pairs)
+            visit(r, column);
+    });
+}
+
+void csr_t::assign_transpose(const csr_t& m, uint32_t num_rows)
+{
+    assign(num_rows, [&](auto visit) {
+        for (uint32_t r = 0; r < m.num_rows; r++) {
+            const uint32_t* columns = m.row(r);
+            for (uint32_t j = 0; j < m.row_size(r); j++)
+                visit(columns[j], r);
         }
-    }
+    });
 }
