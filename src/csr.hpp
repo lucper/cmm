@@ -76,8 +76,16 @@ public:
     void assign_transpose(const csr_t& m, uint32_t num_rows);
 
 private:
-    // Counts the non-zeros of each row, lays the rows out, and places the columns; for_each_pair
-    // calls its argument with each (row, column), in order, and is called twice.
+    /* Makes this the matrix of num_rows rows whose non-zeros are the (row, column) pairs walked by
+     * for_each_pair. for_each_pair(visit) must call visit(row, column) once for every pair, in the
+     * same order each time: for_each_pair knows where the pairs are, and visit what to do with
+     * each. assign calls it twice: first with a visit that counts the pairs of each row, then, once
+     * the rows are laid out, with a visit that places each column in its row. assign_pairs walks
+     * a vector of pairs, and assign_transpose the non-zeros of a matrix with rows and columns
+     * swapped; both are lambdas, so the walks and the visits are inlined into plain loops.
+     *
+     * Input:
+     * INT number num_rows of rows, at most the number allocated, and the walk for_each_pair. */
     template <typename ForEachPair>
     void assign(uint32_t num_rows, ForEachPair for_each_pair);
 

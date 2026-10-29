@@ -8,6 +8,7 @@ void csr_t::assign(uint32_t num_rows, ForEachPair for_each_pair)
     assert(num_rows <= offsets.size());
     this->num_rows = num_rows;
 
+    // count the pairs of each row
     std::fill(counts.begin(), counts.begin() + num_rows, 0);
     for_each_pair([&](uint32_t r, uint32_t) { counts[r]++; });
 
