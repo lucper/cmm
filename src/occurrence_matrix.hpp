@@ -13,12 +13,12 @@
  * each rank of the table, 1 + the last node that recorded it, and the rank of its motif in the
  * matrix. They are sized for the ESA, and can be shared by builds that never run at the same time,
  * such as those of X and Y of a searcher; their contents mean nothing between two builds. */
-struct deduplication_buffers_t {
+struct occurrence_buffers_t {
     std::vector<std::pair<uint32_t, uint32_t>> uniq_ranks_per_node;  // (rank, node)
     std::vector<uint32_t> rank_timestamp;
     std::vector<uint32_t> matrix_rank;
 
-    explicit deduplication_buffers_t(const esa_t& ESA);
+    explicit occurrence_buffers_t(const esa_t& ESA);
 };
 
 /* Builds the occurrence matrix of the motifs of a wildcard combination H: ranks the ell-mers of
@@ -48,7 +48,7 @@ struct deduplication_buffers_t {
  *
  * Input:
  * Rank table of the sequences, sorted vector H of positions of wildcards from {0,...,ell-1},
- * deduplication buffers for the same ESA, CSR At with room for N + 1 rows and N non-zeros, and a
+ * occurrence buffers for the same ESA, CSR At with room for N + 1 rows and N non-zeros, and a
  * vector representative of N + 1 entries.
  *
  * Output:
@@ -57,7 +57,7 @@ struct deduplication_buffers_t {
  * first ell-mer of the motif of rank r found by the scan, so the motif stays readable after the
  * rank table ranks another H. */
 uint32_t build_occurrence_matrix(rank_table_t& table, const std::vector<uint16_t>& H,
-                                 deduplication_buffers_t& buffers, csr_t& At,
+                                 occurrence_buffers_t& buffers, csr_t& At,
                                  std::vector<uint32_t>& representative);
 
 #endif

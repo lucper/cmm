@@ -89,7 +89,7 @@ TEST_CASE("build_occurrence_matrix lists the nodes of each motif, and a new buil
     rank_table_t table(ell, ESA);
     csr_t At(ESA.get_N() + 1, ESA.get_N());
     std::vector<uint32_t> representative(ESA.get_N() + 1);
-    deduplication_buffers_t buffers(ESA);
+    occurrence_buffers_t buffers(ESA);
 
     for (const std::vector<uint16_t>& H : std::vector<std::vector<uint16_t>>{{}, {1}, {0, 2}, {}}) {
         uint32_t max_rank = build_occurrence_matrix(table, H, buffers, At, representative);
@@ -103,7 +103,7 @@ TEST_CASE("one rank table builds both sides, which stay valid after it ranks ano
     const std::vector<uint16_t> H_u = {1}, H_v = {0, 2};
     esa_t ESA(V);
     rank_table_t table(ell, ESA);
-    deduplication_buffers_t buffers(ESA);
+    occurrence_buffers_t buffers(ESA);
     csr_t At_X(ESA.get_N() + 1, ESA.get_N()), At_Y(ESA.get_N() + 1, ESA.get_N());
     std::vector<uint32_t> representative_X(ESA.get_N() + 1), representative_Y(ESA.get_N() + 1);
 
