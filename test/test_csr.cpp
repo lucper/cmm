@@ -51,7 +51,7 @@ TEST_CASE("the rows are stored one after the other, in the order of the rows") {
 }
 
 TEST_CASE("assign_transpose lists the rows of m that hold each column, in increasing order") {
-    // The occurrence matrix of the example of build_occurrence_matrix.
+    // The occurrence matrix of the example of occurrence_scanner_t::scan.
     csr_t m = csr_of({{0}, {0, 1}, {1, 2}}, 8);
     csr_t t(3, 8);
 

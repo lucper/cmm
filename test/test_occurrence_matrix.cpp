@@ -30,8 +30,8 @@ static std::map<std::string, std::vector<uint32_t>> brute_force(const std::vecto
     return nodes;
 }
 
-// Checks what build_occurrence_matrix left in At and representative against the brute force, for
-// the sequences V masked by H.
+// Checks what a scan left in At and representative against the brute force, for the sequences V
+// masked by H.
 static void check_build(const rank_table_t& table, const csr_t& At,
                         const std::vector<uint32_t>& representative,
                         const std::vector<std::string>& V, size_t ell,
@@ -82,17 +82,17 @@ static void check_build(const rank_table_t& table, const csr_t& At,
     }
 }
 
-TEST_CASE("build_occurrence_matrix lists the nodes of each motif, and a new build replaces it") {
+TEST_CASE("a scan lists the nodes of each motif, and a new scan replaces it") {
     const std::vector<std::string> V = {"MLHCML", "HCMLMA", "AAAA", "MLH", "CAMLHA"};
     const size_t ell = 3;
     esa_t ESA(V);
     rank_table_t table(ell, ESA);
     csr_t At(ESA.get_N() + 1, ESA.get_N());
     std::vector<uint32_t> representative(ESA.get_N() + 1);
-    occurrence_buffers_t buffers(ESA);
+    occurrence_scanner_t scanner(ESA);
 
     for (const std::vector<uint16_t>& H : std::vector<std::vector<uint16_t>>{{}, {1}, {0, 2}, {}}) {
-        uint32_t max_rank = build_occurrence_matrix(table, H, buffers, At, representative);
+        uint32_t max_rank = scanner.scan(table, H, At, representative);
         check_build(table, At, representative, V, ell, H, max_rank);
     }
 }
@@ -103,12 +103,12 @@ TEST_CASE("one rank table builds both sides, which stay valid after it ranks ano
     const std::vector<uint16_t> H_u = {1}, H_v = {0, 2};
     esa_t ESA(V);
     rank_table_t table(ell, ESA);
-    occurrence_buffers_t buffers(ESA);
+    occurrence_scanner_t scanner(ESA);
     csr_t At_X(ESA.get_N() + 1, ESA.get_N()), At_Y(ESA.get_N() + 1, ESA.get_N());
     std::vector<uint32_t> representative_X(ESA.get_N() + 1), representative_Y(ESA.get_N() + 1);
 
-    uint32_t max_rank_X = build_occurrence_matrix(table, H_u, buffers, At_X, representative_X);
-    uint32_t max_rank_Y = build_occurrence_matrix(table, H_v, buffers, At_Y, representative_Y);
+    uint32_t max_rank_X = scanner.scan(table, H_u, At_X, representative_X);
+    uint32_t max_rank_Y = scanner.scan(table, H_v, At_Y, representative_Y);
     // X was built before the table ranked H_v: its matrix and representatives still hold.
     check_build(table, At_X, representative_X, V, ell, H_u, max_rank_X);
     check_build(table, At_Y, representative_Y, V, ell, H_v, max_rank_Y);

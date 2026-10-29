@@ -30,9 +30,9 @@
  * of an ell-mer of each motif, to write the motifs of a pair once table holds other ranks. X is
  * always the side of H_u, and Y the side of H_v; when H_u == H_v, the build for H_v is skipped and
  * Y uses the matrix and representatives of H_u, which are the same. A_Y is the transpose of Y's
- * matrix (node x motif). The builds share the table and occurrence_buffers, as they run one
- * after the other. The ranks of the motifs are those of the matrices (see build_occurrence_matrix),
- * the motifs X are searched in the order of their ranks, and the other members are filled for one
+ * matrix (node x motif). The scans share the table and the scanner, as they run one after the
+ * other. The ranks of the motifs are those of the matrices (see occurrence_scanner_t::scan), the
+ * motifs X are searched in the order of their ranks, and the other members are filled for one
  * rank_X at a time:
  * - intersec_nodes_count[rank_Y] counts the nodes where both rank_X and rank_Y occur (countXY);
  * - edge_count[rank_Y] counts the edges with rank_X in one node and rank_Y in the other (countE);
@@ -55,7 +55,7 @@ public:
           At_u(ESA.get_N() + 1, ESA.get_N()), At_v(ESA.get_N() + 1, ESA.get_N()),
           A_Y(ESA.get_num_sequences(), ESA.get_N()),
           representative_u(ESA.get_N() + 1), representative_v(ESA.get_N() + 1),
-          occurrence_buffers(ESA),
+          scanner(ESA),
           has_rank_X(ESA.get_num_sequences(), false)
     {
         intersec_nodes_count_set_indices.reserve(ESA.get_N());
@@ -106,7 +106,7 @@ private:
     csr_t A_Y;           // node x motif
     std::vector<uint32_t> representative_u, representative_v;
 
-    occurrence_buffers_t occurrence_buffers;
+    occurrence_scanner_t scanner;
 
     std::vector<bool> has_rank_X;
 

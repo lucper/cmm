@@ -58,7 +58,7 @@ public:
     /* Makes this the transpose of m, with num_rows rows: row i lists the rows of m that hold i, in
      * increasing order. Every column of m must be below num_rows.
      *
-     * For example, transposing the occurrence matrix of the example of build_occurrence_matrix
+     * For example, transposing the occurrence matrix of the example of occurrence_scanner_t::scan
      * gives the ranks of each node:
      *
      *     node      0  1  2
