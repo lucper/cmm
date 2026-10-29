@@ -1,6 +1,7 @@
 #include "doctest.h"
-#include "motifs_search.hpp"
+#include "exact_algorithm.hpp"
 #include "data_import.hpp"
+#include "graph.hpp"
 
 #include <string>
 #include <vector>
@@ -25,7 +26,7 @@ TEST_CASE("invalid input raises an exception with its message") {
         {"few_pairs.fa",                     "errors/no_interactions.int",       4, 0, 5, "No interactions found in interactions file"},
         {"few_pairs.fa",                     "errors/malformed_interaction.int", 4, 0, 5, "Malformed interaction line: a"},
         {"few_pairs.fa",                     "errors/unknown_node.int",          4, 0, 5, "Unknown node in interactions file: z"},
-        {"errors/one_sequence.fa",           "errors/one_sequence.int",          4, 0, 5, "The input must contain at least two sequences."},
+        {"few_pairs.fa",                     "errors/self_loop.int",             4, 0, 5, "Self-loop in interactions file: b b"},
         {"errors/short_sequence.fa",         "few_pairs.int",                    4, 0, 5, "1 sequence(s) shorter than the motif length (4)"},
         {"readme.fa",                        "readme.int",                      64, 32, 5, "Motif length (64) with 32 wildcards gives too many pairs of wildcard combinations."},
         {"readme.fa",                        "readme.int",                       4, 4, 5, "d must be in [0, ell)"},
@@ -34,9 +35,17 @@ TEST_CASE("invalid input raises an exception with its message") {
     };
     for (const auto& e : cases) {
         INFO(e.fasta, " ", e.interactions, ", ell = ", e.ell, ", d = ", e.d, ", k = ", e.k, ", ", e.num_threads, " threads");
-        CHECK_THROWS_WITH([&] {
-            auto gi = read_graph_files("instances/" + e.interactions, "instances/" + e.fasta);
-            main_algo<sort_by_x2_t>(gi.node_labels, gi.adj_list, e.ell, e.d, e.k, e.num_threads);
-        }(), doctest::Contains(e.message.c_str()));
+        // Outside the macro, whose arguments the comma of [V, G] would split.
+        auto read_and_search = [&] {
+            auto [V, G] = read_graph_files("instances/" + e.fasta, "instances/" + e.interactions);
+            main_algo<sort_by_x2_t>(V, G, e.ell, e.d, e.k, e.num_threads);
+        };
+        CHECK_THROWS_WITH(read_and_search(), doctest::Contains(e.message.c_str()));
     }
+}
+
+TEST_CASE("main_algo rejects a single sequence") {
+    // A file cannot give it: the only edge of a single node would be a self-loop.
+    CHECK_THROWS_WITH(main_algo<sort_by_x2_t>({"ACDEFG"}, graph_t(1), 4, 0, 5, 1),
+                      doctest::Contains("The input must contain at least two sequences."));
 }

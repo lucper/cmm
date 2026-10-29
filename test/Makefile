@@ -1,12 +1,16 @@
 CXX      := g++
-CXXFLAGS := -std=c++17 -Wall -Wextra -O3 -march=native -I..
+CXXFLAGS := -std=c++17 -Wall -Wextra -O3 -march=native -I../src -I../external
 LDFLAGS  := -fopenmp
 DEPFLAGS := -MMD -MP
 
 ALG_DIR   := ..
-CORE_OBJS := $(ALG_DIR)/motifs_search.o $(ALG_DIR)/rank_table.o $(ALG_DIR)/data_import.o \
-             $(ALG_DIR)/libsais64.o $(ALG_DIR)/libsais.o
-OBJS      := main.o test_search.o test_errors.o test_programs.o
+BUILD_DIR := $(ALG_DIR)/build
+CORE_OBJS := $(BUILD_DIR)/exact_algorithm.o $(BUILD_DIR)/motif_pair_searcher.o \
+             $(BUILD_DIR)/occurrence_matrix.o $(BUILD_DIR)/csr.o $(BUILD_DIR)/progress_bar.o \
+             $(BUILD_DIR)/rank_table.o $(BUILD_DIR)/esa.o $(BUILD_DIR)/data_import.o \
+             $(BUILD_DIR)/graph.o $(BUILD_DIR)/libsais64.o $(BUILD_DIR)/libsais.o
+OBJS      := main.o test_search.o test_errors.o test_programs.o test_csr.o \
+             test_occurrence_matrix.o test_motif_pair_searcher.o test_graph.o
 
 # Runs the tests, of the search and of the programs cmm and cmm_test.
 .PHONY: check
@@ -23,10 +27,10 @@ tests: $(OBJS) $(CORE_OBJS)
 # The headers each object depends on, written by the compiler (-MMD) when it is built.
 -include $(OBJS:.o=.d)
 
-# The objects of the root directory and cmm are brought up to date by the root Makefile.
+# The objects of build/ and cmm are brought up to date by the root Makefile.
 .PHONY: core
 core:
-	$(MAKE) -s -C $(ALG_DIR) $(notdir $(CORE_OBJS)) cmm
+	$(MAKE) -s -C $(ALG_DIR) $(patsubst $(ALG_DIR)/%,%,$(CORE_OBJS)) cmm
 
 $(CORE_OBJS): core ;
 

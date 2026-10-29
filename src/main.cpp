@@ -1,13 +1,13 @@
-#include <iostream>
-#include <cstdlib>
-#include <vector>
 #include <chrono>
-#include <cstring>
 #include <clocale>
+#include <cstdio>
+#include <cstdlib>
+#include <exception>
+#include <iostream>
 #include <optional>
 #include <sys/resource.h>
-#include "motifs_search.hpp"
 #include "data_import.hpp"
+#include "exact_algorithm.hpp"
 #include "options_parsing.hpp"
 
 #ifdef CMM_MPI
@@ -32,13 +32,13 @@ int main(int argc, char* argv[]) {
         opts = parse_options(argc, argv, status);
     if (opts) {
         try {
-            auto gi = read_graph_files(opts->path_to_edges, opts->path_to_nodes);
+            auto [V, G] = read_graph_files(opts->path_to_nodes, opts->path_to_edges);
 
             auto start_time = std::chrono::steady_clock::now();
 
             [[maybe_unused]] auto [solution, stats] = (opts->supp_func == "E")
-                ? main_algo<sort_by_countE_t>(gi.node_labels, gi.adj_list, opts->ell, opts->d, opts->k, opts->num_threads)
-                : main_algo<sort_by_x2_t>(gi.node_labels, gi.adj_list, opts->ell, opts->d, opts->k, opts->num_threads);
+                ? main_algo<sort_by_countE_t>(V, G, opts->ell, opts->d, opts->k, opts->num_threads)
+                : main_algo<sort_by_x2_t>(V, G, opts->ell, opts->d, opts->k, opts->num_threads);
 
             auto now = std::chrono::steady_clock::now();
             auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(now - start_time).count();

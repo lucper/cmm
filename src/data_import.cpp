@@ -1,20 +1,27 @@
 #include "data_import.hpp"
 
+#include <cstdint>
+#include <fstream>
+#include <sstream>
+#include <stdexcept>
+#include <unordered_map>
+#include <utility>
+#include <vector>
+
 static void flush_fasta_entry(const std::string &current_id,
-                              const std::string &current_seq,
+                              std::string &current_seq,
                               std::unordered_map<std::string, uint32_t> &id_to_index,
                               graph_input_t &result) {
     if (current_id.empty()) return;
-    uint32_t idx = static_cast<uint32_t>(result.node_labels.size());
+    uint32_t idx = static_cast<uint32_t>(result.sequences.size());
     auto [it, inserted] = id_to_index.emplace(current_id, idx);
     if (!inserted)
         throw std::runtime_error("Duplicate identifier in FASTA file: " + current_id);
-    result.node_labels.push_back(std::move(current_seq));
-    result.adj_list.emplace_back();
+    result.sequences.push_back(std::move(current_seq));
 }
 
-graph_input_t read_graph_files(const std::string &edge_path,
-                               const std::string &labels_path) {
+graph_input_t read_graph_files(const std::string &labels_path,
+                               const std::string &edge_path) {
     graph_input_t result;
     std::unordered_map<std::string, uint32_t> id_to_index;
 
@@ -47,17 +54,15 @@ graph_input_t read_graph_files(const std::string &edge_path,
         flush_fasta_entry(current_id, current_seq, id_to_index, result);
     }
 
-    if (result.node_labels.empty())
+    if (result.sequences.empty())
         throw std::runtime_error("No sequences found in FASTA file: " + labels_path);
-
-    result.adj_list.resize(result.node_labels.size());
 
     {
         std::ifstream edges(edge_path);
         if (!edges.is_open())
             throw std::runtime_error("Cannot open interactions file: " + edge_path);
 
-        uint32_t edge_id = 0;
+        std::vector<std::pair<uint32_t, uint32_t>> edge_list;
         std::string line;
 
         while (std::getline(edges, line)) {
@@ -74,16 +79,14 @@ graph_input_t read_graph_files(const std::string &edge_path,
             if (it_v == id_to_index.end())
                 throw std::runtime_error("Unknown node in interactions file: " + v_label);
 
-            uint32_t u = it_u->second;
-            uint32_t v = it_v->second;
-
-            result.adj_list[u].emplace_back(v, edge_id);
-            result.adj_list[v].emplace_back(u, edge_id);
-            ++edge_id;
+            if (it_u->second == it_v->second)
+                throw std::runtime_error("Self-loop in interactions file: " + line);
+            edge_list.push_back({it_u->second, it_v->second});
         }
 
-        if (edge_id == 0)
+        if (edge_list.empty())
             throw std::runtime_error("No interactions found in interactions file: " + edge_path);
+        result.graph = graph_t(result.sequences.size(), edge_list);
     }
 
     return result;

@@ -8,8 +8,9 @@
 #include <string>
 #include <sys/resource.h>
 
-#include "motifs_search.hpp"
+#include "exact_algorithm.hpp"
 #include "data_import.hpp"
+#include "graph.hpp"
 
 namespace fs = std::filesystem;
 
@@ -58,14 +59,11 @@ int main(int argc, char* argv[]) {
 
         std::string instance_name = fa_path.stem().string();
 
-        graph_input_t gi = read_graph_files(int_path.string(), fa_path.string());
+        auto [V, G] = read_graph_files(fa_path.string(), int_path.string());
         size_t N = 0;
-        for (const auto& s : gi.node_labels) N += s.size();
-        size_t V = gi.node_labels.size();
-        size_t E = 0;
-        for (const auto& node : gi.adj_list) E += node.size();
-        E /= 2;
-        double edge_density = V >= 2 ? static_cast<double>(E) / ((V * (V - 1)) / 2.0) : 0.0;
+        for (const auto& s : V) N += s.size();
+        size_t num_nodes = V.size();
+        double edge_density = G.compute_edge_density();
 
         std::fprintf(stderr, "Instance          : %s\n", instance_name.c_str());
         std::fprintf(stderr, "Edge density      : %.4f\n", edge_density);
@@ -74,7 +72,7 @@ int main(int argc, char* argv[]) {
         std::fprintf(stderr, "Requested threads : %d\n", num_threads);
         std::fprintf(stderr, "k                 : %d\n", k);
         std::fprintf(stderr, "Support function  : %s\n", supp_func.c_str());
-        std::fprintf(stderr, "V                 : %zu\n", V);
+        std::fprintf(stderr, "V                 : %zu\n", num_nodes);
         std::fprintf(stderr, "N                 : %zu\n", N);
         std::fprintf(stderr, "Running ...\n");
         std::fflush(stderr);
@@ -82,8 +80,8 @@ int main(int argc, char* argv[]) {
         auto t0 = std::chrono::steady_clock::now();
 
         auto [solution, stats] = (supp_func == "E")
-            ? main_algo<sort_by_countE_t>(gi.node_labels, gi.adj_list, ell, d, k, num_threads)
-            : main_algo<sort_by_x2_t>(gi.node_labels, gi.adj_list, ell, d, k, num_threads);
+            ? main_algo<sort_by_countE_t>(V, G, ell, d, k, num_threads)
+            : main_algo<sort_by_x2_t>(V, G, ell, d, k, num_threads);
 
         auto t1 = std::chrono::steady_clock::now();
         long ms = std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0).count();
@@ -100,13 +98,14 @@ int main(int argc, char* argv[]) {
         std::printf("%s\t%.4f\t%zu\t%zu\t%d\t%d\t%zu\t%zu\t%.4f\t%d\t%zu\t%ld\t%ld\n",
             instance_name.c_str(),
             edge_density,
-            V,
+            num_nodes,
             N,
             ell,
             d,
             static_cast<size_t>(stats.max_max_rank_X),
-            static_cast<size_t>(stats.num_cells > 0 ? stats.min_max_rank_X : 0),
-            stats.num_cells > 0 ? static_cast<double>(stats.sum_max_rank_X) / stats.num_cells : 0.0,
+            static_cast<size_t>(stats.num_configurations > 0 ? stats.min_max_rank_X : 0),
+            stats.num_configurations > 0
+                ? static_cast<double>(stats.sum_max_rank_X) / stats.num_configurations : 0.0,
             num_threads,
             stats.num_threads,
             ms,
