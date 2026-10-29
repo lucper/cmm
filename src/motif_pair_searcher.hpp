@@ -38,9 +38,8 @@
  * - edge_count[rank_Y] counts the edges with rank_X in one node and rank_Y in the other (countE);
  * - the _set_indices list the rank_Y whose count is above 0, so that only those counts are read
  *   and reset to 0 afterwards;
- * - has_rank_X[u] tells whether rank_X occurs in node u;
- * - edge_timestamp[e] == rank_X + 1 if edge e was already counted for rank_X, which happens when
- *   rank_X occurs in both of its nodes.
+ * - has_rank_X[u] tells whether rank_X occurs in node u; an edge with rank_X in both of its nodes
+ *   is met from both, and counted only from the smaller.
  *
  * Invariants, between two calls to search_configuration:
  * - intersec_nodes_count and edge_count are all 0, and has_rank_X all false;
@@ -57,7 +56,6 @@ public:
           A_Y(ESA.get_num_sequences(), ESA.get_N()),
           representative_u(ESA.get_N() + 1), representative_v(ESA.get_N() + 1),
           occurrence_buffers(ESA),
-          edge_timestamp(G.get_num_edges()),
           has_rank_X(ESA.get_num_sequences(), false)
     {
         intersec_nodes_count_set_indices.reserve(ESA.get_N());
@@ -109,8 +107,6 @@ private:
     std::vector<uint32_t> representative_u, representative_v;
 
     occurrence_buffers_t occurrence_buffers;
-
-    std::vector<uint32_t> edge_timestamp;
 
     std::vector<bool> has_rank_X;
 

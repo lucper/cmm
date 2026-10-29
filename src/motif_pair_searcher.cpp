@@ -1,6 +1,5 @@
 #include "motif_pair_searcher.hpp"
 
-#include <algorithm>
 #include <cmath>
 #include <string_view>
 #include <utility>
@@ -33,7 +32,7 @@ void motif_pair_searcher_t<Comparator>::search_configuration(const std::vector<u
     const std::vector<uint32_t>& representative_Y = same_H ? representative_u : representative_v;
     A_Y.assign_transpose(At_Y, table.get_num_sequences());
 
-    std::fill(edge_timestamp.begin(), edge_timestamp.end(), 0);
+    const csr_t& Adj = G.get_adjacency();
 
     for (uint32_t rank_X = 0; rank_X <= max_rank_X; rank_X++) {
         size_t countX = At_X.row_size(rank_X);
@@ -58,45 +57,49 @@ void motif_pair_searcher_t<Comparator>::search_configuration(const std::vector<u
                 intersec_nodes_count[r]++;
             }
 
-            // Edge count
-            for (auto [v, edge_id] : G.get_neighbours(u))
-                if (edge_timestamp[edge_id] != rank_X + 1) {
-                    edge_timestamp[edge_id] = rank_X + 1;
-                    const uint32_t *ranksY_in_node_v = A_Y.row(v);
-                    uint32_t number_of_ranksY_in_node_v = A_Y.row_size(v);
+            // Edge count, each edge once: if rank_X is in both of its nodes, from the smaller
+            const uint32_t *neighbours_of_u = Adj.row(u);
+            uint32_t degree_of_u = Adj.row_size(u);
+            for (uint32_t n = 0; n < degree_of_u; n++) {
+                uint32_t v = neighbours_of_u[n];
+                if (has_rank_X[v] && u >= v)  // counted from v
+                    continue;
 
-                    // every rank is credited if H_u and H_v differ;
-                    // only rank_Y >= rank_X if they are the same.
-                    auto credit = [&](uint32_t rank_Y) {
-                        if (!same_H || rank_X <= rank_Y) {
-                            if (edge_count[rank_Y] == 0)
-                                edge_count_set_indices.push_back(rank_Y);
-                            edge_count[rank_Y]++;
-                        }
-                    };
+                const uint32_t *ranksY_in_node_v = A_Y.row(v);
+                uint32_t number_of_ranksY_in_node_v = A_Y.row_size(v);
 
-                    uint32_t a = 0, b = 0;
-                    uint32_t nu = has_rank_X[v] ? number_of_ranksY_in_node_u : 0;
-                    while (a < nu && b < number_of_ranksY_in_node_v) {
-                        uint32_t ru = ranksY_in_node_u[a];
-                        uint32_t rv = ranksY_in_node_v[b];
-                        if (ru < rv) {
-                            credit(ru);
-                            a++;
-                        } else if (rv < ru) {
-                            credit(rv);
-                            b++;
-                        } else {
-                            credit(rv);
-                            a++;
-                            b++;
-                        }
+                // every rank is credited if H_u and H_v differ;
+                // only rank_Y >= rank_X if they are the same.
+                auto credit = [&](uint32_t rank_Y) {
+                    if (!same_H || rank_X <= rank_Y) {
+                        if (edge_count[rank_Y] == 0)
+                            edge_count_set_indices.push_back(rank_Y);
+                        edge_count[rank_Y]++;
                     }
-                    while (a < nu)
-                        credit(ranksY_in_node_u[a++]);
-                    while (b < number_of_ranksY_in_node_v)
-                        credit(ranksY_in_node_v[b++]);
+                };
+
+                uint32_t a = 0, b = 0;
+                uint32_t nu = has_rank_X[v] ? number_of_ranksY_in_node_u : 0;
+                while (a < nu && b < number_of_ranksY_in_node_v) {
+                    uint32_t ru = ranksY_in_node_u[a];
+                    uint32_t rv = ranksY_in_node_v[b];
+                    if (ru < rv) {
+                        credit(ru);
+                        a++;
+                    } else if (rv < ru) {
+                        credit(rv);
+                        b++;
+                    } else {
+                        credit(rv);
+                        a++;
+                        b++;
+                    }
                 }
+                while (a < nu)
+                    credit(ranksY_in_node_u[a++]);
+                while (b < number_of_ranksY_in_node_v)
+                    credit(ranksY_in_node_v[b++]);
+            }
         }
 
         for (size_t i = 0; i < countX; i++)

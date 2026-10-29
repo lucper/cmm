@@ -72,8 +72,10 @@ double motif_comparator_t::similarity(uint32_t X, uint32_t Y, uint32_t Z, uint32
     size_t card_inter = 0;
     size_t card_union = 0;
 
+    const csr_t& Adj = G.get_adjacency();
     for (uint32_t u = 0; u < G.get_num_nodes(); ++u)
-        for (const auto& [v, _] : G.get_neighbours(u)) {
+        for (uint32_t n = 0; n < Adj.row_size(u); ++n) {
+            uint32_t v = Adj.row(u)[n];
             if (v < u) continue;
 
             // compute union
@@ -99,8 +101,10 @@ bool motif_comparator_t::are_identical(uint32_t X, uint32_t Y, uint32_t Z, uint3
 {
     bool any_union = false;
 
+    const csr_t& Adj = G.get_adjacency();
     for (uint32_t u = 0; u < G.get_num_nodes(); ++u)
-        for (const auto& [v, _] : G.get_neighbours(u)) {
+        for (uint32_t n = 0; n < Adj.row_size(u); ++n) {
+            uint32_t v = Adj.row(u)[n];
             if (v < u) continue;
 
             bool inXY = (has[X][u] && has[Y][v]) || (has[X][v] && has[Y][u]);

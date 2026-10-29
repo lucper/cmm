@@ -1,6 +1,7 @@
 #include "doctest.h"
 #include "exact_algorithm.hpp"
 #include "data_import.hpp"
+#include "graph.hpp"
 
 #include <string>
 #include <vector>
@@ -25,7 +26,7 @@ TEST_CASE("invalid input raises an exception with its message") {
         {"few_pairs.fa",                     "errors/no_interactions.int",       4, 0, 5, "No interactions found in interactions file"},
         {"few_pairs.fa",                     "errors/malformed_interaction.int", 4, 0, 5, "Malformed interaction line: a"},
         {"few_pairs.fa",                     "errors/unknown_node.int",          4, 0, 5, "Unknown node in interactions file: z"},
-        {"errors/one_sequence.fa",           "errors/one_sequence.int",          4, 0, 5, "The input must contain at least two sequences."},
+        {"few_pairs.fa",                     "errors/self_loop.int",             4, 0, 5, "Self-loop in interactions file: b b"},
         {"errors/short_sequence.fa",         "few_pairs.int",                    4, 0, 5, "1 sequence(s) shorter than the motif length (4)"},
         {"readme.fa",                        "readme.int",                      64, 32, 5, "Motif length (64) with 32 wildcards gives too many pairs of wildcard combinations."},
         {"readme.fa",                        "readme.int",                       4, 4, 5, "d must be in [0, ell)"},
@@ -41,4 +42,10 @@ TEST_CASE("invalid input raises an exception with its message") {
         };
         CHECK_THROWS_WITH(read_and_search(), doctest::Contains(e.message.c_str()));
     }
+}
+
+TEST_CASE("main_algo rejects a single sequence") {
+    // A file cannot give it: the only edge of a single node would be a self-loop.
+    CHECK_THROWS_WITH(main_algo<sort_by_x2_t>({"ACDEFG"}, graph_t(1), 4, 0, 5, 1),
+                      doctest::Contains("The input must contain at least two sequences."));
 }

@@ -65,10 +65,13 @@ static std::map<std::pair<std::string, std::string>, counts_t> brute_force(
                 return std::binary_search(nodes.begin(), nodes.end(), u);
             };
             size_t countE = 0;
+            const csr_t& Adj = G.get_adjacency();
             for (uint32_t u = 0; u < V.size(); u++)
-                for (auto [v, e] : G.get_neighbours(u))
+                for (uint32_t n = 0; n < Adj.row_size(u); n++) {
+                    uint32_t v = Adj.row(u)[n];
                     if (u < v && ((in(NX, u) && in(NY, v)) || (in(NX, v) && in(NY, u))))
                         countE++;
+                }
             if (countE == 0)
                 continue;
             size_t countXY = 0;

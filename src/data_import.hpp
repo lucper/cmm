@@ -17,7 +17,8 @@ struct graph_input_t {
  * its header up to the first space or tab, and its sequence the following lines, joined. Each
  * line of the interactions file is an edge: the identifiers of its two nodes, separated by spaces.
  * Empty lines are skipped. Throws std::runtime_error if a file cannot be opened, is malformed (e.g.
- * a duplicate identifier, or an edge with an unknown node), or has no records or no edges.
+ * a duplicate identifier, an edge with an unknown node, or a self-loop), or has no records or no
+ * edges.
  *
  * Input:
  * Path labels_path of the FASTA file, and path edge_path of the interactions file.

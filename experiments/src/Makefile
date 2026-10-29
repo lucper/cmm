@@ -25,11 +25,13 @@ $(BIN_DIR)/cmm_test: cmm_test.o $(CORE_OBJS)
 	mkdir -p $(BIN_DIR)
 	$(CXX) $(LDFLAGS) -o $@ $^
 
-$(BIN_DIR)/cmm_eval: cmm_eval.o cmm_acc.o $(BUILD_DIR)/data_import.o $(BUILD_DIR)/graph.o
+$(BIN_DIR)/cmm_eval: cmm_eval.o cmm_acc.o $(BUILD_DIR)/data_import.o $(BUILD_DIR)/graph.o \
+                         $(BUILD_DIR)/csr.o
 	mkdir -p $(BIN_DIR)
 	$(CXX) $(LDFLAGS) -o $@ $^
 
-$(BIN_DIR)/cmm_dedup: cmm_dedup.o cmm_acc.o $(BUILD_DIR)/data_import.o $(BUILD_DIR)/graph.o
+$(BIN_DIR)/cmm_dedup: cmm_dedup.o cmm_acc.o $(BUILD_DIR)/data_import.o $(BUILD_DIR)/graph.o \
+                         $(BUILD_DIR)/csr.o
 	mkdir -p $(BIN_DIR)
 	$(CXX) $(LDFLAGS) -o $@ $^
 

@@ -2,18 +2,23 @@
 
 #include <cassert>
 
-uint32_t graph_t::add_edge(uint32_t u, uint32_t v)
+graph_t::graph_t(size_t num_nodes, const std::vector<std::pair<uint32_t, uint32_t>>& edges)
+    : adj(num_nodes, 2 * edges.size()), num_edges(edges.size())
 {
-    assert(u < adj.size() && v < adj.size());
-    uint32_t e = static_cast<uint32_t>(num_edges++);
-    adj[u].push_back({v, e});
-    adj[v].push_back({u, e});
-    return e;
+    // each edge in both rows
+    std::vector<std::pair<uint32_t, uint32_t>> pairs;
+    pairs.reserve(2 * edges.size());
+    for (auto [u, v] : edges) {
+        assert(u < num_nodes && v < num_nodes && u != v);
+        pairs.push_back({u, v});
+        pairs.push_back({v, u});
+    }
+    adj.assign_pairs(pairs, num_nodes);
 }
 
 double graph_t::compute_edge_density() const
 {
-    size_t n = adj.size();
+    size_t n = get_num_nodes();
     if (n < 2)
         return 0.0;
     return static_cast<double>(num_edges) / ((n * (n - 1)) / 2);
