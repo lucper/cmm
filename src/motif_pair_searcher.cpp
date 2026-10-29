@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cmath>
 #include <string_view>
+#include <utility>
 
 static std::string apply_mask(std::string_view motif, const std::vector<uint16_t>& H, char wildcard = '*')
 {
@@ -20,12 +21,12 @@ void motif_pair_searcher_t<Comparator>::search_configuration(const std::vector<u
     Comparator motif_comparator;
 
     uint32_t max_rank_X = build_occurrence_matrix(table, H_u, deduplication_buffers, At_u,
-                                                  representative_u, &order_X);
+                                                  representative_u);
     stats.count_configuration(max_rank_X);
 
     // When H_u == H_v, the build for H_v would give the same matrix and representatives.
     if (!same_H)
-        build_occurrence_matrix(table, H_v, deduplication_buffers, At_v, representative_v, nullptr);
+        build_occurrence_matrix(table, H_v, deduplication_buffers, At_v, representative_v);
     const csr_t& At_X = At_u;
     const csr_t& At_Y = same_H ? At_u : At_v;
     const std::vector<uint32_t>& representative_X = representative_u;
@@ -34,7 +35,7 @@ void motif_pair_searcher_t<Comparator>::search_configuration(const std::vector<u
 
     std::fill(edge_timestamp.begin(), edge_timestamp.end(), 0);
 
-    for (auto rank_X : order_X) {
+    for (uint32_t rank_X = 0; rank_X <= max_rank_X; rank_X++) {
         size_t countX = At_X.row_size(rank_X);
         const uint32_t *nodes_with_rank_X = At_X.row(rank_X);
 
@@ -118,6 +119,11 @@ void motif_pair_searcher_t<Comparator>::search_configuration(const std::vector<u
                 // Build X and Y to break a tie with the k-th.
                 candidate.X = apply_mask(table.get_ell_mer(representative_X[rank_X]), H_u, 'x');
                 candidate.Y = apply_mask(table.get_ell_mer(representative_Y[rank_Y]), H_v, 'x');
+                // The pair of motifs counted once when H_u == H_v is written with X <= Y, which does
+                // not depend on how the motifs are ranked.
+                bool swap_X_Y = same_H && candidate.Y < candidate.X;
+                if (swap_X_Y)
+                    std::swap(candidate.X, candidate.Y);
                 if (topK.size() < k || motif_comparator(candidate, topK.top())) {
                     candidate.rankX = rank_X;
                     candidate.rankY = rank_Y;
@@ -125,6 +131,10 @@ void motif_pair_searcher_t<Comparator>::search_configuration(const std::vector<u
                     candidate.countX = countX;
                     candidate.countY = countY;
                     candidate.countXY = countXY;
+                    if (swap_X_Y) {
+                        std::swap(candidate.rankX, candidate.rankY);
+                        std::swap(candidate.countX, candidate.countY);
+                    }
                     if (topK.size() >= k) topK.pop();
                     topK.push(candidate);
                 }

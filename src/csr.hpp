@@ -65,7 +65,7 @@ public:
      *     offsets   0  2  4
      *     counts    2  2  1
      *
-     *     items     1  4 | 1  6 | 6 | (unused)
+     *     items     0  1 | 1  2 | 2 | (unused)
      *               ^      ^      ^
      *               |      |      row of node 2
      *               |      row of node 1

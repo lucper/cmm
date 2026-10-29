@@ -52,11 +52,11 @@ TEST_CASE("the rows are stored one after the other, in the order of the rows") {
 
 TEST_CASE("assign_transpose lists the rows of m that hold each column, in increasing order") {
     // The occurrence matrix of the example of build_occurrence_matrix.
-    csr_t m = csr_of({{}, {0, 1}, {}, {}, {0}, {}, {1, 2}}, 8);
+    csr_t m = csr_of({{0}, {0, 1}, {1, 2}}, 8);
     csr_t t(3, 8);
 
     t.assign_transpose(m, 3);
-    CHECK(rows_of(t) == rows_t{{1, 4}, {1, 6}, {6}});
+    CHECK(rows_of(t) == rows_t{{0, 1}, {1, 2}, {2}});
 
     // Assigned again, nothing of the previous assignment remains.
     t.assign_transpose(csr_of({{2}, {}, {0, 2}}, 8), 3);

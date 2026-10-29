@@ -50,7 +50,7 @@ using counts_t = std::tuple<size_t, size_t, size_t, size_t>;
 
 /* The pairs (X, Y) of the configuration (H_u, H_v) with at least one edge between their nodes,
  * from the definitions: an edge {u, v} counts if X occurs in u and Y in v, or X in v and Y in u.
- * When H_u = H_v, only the pairs with X <= Y count, as the ranks follow the order of the motifs. */
+ * When H_u = H_v, each pair of motifs counts once, written with X <= Y. */
 static std::map<std::pair<std::string, std::string>, counts_t> brute_force(
     const std::vector<std::string>& V, const graph_t& G, size_t ell,
     const std::vector<uint16_t>& H_u, const std::vector<uint16_t>& H_v) {

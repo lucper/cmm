@@ -30,9 +30,10 @@
  * of an ell-mer of each motif, to write the motifs of a pair once table holds other ranks. X is
  * always the side of H_u, and Y the side of H_v; when H_u == H_v, the build for H_v is skipped and
  * Y uses the matrix and representatives of H_u, which are the same. A_Y is the transpose of Y's
- * matrix (node x motif), and order_X lists the motifs X in the order they are first found, the
- * order in which they are searched. The builds share the table and deduplication_buffers, as they
- * run one after the other. The other members are filled for one rank_X at a time:
+ * matrix (node x motif). The builds share the table and deduplication_buffers, as they run one
+ * after the other. The ranks of the motifs are those of the matrices (see build_occurrence_matrix),
+ * the motifs X are searched in the order of their ranks, and the other members are filled for one
+ * rank_X at a time:
  * - intersec_nodes_count[rank_Y] counts the nodes where both rank_X and rank_Y occur (countXY);
  * - edge_count[rank_Y] counts the edges with rank_X in one node and rank_Y in the other (countE);
  * - the _set_indices list the rank_Y whose count is above 0, so that only those counts are read
@@ -61,7 +62,6 @@ public:
     {
         intersec_nodes_count_set_indices.reserve(ESA.get_N());
         edge_count_set_indices.reserve(ESA.get_N());
-        order_X.reserve(ESA.get_N() + 1);
     }
 
     /* The basic algorithm of the paper. Searches one wildcard configuration, the pair (H_u, H_v)
@@ -69,7 +69,8 @@ public:
      * and for each pair (X, Y) with an edge between their nodes, counts the edges with X in one
      * node and Y in the other, and the nodes of X, of Y and of both, and scores the pair against
      * the edges expected from the edge density. If H_u and H_v are the same combination, only the
-     * pairs with rank_X <= rank_Y are counted, so that each pair of motifs is counted once.
+     * pairs with rank_X <= rank_Y are counted, so that each pair of motifs is counted once, and the
+ * pair is written with X <= Y as strings.
      *
      * Input:
      * Wildcard combinations H_u and H_v. */
@@ -106,7 +107,6 @@ private:
     csr_t At_u, At_v;    // motif x node, for H_u and for H_v
     csr_t A_Y;           // node x motif
     std::vector<uint32_t> representative_u, representative_v;
-    std::vector<uint32_t> order_X;
 
     deduplication_buffers_t deduplication_buffers;
 
