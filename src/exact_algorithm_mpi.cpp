@@ -104,7 +104,7 @@ static std::istringstream broadcast_file(const std::string& path, MPI_Comm comm)
     MPI_Bcast(status, 2, MPI_UINT64_T, 0, comm);
 
     if (status[1] > static_cast<uint64_t>(std::numeric_limits<int>::max()))
-        throw std::runtime_error("File too large for one MPI message: " + path);
+        throw std::invalid_argument("File too large for one MPI message: " + path);
     bytes.resize(status[1]);
     MPI_Bcast(bytes.data(), static_cast<int>(status[1]), MPI_CHAR, 0, comm);
 
@@ -119,7 +119,11 @@ graph_input_t read_graph_mpi(const std::string& labels_path, const std::string& 
 {
     std::istringstream fasta = broadcast_file(labels_path, comm);
     std::istringstream edges = broadcast_file(edge_path, comm);
-    return read_graph(fasta, labels_path, edges, edge_path);
+    try {
+        return read_graph(fasta, labels_path, edges, edge_path);
+    } catch (const std::runtime_error& e) {
+        throw std::invalid_argument(e.what());
+    }
 }
 
 template <typename Tag>

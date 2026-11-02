@@ -135,7 +135,7 @@ MPI_TEST_CASE("read_graph_mpi throws, on every process, the error of read_graph_
         }
         try {
             read_graph_mpi(fa_path, int_path, test_comm);
-        } catch (const std::runtime_error& e) {
+        } catch (const std::invalid_argument& e) {
             got = e.what();
         }
         CHECK(!expected.empty());

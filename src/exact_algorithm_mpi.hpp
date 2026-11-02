@@ -13,9 +13,10 @@
 /* Reads a graph on the processes of comm: process 0 reads the two files and sends their bytes to the
  * others, and every process parses the same bytes with read_graph, so only process 0 needs the
  * files, and all get the same input or throw the same error. Every process of comm must call it, as
- * it calls a collective MPI function (MPI_Bcast). Throws, on every process, what read_graph_files
- * throws, and std::runtime_error, naming the file, if a file has more than 2^31 - 1 bytes, the limit
- * of the counts of MPI.
+ * it calls a collective MPI function (MPI_Bcast). Throws std::invalid_argument, on every process, with
+ * the message of read_graph_files if it would throw, or naming the file if a file has more than
+ * 2^31 - 1 bytes, the limit of the counts of MPI. So, as those of main_algo, the errors of the input
+ * are std::invalid_argument on every process, and any other exception may be on some processes only.
  *
  * Input:
  * Path labels_path of the FASTA file, path edge_path of the interactions file, and the communicator
