@@ -130,7 +130,8 @@ template <typename Tag>
 motif_pair_search_result_t main_algo_mpi(const std::vector<std::string>& V,
                                          const graph_t& G,
                                          size_t ell, size_t d, size_t k,
-                                         size_t requested_num_threads, MPI_Comm comm)
+                                         size_t requested_num_threads, MPI_Comm comm,
+                                         std::vector<double>* search_seconds)
 {
     int num_processes, process;
     MPI_Comm_size(comm, &num_processes);
@@ -150,8 +151,10 @@ motif_pair_search_result_t main_algo_mpi(const std::vector<std::string>& V,
                                     std::to_string(num_processes) + " processes: their " +
                                     "pairs would not fit in one MPI message.");
 
+    const double search_start = MPI_Wtime();
     motif_pair_search_result_t local = main_algo<Tag>(V, G, ell, d, k, requested_num_threads,
                                                       num_processes, process);
+    const double local_seconds = MPI_Wtime() - search_start;
 
     // Process 0 learns the size of each process's pairs, places them one after the other
     // (offsets), and receives them all.
@@ -188,6 +191,11 @@ motif_pair_search_result_t main_algo_mpi(const std::vector<std::string>& V,
     uint64_t sums[3] = {0, 0, 0};
     MPI_Reduce(local_sums, sums, 3, MPI_UINT64_T, MPI_SUM, 0, comm);
 
+    if (search_seconds != nullptr) {
+        search_seconds->resize(process == 0 ? num_processes : 0);
+        MPI_Gather(&local_seconds, 1, MPI_DOUBLE, search_seconds->data(), 1, MPI_DOUBLE, 0, comm);
+    }
+
     if (process != 0)
         return {};
     result.stats.sum_max_rank_X = sums[0];
@@ -200,11 +208,11 @@ motif_pair_search_result_t main_algo_mpi(const std::vector<std::string>& V,
 template motif_pair_search_result_t main_algo_mpi<sort_by_countE_t>(
     const std::vector<std::string>&,
     const graph_t&,
-    size_t, size_t, size_t, size_t, MPI_Comm
+    size_t, size_t, size_t, size_t, MPI_Comm, std::vector<double>*
 );
 
 template motif_pair_search_result_t main_algo_mpi<sort_by_x2_t>(
     const std::vector<std::string>&,
     const graph_t&,
-    size_t, size_t, size_t, size_t, MPI_Comm
+    size_t, size_t, size_t, size_t, MPI_Comm, std::vector<double>*
 );

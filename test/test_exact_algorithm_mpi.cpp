@@ -215,6 +215,20 @@ MPI_TEST_CASE("main_algo_mpi on 4 processes finds the pairs of main_algo", 4) {
     check_all_cases(test_rank, test_nb_procs, test_comm);
 }
 
+MPI_TEST_CASE("main_algo_mpi gives process 0 the search time of every process, if asked", 3) {
+    const test_case_t c = all_cases().front();
+    const auto& [V, G] = instance(c.instance);
+    std::vector<double> seconds = {-1.0};
+    motif_pair_search_result_t with_times;
+    CHECK_NOTHROW(with_times = main_algo_mpi<sort_by_x2_t>(V, G, c.ell, c.d, c.k, 1, test_comm, &seconds));
+    motif_pair_search_result_t without_times;
+    CHECK_NOTHROW(without_times = main_algo_mpi<sort_by_x2_t>(V, G, c.ell, c.d, c.k, 1, test_comm));
+    check_same(with_times.pairs, without_times.pairs);
+    CHECK(seconds.size() == (test_rank == 0 ? 3u : 0u));
+    for (double s : seconds)
+        CHECK(s >= 0.0);
+}
+
 MPI_TEST_CASE("main_algo_mpi rejects, on every process, a k whose pairs would not fit", 2) {
     const std::string name = "readme";
     const auto& [V, G] = instance(name);

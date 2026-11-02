@@ -1,7 +1,10 @@
 CXX      := g++
+MPICXX   := mpicxx
 CXXFLAGS := -std=c++17 -Wall -Wextra -fno-omit-frame-pointer -O3 -march=native -I../../src -I../../external -I.
 LDFLAGS  := -fopenmp
 DEPFLAGS := -MMD -MP
+# The SKIP_MPICXX macros leave out the C++ bindings of MPI (removed in MPI 3.0), which we do not use.
+MPIFLAGS := -DCMM_MPI -DOMPI_SKIP_MPICXX -DMPICH_SKIP_MPICXX
 
 ifdef DEBUG
   CXXFLAGS += -g
@@ -21,6 +24,17 @@ BINS    := $(BIN_DIR)/cmm_test $(BIN_DIR)/cmm_eval $(BIN_DIR)/cmm_dedup
 
 all: $(BINS)
 
+# The MPI version of cmm_test (make cmm_test_mpi): not in all, which builds without MPI.
+.PHONY: cmm_test_mpi
+cmm_test_mpi: $(BIN_DIR)/cmm_test_mpi
+
+$(BIN_DIR)/cmm_test_mpi: cmm_test_mpi.o $(BUILD_DIR)/exact_algorithm_mpi.o $(CORE_OBJS)
+	mkdir -p $(BIN_DIR)
+	$(MPICXX) $(LDFLAGS) -o $@ $^
+
+cmm_test_mpi.o: cmm_test.cpp
+	$(MPICXX) $(CXXFLAGS) $(DEPFLAGS) $(MPIFLAGS) -fopenmp -c -o $@ $<
+
 $(BIN_DIR)/cmm_test: cmm_test.o $(CORE_OBJS)
 	mkdir -p $(BIN_DIR)
 	$(CXX) $(LDFLAGS) -o $@ $^
@@ -35,7 +49,7 @@ $(BIN_DIR)/cmm_dedup: cmm_dedup.o cmm_acc.o $(BUILD_DIR)/data_import.o $(BUILD_D
 	mkdir -p $(BIN_DIR)
 	$(CXX) $(LDFLAGS) -o $@ $^
 
-OBJS := cmm_test.o cmm_eval.o cmm_dedup.o cmm_acc.o
+OBJS := cmm_test.o cmm_test_mpi.o cmm_eval.o cmm_dedup.o cmm_acc.o
 
 %.o: %.cpp
 	$(CXX) $(CXXFLAGS) $(DEPFLAGS) -fopenmp -c -o $@ $<
@@ -51,6 +65,12 @@ core:
 
 $(CORE_OBJS): core ;
 
+.PHONY: core_mpi
+core_mpi:
+	$(MAKE) -C $(ALG_DIR) build/exact_algorithm_mpi.o
+
+$(BUILD_DIR)/exact_algorithm_mpi.o: core_mpi ;
+
 clean:
 	rm -f $(OBJS) $(OBJS:.o=.d)
-	rm -f $(BINS)
+	rm -f $(BINS) $(BIN_DIR)/cmm_test_mpi

@@ -37,18 +37,21 @@ graph_input_t read_graph_mpi(const std::string& labels_path, const std::string& 
  *
  * Input:
  * Sequences V of the nodes, graph G, INT motif length ell, INT number d of wildcards, INT number k
- * of motif pairs, INT maximum number requested_num_threads of threads per process, and the
- * communicator comm of the processes.
+ * of motif pairs, INT maximum number requested_num_threads of threads per process, the communicator
+ * comm of the processes, and optionally search_seconds, which every process must give or none (it
+ * adds a collective).
  *
  * Output:
  * On process 0, the best k motif pairs, best first, and the counters of all the processes, as if
  * one search had counted them (num_threads: the threads of all the processes); on the others, an
- * empty result. */
+ * empty result. If given, search_seconds has, on process 0, the seconds of the search of each process,
+ * by process number, which show how balanced the blocks are; on the others, it is empty. */
 template <typename Tag>
 motif_pair_search_result_t main_algo_mpi(const std::vector<std::string>& V,
                                          const graph_t& G,
                                          size_t ell, size_t d, size_t k,
-                                         size_t requested_num_threads, MPI_Comm comm);
+                                         size_t requested_num_threads, MPI_Comm comm,
+                                         std::vector<double>* search_seconds = nullptr);
 
 /* Writes motif pairs into bytes, which another process reads back with deserialize_records: the
  * local top-k lists of the processes are gathered on process 0 as bytes, as a motif_pair_record_t
