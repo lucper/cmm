@@ -15,6 +15,8 @@ OBJS      := main.o test_search.o test_errors.o test_programs.o test_csr.o \
 # The tests of the MPI version (mpicxx; see check_mpi).
 MPI_CORE_OBJS := $(BUILD_DIR)/exact_algorithm_mpi.o
 MPI_OBJS      := main_mpi.o test_exact_algorithm_mpi.o
+# The tests of the MPI programs, which start mpirun, so without MPI themselves.
+PROGRAMS_MPI_OBJS := test_programs_mpi.o
 # The SKIP_MPICXX macros leave out the C++ bindings of MPI (removed in MPI 3.0), which we do not use.
 MPIFLAGS      := -DOMPI_SKIP_MPICXX -DMPICH_SKIP_MPICXX
 # The processes of the MPI tests; --oversubscribe allows more than the cores of the machine.
@@ -30,11 +32,18 @@ check: tests
 tests: $(OBJS) $(CORE_OBJS)
 	$(CXX) $(LDFLAGS) -o $@ $^
 
-# Runs the tests of the MPI version on MPI_NP processes. A process that fails alone (e.g. an
-# exception) leaves the others waiting in a collective, so mpirun stops them after MPI_TIMEOUT seconds.
+# Runs the tests of the MPI version on MPI_NP processes, then those of its programs. A process that
+# fails alone (e.g. an exception) leaves the others waiting in a collective, so mpirun stops them after
+# MPI_TIMEOUT seconds.
 .PHONY: check_mpi
-check_mpi: tests_mpi
+check_mpi: tests_mpi tests_programs_mpi
+	$(MAKE) -s -C $(ALG_DIR) cmm_mpi
+	$(MAKE) -s -C $(ALG_DIR)/experiments/src cmm_test_mpi
 	mpirun --oversubscribe --timeout $(MPI_TIMEOUT) -np $(MPI_NP) ./tests_mpi
+	./tests_programs_mpi
+
+tests_programs_mpi: $(PROGRAMS_MPI_OBJS)
+	$(CXX) $(LDFLAGS) -o $@ $^
 
 tests_mpi: $(MPI_OBJS) $(MPI_CORE_OBJS) $(CORE_OBJS)
 	$(MPICXX) $(LDFLAGS) -o $@ $^
@@ -46,7 +55,7 @@ $(MPI_OBJS): %.o: %.cpp
 	$(CXX) $(CXXFLAGS) $(DEPFLAGS) -fopenmp -c -o $@ $<
 
 # The headers each object depends on, written by the compiler (-MMD) when it is built.
--include $(OBJS:.o=.d) $(MPI_OBJS:.o=.d)
+-include $(OBJS:.o=.d) $(MPI_OBJS:.o=.d) $(PROGRAMS_MPI_OBJS:.o=.d)
 
 # The objects of build/ and cmm are brought up to date by the root Makefile.
 .PHONY: core
@@ -68,3 +77,4 @@ expected: tests
 
 clean:
 	rm -f $(OBJS) $(OBJS:.o=.d) tests $(MPI_OBJS) $(MPI_OBJS:.o=.d) tests_mpi
+	rm -f $(PROGRAMS_MPI_OBJS) $(PROGRAMS_MPI_OBJS:.o=.d) tests_programs_mpi

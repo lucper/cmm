@@ -1,5 +1,6 @@
 #include "doctest.h"
 #include "cases.hpp"
+#include "programs.hpp"
 
 #include <algorithm>
 #include <cstdio>
@@ -7,53 +8,12 @@
 #include <fstream>
 #include <iterator>
 #include <string>
-#include <sys/wait.h>
 #include <unistd.h>
 
 // What only the programs do: their options, their output format, and their exit status.
 
 static const std::string CMM = "../cmm";
 static const std::string CMM_TEST = "../experiments/bin/cmm_test";
-
-struct run_t {
-    int status;       // exit status
-    std::string out;  // standard output
-};
-
-// Runs a shell command, and returns its exit status and standard output.
-static run_t run(const std::string& command) {
-    run_t r{-1, ""};
-    std::FILE* pipe = popen(command.c_str(), "r");
-    REQUIRE_MESSAGE(pipe != nullptr, "cannot run ", command);
-    char buffer[4096];
-    size_t n;
-    while ((n = std::fread(buffer, 1, sizeof(buffer), pipe)) > 0)
-        r.out.append(buffer, n);
-    int status = pclose(pipe);
-    r.status = WIFEXITED(status) ? WEXITSTATUS(status) : -1;
-    return r;
-}
-
-// The expected output of a test case as the programs print it: X, Y, and the score (countE for E,
-// x2 for x2) with the given number of decimals.
-static std::string expected_output(const test_case_t& c, int decimals) {
-    std::ifstream in("expected/" + c.name() + ".out");
-    REQUIRE(in.is_open());
-    std::string X, Y, out;
-    size_t countE;
-    double x2;
-    char line[256];
-    while (in >> X >> Y >> countE >> x2) {
-        std::snprintf(line, sizeof(line), "%s %s %.*f\n", X.c_str(), Y.c_str(), decimals,
-                      c.f == "E" ? static_cast<double>(countE) : x2);
-        out += line;
-    }
-    return out;
-}
-
-static std::string files(const test_case_t& c) {
-    return "instances/" + c.instance + ".fa instances/" + c.instance + ".int";
-}
 
 TEST_CASE("cmm prints the expected pairs, with scores to 2 decimals") {
     for (const auto& c : all_cases()) {

@@ -30,6 +30,7 @@ benchmark/FlameGraph/
 /cmm_mpi
 /test/tests
 /test/tests_mpi
+/test/tests_programs_mpi
 experiments/bin/
 output/
 __pycache__/
