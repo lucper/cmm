@@ -8,6 +8,7 @@ To reproduce Section 5 (**Experimental Results**), see [Reproducing the experime
 ### Requirements
 - C++17 compiler GCC 7+
 - GNU/Linux system (e.g., Ubuntu, Fedora)
+- For the [MPI version](#mpi-version) only: an MPI implementation with `mpicxx` (e.g., Open MPI)
 
 ### Installation
 Run the following command in the current directory to compile and link the code:
@@ -90,6 +91,27 @@ ALRxx AxRxM 0.17
 ```
 
 Motif pairs with equal scores are listed in lexicographic order of the first motif, then of the second (byte order, so the wildcard `x` comes after the letters).
+
+### MPI version
+`cmm_mpi` runs the search on several processes, possibly on several nodes, each with its own threads.
+It is built separately, so `cmm` does not need MPI:
+```bash
+make cmm_mpi
+```
+
+It takes the same options as `cmm` and prints the same motif pairs, for any number of processes.
+Option `-t` is the number of threads **per process**.
+Only the first process reads the input files, so the other nodes do not need them.
+For example, on 2 processes with 4 threads each:
+```bash
+mpirun -np 2 --bind-to none ./cmm_mpi -s example.fa -i example.int -l 5 -d 2 -f x2 -k 5 -t 4
+```
+`--bind-to none` matters on one machine: with one or two processes, Open MPI may otherwise bind each process to a single core, which all its threads would share.
+On a cluster, bind each process to its own cores instead, as the job scheduler allows; for Slurm, see [`experiments/mpi/check_snellius.sh`](experiments/mpi/check_snellius.sh).
+
+Each process searches its own share of the wildcard configurations, so there is little to gain from more processes than configurations: a motif length of 5 has at most 55, and a length of 8 has up to 2485.
+
+The tests of the MPI version run with `make test_mpi`.
 
 ## Reproducing the experiments
 The script `runme.sh` runs all the experiments of Section 5 (**Experimental Results**) and collects the results in `output/full/` (or `output/subset/` with `-s`).

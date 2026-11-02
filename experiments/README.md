@@ -21,7 +21,7 @@ The scripts use GNU tooling and bash features, so a Linux environment (or WSL) i
 From this directory:
 
 ```bash
-make -C src            # builds bin/cmm_test, bin/cmm_eval, bin/cmm_dedup
+make -C src            # builds bin/cmm_test, bin/cmm_eval, bin/cmm_dedup (see below for the MPI version)
 # fetches + cleans real data and generates artificial instances
 ./data/run.sh -O "9606:Homo_sapiens 3702:Arabidopsis_thaliana 4932:Saccharomyces_cerevisiae 511145:Escherichia_coli_K12_MG1655 7227:Drosophila_melanogaster" \
               -s 700 -S 42 -x 9606 \
@@ -84,6 +84,41 @@ The densities (`-e`), node counts (`-v`), taxid (`-x`), cutoff (`-s`), and seed 
 The run is resumable: completed measurements are skipped, so an interrupted run continues where it left off.
 Measurements land in `rq3-5_efficiency/010-measure/`, the TSVs of each research question in `rq3-5_efficiency/020-concat/`, and the plots in `rq3-5_efficiency/030-plot/`, all with the parameters in their names.
 See `rq3-5_efficiency/README.md` for the parameters and output format.
+
+## The MPI version
+
+The suites above use `cmm_test`, on one process.
+`cmm_test_mpi` is the same program on several processes, built separately so that the suites do not need MPI:
+```bash
+make -C src cmm_test_mpi    # builds bin/cmm_test_mpi; needs mpicxx
+```
+
+It takes the arguments of `cmm_test`, with `num_threads` per process, and writes the same solution file.
+Its result line has the 13 columns of `cmm_test`, then 5 more:
+
+| Column | Meaning |
+|--------|---------|
+| 11 | threads spawned, by all the processes |
+| 12 | time in ms on the first process, after the merge; it does not include reading the input |
+| 13 | peak RAM in KB, the largest of a process |
+| 14 | number of processes |
+| 15 | peak RAM in KB, the sum over the processes |
+| 16, 17, 18 | fastest, median, and slowest search time of a process, in ms |
+
+The peak RAM per thread is column 15 divided by column 11, as column 13 covers only one process.
+Columns 16 to 18 show how evenly the configurations are shared: the run waits for the slowest process.
+
+### First run on a cluster
+
+`mpi/check_snellius.sh` is a Slurm job that checks a machine before any experiment, here Snellius (partition `rome`).
+On one whole node, it prints the sockets, NUMA domains, and modules, downloads the E. coli dataset with `data/run.sh`, builds everything, runs `make test` and `make test_mpi`, shows the core of each thread, and compares `cmm_test_mpi` with `cmm_test` at motif length 5 and $d = 0, \dots, 4$.
+After cloning the repository, from its root directory:
+```bash
+sbatch experiments/mpi/check_snellius.sh
+```
+If the node has no internet access, the job stops and prints this: run the `data/run.sh` command at the top of its log on a login node, then submit again.
+The results are in `experiments/mpi/check_<job id>.log`: any `FAILED` there needs a look, and so does a thread that shares its core.
+The module names at the top of the script may need adjusting to the machine.
 
 ## Previewing the plots
 
