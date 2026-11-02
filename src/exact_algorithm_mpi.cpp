@@ -4,6 +4,8 @@
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
+#include <limits>
+#include <stdexcept>
 #include <string>
 #include <utility>
 
@@ -78,3 +80,86 @@ std::vector<motif_pair_record_t> deserialize_records(const std::vector<char>& by
     }
     return pairs;
 }
+
+template <typename Tag>
+motif_pair_search_result_t main_algo_mpi(const std::vector<std::string>& V,
+                                         const graph_t& G,
+                                         size_t ell, size_t d, size_t k,
+                                         size_t requested_num_threads, MPI_Comm comm)
+{
+    int num_processes, process;
+    MPI_Comm_size(comm, &num_processes);
+    MPI_Comm_rank(comm, &process);
+
+    // The same check on every process, so that none waits in a collective for one that threw. A
+    // serialized pair (see serialize_records) takes at most:
+    // - 2 uint32_t: rankX and rankY;
+    // - 4 uint64_t: countE, countX, countY and countXY;
+    // - 2 double: countE_bar and x2;
+    // - 2 times a uint64_t and ell characters: the length and the characters of X, and of Y.
+    const size_t max_pair_bytes = 2 * sizeof(uint32_t) + 4 * sizeof(uint64_t) + 2 * sizeof(double) +
+                                  2 * (sizeof(uint64_t) + ell);
+    const size_t max_bytes = std::numeric_limits<int>::max();
+    if (k > max_bytes / max_pair_bytes / num_processes)
+        throw std::invalid_argument("k (" + std::to_string(k) + ") is too large for " +
+                                    std::to_string(num_processes) + " processes: their " +
+                                    "pairs would not fit in one MPI message.");
+
+    motif_pair_search_result_t local = main_algo<Tag>(V, G, ell, d, k, requested_num_threads,
+                                                      num_processes, process);
+
+    // Process 0 learns the size of each process's pairs, places them one after the other
+    // (offsets), and receives them all.
+    std::vector<char> local_bytes = serialize_records(local.pairs);
+    assert(local_bytes.size() <= max_bytes);
+    int local_count = static_cast<int>(local_bytes.size());
+    std::vector<int> counts, offsets;
+    if (process == 0) {
+        counts.resize(num_processes);
+        offsets.resize(num_processes);
+    }
+    MPI_Gather(&local_count, 1, MPI_INT, counts.data(), 1, MPI_INT, 0, comm);
+
+    std::vector<char> all_bytes;
+    if (process == 0) {
+        size_t total = 0;
+        for (int p = 0; p < num_processes; p++) {
+            offsets[p] = static_cast<int>(total);
+            total += counts[p];
+        }
+        assert(total <= max_bytes);
+        all_bytes.resize(total);
+    }
+    MPI_Gatherv(local_bytes.data(), local_count, MPI_BYTE,
+                all_bytes.data(), counts.data(), offsets.data(), MPI_BYTE, 0, comm);
+
+    // The counters of the configurations of all the processes, as motif_pair_search_stats_t::add
+    // combines those of the threads; a process with an empty block has the neutral values.
+    const motif_pair_search_stats_t& s = local.stats;
+    motif_pair_search_result_t result;
+    MPI_Reduce(&s.min_max_rank_X, &result.stats.min_max_rank_X, 1, MPI_UINT32_T, MPI_MIN, 0, comm);
+    MPI_Reduce(&s.max_max_rank_X, &result.stats.max_max_rank_X, 1, MPI_UINT32_T, MPI_MAX, 0, comm);
+    uint64_t local_sums[3] = {s.sum_max_rank_X, s.num_configurations, s.num_threads};
+    uint64_t sums[3] = {0, 0, 0};
+    MPI_Reduce(local_sums, sums, 3, MPI_UINT64_T, MPI_SUM, 0, comm);
+
+    if (process != 0)
+        return {};
+    result.stats.sum_max_rank_X = sums[0];
+    result.stats.num_configurations = sums[1];
+    result.stats.num_threads = sums[2];
+    result.pairs = merge_top_k<Tag>(deserialize_records(all_bytes), k);
+    return result;
+}
+
+template motif_pair_search_result_t main_algo_mpi<sort_by_countE_t>(
+    const std::vector<std::string>&,
+    const graph_t&,
+    size_t, size_t, size_t, size_t, MPI_Comm
+);
+
+template motif_pair_search_result_t main_algo_mpi<sort_by_x2_t>(
+    const std::vector<std::string>&,
+    const graph_t&,
+    size_t, size_t, size_t, size_t, MPI_Comm
+);

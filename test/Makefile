@@ -19,6 +19,7 @@ MPI_OBJS      := main_mpi.o test_exact_algorithm_mpi.o
 MPIFLAGS      := -DOMPI_SKIP_MPICXX -DMPICH_SKIP_MPICXX
 # The processes of the MPI tests; --oversubscribe allows more than the cores of the machine.
 MPI_NP        := 4
+MPI_TIMEOUT   := 120
 
 # Runs the tests, of the search and of the programs cmm and cmm_test.
 .PHONY: check
@@ -29,10 +30,11 @@ check: tests
 tests: $(OBJS) $(CORE_OBJS)
 	$(CXX) $(LDFLAGS) -o $@ $^
 
-# Runs the tests of the MPI version on MPI_NP processes.
+# Runs the tests of the MPI version on MPI_NP processes. A process that fails alone (e.g. an
+# exception) leaves the others waiting in a collective, so mpirun stops them after MPI_TIMEOUT seconds.
 .PHONY: check_mpi
 check_mpi: tests_mpi
-	mpirun --oversubscribe -np $(MPI_NP) ./tests_mpi
+	mpirun --oversubscribe --timeout $(MPI_TIMEOUT) -np $(MPI_NP) ./tests_mpi
 
 tests_mpi: $(MPI_OBJS) $(MPI_CORE_OBJS) $(CORE_OBJS)
 	$(MPICXX) $(LDFLAGS) -o $@ $^
