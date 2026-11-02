@@ -9,6 +9,7 @@
 #include <map>
 #include <stdexcept>
 #include <string>
+#include <utility>
 #include <vector>
 
 // A motif pair with every field set from seed, and the motifs X and Y.
@@ -72,6 +73,76 @@ TEST_CASE("deserialize_records reads back the pairs written by serialize_records
     }
 }
 
+static void check_same_input(const graph_input_t& got, const graph_input_t& expected) {
+    CHECK(got.sequences == expected.sequences);
+    const csr_t& got_adj = got.graph.get_adjacency();
+    const csr_t& expected_adj = expected.graph.get_adjacency();
+    CHECK(got.graph.get_num_edges() == expected.graph.get_num_edges());
+    CHECK(got_adj.get_num_rows() == expected_adj.get_num_rows());
+    if (got_adj.get_num_rows() != expected_adj.get_num_rows())
+        return;
+    for (size_t u = 0; u < expected_adj.get_num_rows(); u++)
+        CHECK(std::vector<uint32_t>(got_adj.row(u), got_adj.row(u) + got_adj.row_size(u)) ==
+              std::vector<uint32_t>(expected_adj.row(u), expected_adj.row(u) + expected_adj.row_size(u)));
+}
+
+// read_graph_mpi under CHECK_NOTHROW: the MPI reporter of doctest does not count an exception that
+// ends a test case on a process other than 0.
+static graph_input_t read_mpi(const std::string& fa_path, const std::string& int_path, MPI_Comm comm) {
+    graph_input_t input;
+    CHECK_NOTHROW(input = read_graph_mpi(fa_path, int_path, comm));
+    return input;
+}
+
+MPI_TEST_CASE("read_graph_mpi gives every process the input of read_graph_files", 3) {
+    for (const std::string name : {"readme", "random", "complete", "isolated", "same_node"}) {
+        INFO(name);
+        const std::string fa_path = "instances/" + name + ".fa", int_path = "instances/" + name + ".int";
+        check_same_input(read_mpi(fa_path, int_path, test_comm),
+                         read_graph_files(fa_path, int_path));
+    }
+}
+
+MPI_TEST_CASE("read_graph_mpi reads the files on process 0 only", 3) {
+    const std::string fa_path = "instances/readme.fa", int_path = "instances/readme.int";
+    // On the other processes, paths that do not exist.
+    const std::string prefix = (test_rank == 0) ? "" : "missing/";
+    check_same_input(read_mpi(prefix + fa_path, prefix + int_path, test_comm),
+                     read_graph_files(fa_path, int_path));
+}
+
+MPI_TEST_CASE("read_graph_mpi throws, on every process, the error of read_graph_files", 3) {
+    const std::vector<std::pair<std::string, std::string>> inputs = {
+        {"errors/missing.fa", "readme.int"},
+        {"readme.fa", "errors/missing.int"},
+        // Both are wrong: the order of the checks decides which one is reported.
+        {"errors/duplicate_id.fa", "errors/missing.int"},
+        {"errors/missing.fa", "errors/self_loop.int"},
+        {"errors/empty.fa", "readme.int"},
+        {"errors/duplicate_id.fa", "readme.int"},
+        {"few_pairs.fa", "errors/no_interactions.int"},
+        {"few_pairs.fa", "errors/malformed_interaction.int"},
+        {"few_pairs.fa", "errors/self_loop.int"},
+    };
+    for (const auto& [fa, edges] : inputs) {
+        const std::string fa_path = "instances/" + fa, int_path = "instances/" + edges;
+        INFO(fa_path, ", ", int_path);
+        std::string expected, got;
+        try {
+            read_graph_files(fa_path, int_path);
+        } catch (const std::runtime_error& e) {
+            expected = e.what();
+        }
+        try {
+            read_graph_mpi(fa_path, int_path, test_comm);
+        } catch (const std::runtime_error& e) {
+            got = e.what();
+        }
+        CHECK(!expected.empty());
+        CHECK(got == expected);
+    }
+}
+
 // The graph of a test instance, read once by each process.
 static const graph_input_t& instance(const std::string& name) {
     static std::map<std::string, graph_input_t> instances;
@@ -107,7 +178,8 @@ static void check_all_cases(int process, int num_processes, MPI_Comm comm) {
     const size_t num_threads = 2;
     for (const auto& c : all_cases()) {
         INFO(c.name(), ", ", num_processes, " processes");
-        auto result = search_mpi(c, num_threads, comm);
+        motif_pair_search_result_t result;
+        CHECK_NOTHROW(result = search_mpi(c, num_threads, comm));  // see read_mpi
         if (process != 0) {
             CHECK(result.pairs.empty());
             CHECK(result.stats.num_configurations == 0);

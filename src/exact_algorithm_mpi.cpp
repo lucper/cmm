@@ -4,7 +4,10 @@
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
+#include <fstream>
+#include <iterator>
 #include <limits>
+#include <sstream>
 #include <stdexcept>
 #include <string>
 #include <utility>
@@ -79,6 +82,44 @@ std::vector<motif_pair_record_t> deserialize_records(const std::vector<char>& by
         pairs.push_back(std::move(pair));
     }
     return pairs;
+}
+
+// A stream, on every process, over the bytes of a file that process 0 reads. If process 0 cannot open
+// the file, the stream has failed, as an std::ifstream would have, which read_graph reports.
+static std::istringstream broadcast_file(const std::string& path, MPI_Comm comm)
+{
+    int process;
+    MPI_Comm_rank(comm, &process);
+
+    std::string bytes;
+    uint64_t status[2] = {0, 0};  // whether the file was opened, and its size
+    if (process == 0) {
+        std::ifstream file(path);
+        if (file) {
+            bytes.assign(std::istreambuf_iterator<char>(file), std::istreambuf_iterator<char>());
+            status[0] = 1;
+            status[1] = bytes.size();
+        }
+    }
+    MPI_Bcast(status, 2, MPI_UINT64_T, 0, comm);
+
+    if (status[1] > static_cast<uint64_t>(std::numeric_limits<int>::max()))
+        throw std::runtime_error("File too large for one MPI message: " + path);
+    bytes.resize(status[1]);
+    MPI_Bcast(bytes.data(), static_cast<int>(status[1]), MPI_CHAR, 0, comm);
+
+    std::istringstream stream(bytes);
+    if (status[0] == 0)
+        stream.setstate(std::ios::failbit);
+    return stream;
+}
+
+graph_input_t read_graph_mpi(const std::string& labels_path, const std::string& edge_path,
+                             MPI_Comm comm)
+{
+    std::istringstream fasta = broadcast_file(labels_path, comm);
+    std::istringstream edges = broadcast_file(edge_path, comm);
+    return read_graph(fasta, labels_path, edges, edge_path);
 }
 
 template <typename Tag>
