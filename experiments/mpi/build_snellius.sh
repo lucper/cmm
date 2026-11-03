@@ -6,7 +6,7 @@
 #
 # From the root of the repository; the experiment job can wait for it:
 #   job=$(sbatch --parsable experiments/mpi/build_snellius.sh)
-#   sbatch --dependency=afterok:${job} experiments/mpi/layouts_one_node.sh <d>
+#   sbatch --dependency=afterok:${job} --nodes=<nodes> experiments/mpi/layouts.sh <d>
 #
 #SBATCH --job-name=cmm_build
 #SBATCH --partition=rome
