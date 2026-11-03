@@ -51,31 +51,36 @@ Columns 16 to 18 show how evenly the configurations are shared: the run waits fo
 ## First run on a cluster
 
 `check_snellius.sh` is a Slurm job that checks a machine before any experiment, here Snellius (partition `rome`).
-On one whole node, it prints the sockets, NUMA domains, and modules, downloads the E. coli dataset with `../data/run.sh`, builds everything, runs `make test` and `make test_mpi`, shows the core of each thread, and compares `cmm_test_mpi` with `cmm_test` at motif length 5 and $d = 0, \dots, 4$.
+On one whole node, it prints the sockets, NUMA domains, and modules, downloads the E. coli dataset with `../data/run.sh`, builds everything, runs `make test` and `make test_mpi`, shows the core of each thread, checks that each of the 8 processes stays in one NUMA domain, and compares `cmm_test_mpi` with `cmm_test` at motif length 5 and $d = 0, \dots, 4$.
 After cloning the repository, from its root directory:
 ```bash
 sbatch experiments/mpi/check_snellius.sh
 ```
 If the node has no internet access, the job stops and prints this: run the `data/run.sh` command of the script on a login node, then submit again.
 The results are in `experiments/mpi/check_<job id>.log`: any `FAILED` there needs a look, and so does a thread that shares its core.
-The module names at the top of the script may need adjusting to the machine.
+The module names in the scripts may need adjusting to the machine.
 
 ## Layouts of processes and threads
 
 The same program can divide the cores of a node in several ways: for example, on the 128 cores of a `rome` node, 8 processes of 16 threads (one process per NUMA domain, the default), 2 of 64 (one per socket), or 1 of 128 (one per node).
-`layouts.sh` compares them on whole nodes, as many as `sbatch --nodes` asks for, with one run of each, on E. coli at motif length 8 and the given number of wildcards.
-It uses the programs built by `build_snellius.sh`, which is a job of its own, so that several experiment jobs can run at once from one clone: build again only after changing the code, and on the partition they run on, as `-march=native` compiles for the CPU of that node.
-From the root directory, for example at $d = 5$, on 1, 2, 4, and 8 nodes:
+`runme.sh` compares them on whole nodes, end to end, with all the parameters of the experiment at its top, for now `human_ii` at $\ell = 8$ and $d = 3$ and $5$, on 1, 2, 4, and 8 nodes.
+Edit them, and on a login node:
 ```bash
-job=$(sbatch --parsable experiments/mpi/build_snellius.sh)
-for nodes in 1 2 4 8
-do
-    sbatch --dependency=afterok:${job} --nodes=${nodes} -t 01:00:00 experiments/mpi/layouts.sh 5
-done
+experiments/mpi/runme.sh
 ```
-It stops if a process of the default layout does not stay within one NUMA domain, and logs `FAILED` if the layouts disagree on the pairs.
+It only submits jobs, of which Slurm decides the order, so nothing has to stay running:
+
+1. `build_snellius.sh` builds the programs and unpacks the datasets from SLIDER. It is a job of its own, so that several experiment jobs can run at once from one clone. Set `BUILD=0` while jobs of the same clone are running, as a build replaces their programs; build on the partition the jobs run on, as `-march=native` compiles for the CPU of that node.
+2. One job per number of wildcards and of nodes runs `make` in `010-measure/`, for all the layouts and trials in turn. The jobs do not fetch datasets, so run `../data/run.sh` first for the ones from STRING, e.g., on a login node.
+3. One job per number of wildcards runs `make` in `020-concat/`, when those have ended, whether they finished or not. It writes the table of results, and logs `FAILED` if the runs disagree on the pairs.
+
+`job.sh` is the job of steps 2 and 3: the Slurm settings and modules, around the given command.
+Their logs are in `experiments/mpi/job_<job id>.log`, with the cores of the processes of each run.
+Check a new partition with `check_snellius.sh` first, as the jobs do not stop by themselves if a process spans several NUMA domains.
+
+An older run of `human_ii` with 128 threads, on 1 node, took about 28 minutes at $d = 5$, and 11.3 hours at $d = 3$, with 93 GiB; each job of step 2 does 3 such runs. So the time limits in `runme.sh` are about twice that on 1 node, and leave less margin on 8 nodes.
 
 As in the suites of `../README.md`, `make` decides what to run, one measurement per file; it runs inside the job, as `sbatch` returns before a job has run, and Slurm orders the jobs (`--dependency`).
-So a job killed at its time limit can be submitted again: it skips the runs that have finished.
-Each run is in `010-measure/<dataset>/`, with its solution (`.out`), and all of them are in `020-concat/<dataset>.layouts.l<ell>d<d>.k<k>.tsv`: each line has the number of nodes, the layout and the trial, then the [result line](#cmm_test_mpi) of `cmm_test_mpi`.
+So after a job fails, or is killed at its time limit, run `runme.sh` again with `BUILD=0`: it skips the runs that have finished, and collects the results again.
+Each run is in `010-measure/<dataset>/`, with its solution (`.out`), and all of them are in `020-concat/<dataset>.layouts.l<ell>d<d>.<f>.k<k>.tsv`: each line has the number of nodes, the layout and the trial, then the [result line](#cmm_test_mpi) of `cmm_test_mpi`.
 A result file is not redone when the code changes, so move the old results aside first.

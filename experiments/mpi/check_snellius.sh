@@ -71,6 +71,15 @@ step "Where the processes and threads run"
 OMP_DISPLAY_AFFINITY=TRUE srun --distribution=block:block --cpu-bind=verbose ./cmm_mpi \
     -s test/instances/readme.fa -i test/instances/readme.int -l 4 -d 2 -f x2 -k 1 -t "${THREADS}"
 
+# Before hours of runs of a layout with one process per NUMA domain: it must keep each in its domain.
+step "One process in each NUMA domain"
+if [ "$(srun --distribution=block:block numactl --show | awk '/^nodebind/ { print NF - 1 }' | sort -u)" = 1 ]
+then
+    echo "each process is in one NUMA domain"
+else
+    echo "FAILED: a process is not in exactly one NUMA domain"
+fi
+
 # The columns of the result lines: experiments/mpi/README.md.
 step "One process against ${SLURM_NTASKS} processes, on E. coli"
 solutions=$(mktemp -d -p "${TMPDIR:-/tmp}")
