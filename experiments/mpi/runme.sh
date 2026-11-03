@@ -20,6 +20,8 @@ K=10000
 LAYOUTS="8x16 2x64 1x128"    # processes per node x threads per process
 THREADS=128                  # of the run without MPI
 TRIALS=1
+AEC=1                        # also run the code of the tag ALENEX27_AEC, and merge it with the results (aec/)
+AEC_THREADS=128
 
 # For each number of wildcards, the number of nodes:time limit of its jobs, from the old runs (README.md).
 declare -A JOBS=(
@@ -46,6 +48,14 @@ fi
 
 VARIABLES=(DATASET="${DATASET}" L="${ELL}" F="${SUPPORT}" K="${K}")
 
+aec_build=""
+if [ "${AEC}" = 1 ]
+then
+    aec_build=$(submit --ntasks=1 --cpus-per-task=16 -t 00:30:00 experiments/mpi/job.sh \
+                    make -j 16 -C experiments/mpi/aec build)
+    echo "build of ALENEX27_AEC: job ${aec_build}"
+fi
+
 for d in "${!JOBS[@]}"
 do
     FILES=(FASTA="${PWD}/${FASTA}" INTS="${PWD}/${INTS}")
@@ -66,7 +76,19 @@ do
         ids="${ids}:${id}"
     done
     # afterany: also if a job failed or reached its limit, with the runs that finished.
-    id=$(submit --dependency="afterany${ids}" -t 00:10:00 experiments/mpi/job.sh \
-             make -C experiments/mpi/020-concat all "${VARIABLES[@]}" D="${d}")
-    echo "${DATASET}, ell = ${ELL}, d = ${d}, results: job ${id}"
+    collect=$(submit --dependency="afterany${ids}" -t 00:10:00 experiments/mpi/job.sh \
+                  make -C experiments/mpi/020-concat all "${VARIABLES[@]}" D="${d}")
+    echo "${DATASET}, ell = ${ELL}, d = ${d}, results: job ${collect}"
+
+    # The code of the tag ALENEX27_AEC, apart from the above; the merge waits for both.
+    if [ "${AEC}" = 1 ]
+    then
+        aec=$(submit --dependency="afterok:${aec_build}" --nodes=1 --exclusive -t "${NO_MPI_TIME[${d}]}" experiments/mpi/job.sh \
+                  make -k -C experiments/mpi/aec run "${VARIABLES[@]}" D="${d}" "${FILES[@]}" \
+                  THREADS="${AEC_THREADS}" TRIALS="${TRIALS}")
+        echo "${DATASET}, ell = ${ELL}, d = ${d}, ALENEX27_AEC, ${AEC_THREADS} threads: job ${aec}"
+        id=$(submit --dependency="afterany:${collect}:${aec}" -t 00:10:00 experiments/mpi/job.sh \
+                 make -C experiments/mpi/aec merge "${VARIABLES[@]}" D="${d}")
+        echo "${DATASET}, ell = ${ELL}, d = ${d}, merged with ALENEX27_AEC: job ${id}"
+    fi
 done

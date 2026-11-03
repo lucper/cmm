@@ -85,3 +85,14 @@ So after a job fails, or is killed at its time limit, run `runme.sh` again with 
 Each run is in `010-measure/<dataset>/`, with its solution (`.out`), and all of them are in `020-concat/<dataset>.layouts.l<ell>d<d>.<f>.k<k>.tsv`: each line has the number of nodes, the layout and the trial, then the [result line](#cmm_test_mpi) of `cmm_test_mpi`.
 The runs without MPI are there too, as the layout `nompi<threads>`, with the 13 columns of `cmm_test`.
 A result file is not redone when the code changes, so move the old results aside first.
+
+## Comparison with ALENEX_AEC
+
+`aec/` is a separate check, to compare the running time and memory of the MPI version with the code of the tag `ALENEX27_AEC`, with `AEC=1` in `runme.sh`; `010-measure/` and `020-concat/` do not depend on it.
+`runme.sh` also submits a job that builds the tag in `aec/source/`, one job per number of wildcards that runs its `cmm_test` on 1 node, and one that merges the results, when the collection of step 3 and that run have ended.
+This only works with the support function `x2`, the only one of the tag.
+
+The results are in `aec/<dataset>.layouts.l<ell>d<d>.<f>.k<k>.tsv`: the lines of the same file in `020-concat/`, then those of the tag, as the layout `aec<threads>`, with the 13 columns of `cmm_test`.
+Its column 10, the prunings, has no match, so it is dropped; it stays in `aec/<dataset>/`, with the solutions of the tag.
+These are not compared with the others: the code of the tag breaks ties differently, so check them by hand.
+The difference in time also includes what branch 57 changed, the removal of pruning and of the order of the threads in the ties, and not only the refactoring.
