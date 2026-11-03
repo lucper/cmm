@@ -71,7 +71,7 @@ experiments/mpi/runme.sh
 It only submits jobs, of which Slurm decides the order, so nothing has to stay running:
 
 1. `build_snellius.sh` builds the programs and unpacks the datasets from SLIDER. It is a job of its own, so that several experiment jobs can run at once from one clone. Set `BUILD=0` while jobs of the same clone are running, as a build replaces their programs; build on the partition the jobs run on, as `-march=native` compiles for the CPU of that node.
-2. One job per number of wildcards and of nodes runs `make` in `010-measure/`, for all the layouts and trials in turn. The jobs do not fetch datasets, so run `../data/run.sh` first for the ones from STRING, e.g., on a login node.
+2. One job per number of wildcards and of nodes runs `make` in `010-measure/`, for all the layouts and trials in turn. The jobs do not fetch datasets, so run `../data/run.sh` first for the ones from STRING, e.g., on a login node. One more job per number of wildcards runs the current code without MPI, `cmm_test`, on 1 node, to compare with the MPI version and with older code.
 3. One job per number of wildcards runs `make` in `020-concat/`, when those have ended, whether they finished or not. It writes the table of results, and logs `FAILED` if the runs disagree on the pairs.
 
 `job.sh` is the job of steps 2 and 3: the Slurm settings and modules, around the given command.
@@ -83,4 +83,5 @@ An older run of `human_ii` with 128 threads, on 1 node, took about 28 minutes at
 As in the suites of `../README.md`, `make` decides what to run, one measurement per file; it runs inside the job, as `sbatch` returns before a job has run, and Slurm orders the jobs (`--dependency`).
 So after a job fails, or is killed at its time limit, run `runme.sh` again with `BUILD=0`: it skips the runs that have finished, and collects the results again.
 Each run is in `010-measure/<dataset>/`, with its solution (`.out`), and all of them are in `020-concat/<dataset>.layouts.l<ell>d<d>.<f>.k<k>.tsv`: each line has the number of nodes, the layout and the trial, then the [result line](#cmm_test_mpi) of `cmm_test_mpi`.
+The runs without MPI are there too, as the layout `nompi<threads>`, with the 13 columns of `cmm_test`.
 A result file is not redone when the code changes, so move the old results aside first.
