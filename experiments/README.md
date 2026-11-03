@@ -120,6 +120,23 @@ If the node has no internet access, the job stops and prints this: run the `data
 The results are in `experiments/mpi/check_<job id>.log`: any `FAILED` there needs a look, and so does a thread that shares its core.
 The module names at the top of the script may need adjusting to the machine.
 
+### Layouts of processes and threads
+
+The same program can divide the cores of a node in several ways: for example, on the 128 cores of a `rome` node, 8 processes of 16 threads (one process per NUMA domain, the default), 2 of 64 (one per socket), or 1 of 128 (one per node).
+`mpi/layouts_one_node.sh` compares them on one whole node, with one run of each, on E. coli at motif length 8 and the given number of wildcards.
+It uses the programs built by `mpi/build_snellius.sh`, which is a job of its own, so that several experiment jobs can run at once from one clone: build again only after changing the code, and on the partition they run on, as `-march=native` compiles for the CPU of that node.
+From the root directory, for example at $d = 5$:
+```bash
+job=$(sbatch --parsable experiments/mpi/build_snellius.sh)
+sbatch --dependency=afterok:${job} -t 01:00:00 experiments/mpi/layouts_one_node.sh 5
+```
+It stops if a process of the default layout does not stay within one NUMA domain, and logs `FAILED` if the layouts disagree on the pairs.
+
+As in the suites above, `make` decides what to run, one measurement per file; it runs inside the job, as `sbatch` returns before a job has run, and Slurm orders the jobs (`--dependency`).
+So a job killed at its time limit can be submitted again: it skips the runs that have finished.
+Each run is in `mpi/010-measure/<dataset>/`, with its solution (`.out`), and all of them are in `mpi/020-concat/<dataset>.layouts.l<ell>d<d>.k<k>.tsv`: each line has the layout and the trial, then the [result line](#the-mpi-version) of `cmm_test_mpi`.
+A result file is not redone when the code changes, so move the old results aside first.
+
 ## Previewing the plots
 
 The plots of both suites are LaTeX figures (a `.tex` file with the text and a `.pdf` with the graphics, from the `cairolatex` terminal of `gnuplot`), meant to be included in a LaTeX document.

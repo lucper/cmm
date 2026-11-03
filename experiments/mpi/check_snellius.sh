@@ -11,8 +11,8 @@
 #SBATCH --partition=rome
 #SBATCH --nodes=1
 #SBATCH --exclusive
-#SBATCH --ntasks-per-node=2                      # one process per socket
-#SBATCH --cpus-per-task=64
+#SBATCH --ntasks-per-node=8                      # one process per NUMA domain
+#SBATCH --cpus-per-task=16
 #SBATCH --time=01:00:00                          # at most 1 hour: the nodes for short jobs
 #SBATCH --output=experiments/mpi/check_%j.log    # stdout and stderr
 
@@ -58,10 +58,9 @@ fi
 FASTA=experiments/data/real_instances/511145.sequences.s700.clean.fa
 EDGES=experiments/data/real_instances/511145.links.s700.clean.int
 
-# Built here, as -march=native compiles for the CPU of this node.
+# Not while experiment jobs run from this clone, as it replaces their programs.
 step "Build"
-make clean && make -C experiments/src clean
-make -j "${ALL_THREADS}" cmm cmm_mpi && make -j "${ALL_THREADS}" -C experiments/src all cmm_test_mpi || exit 1
+experiments/mpi/build_snellius.sh || exit 1
 
 step "Tests"
 make test || echo "FAILED: make test"
@@ -69,7 +68,7 @@ make test_mpi || echo "FAILED: make test_mpi"
 
 # Each thread should have its own core, not all those of a process the same one.
 step "Where the processes and threads run"
-OMP_DISPLAY_AFFINITY=TRUE srun --cpu-bind=verbose ./cmm_mpi \
+OMP_DISPLAY_AFFINITY=TRUE srun --distribution=block:block --cpu-bind=verbose ./cmm_mpi \
     -s test/instances/readme.fa -i test/instances/readme.int -l 4 -d 2 -f x2 -k 1 -t "${THREADS}"
 
 # The columns of the result lines: experiments/README.md.
@@ -79,7 +78,7 @@ for d in 0 1 2 3 4
 do
     echo "--- ell = 5, d = ${d}"
     ./experiments/bin/cmm_test "${FASTA}" "${EDGES}" 5 "${d}" 1000 "${ALL_THREADS}" "${solutions}/one" x2 2>/dev/null
-    srun ./experiments/bin/cmm_test_mpi "${FASTA}" "${EDGES}" 5 "${d}" 1000 "${THREADS}" "${solutions}/mpi" x2 2>/dev/null
+    srun --distribution=block:block ./experiments/bin/cmm_test_mpi "${FASTA}" "${EDGES}" 5 "${d}" 1000 "${THREADS}" "${solutions}/mpi" x2 2>/dev/null
     cmp -s "${solutions}/one" "${solutions}/mpi" && echo "same pairs" || echo "FAILED: different pairs"
 done
 rm -r "${solutions}"

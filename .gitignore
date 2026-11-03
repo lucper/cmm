@@ -31,7 +31,8 @@ benchmark/FlameGraph/
 /test/tests
 /test/tests_mpi
 /test/tests_programs_mpi
-/experiments/mpi/check_*.log
+/experiments/mpi/*.log
+/experiments/mpi/010-measure/*/
 experiments/bin/
 output/
 __pycache__/
