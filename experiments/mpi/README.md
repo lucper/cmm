@@ -63,7 +63,7 @@ The module names in the scripts may need adjusting to the machine.
 ## Layouts of processes and threads
 
 The same program can divide the cores of a node in several ways: for example, on the 128 cores of a `rome` node, 8 processes of 16 threads (one process per NUMA domain, the default), 2 of 64 (one per socket), or 1 of 128 (one per node).
-`runme.sh` compares them on whole nodes, end to end, with all the parameters of the experiment at its top, for now `human_ii` at $\ell = 8$ and $d = 3$ and $5$, on 1, 2, 4, and 8 nodes.
+`runme.sh` compares them on whole nodes, end to end, with all the parameters of the experiment at its top, for now `human_ii` at $\ell = 8$ and $d = 5$, on 1, 2, 4, and 8 nodes; $d = 3$ is commented out, for after a first look at the results.
 Edit them, and on a login node:
 ```bash
 experiments/mpi/runme.sh
@@ -76,7 +76,7 @@ It only submits jobs, of which Slurm decides the order, so nothing has to stay r
 
 `job.sh` is the job of steps 2 and 3: the Slurm settings and modules, around the given command.
 Their logs are in `experiments/mpi/job_<job id>.log`, with the cores of the processes of each run.
-Check a new partition with `check_snellius.sh` first, as the jobs do not stop by themselves if a process spans several NUMA domains.
+The jobs do not stop by themselves if a process spans several NUMA domains, so check a new partition with `check_snellius.sh` first, or read the lines of `grep cpu-bind` in those logs, as soon as a run has started: in a layout with one process per domain, each process must have one block of consecutive cores of its domain, such as `0xffff` and `0xffff0000` for 16 cores.
 
 An older run of `human_ii` with 128 threads, on 1 node, took about 28 minutes at $d = 5$, and 11.3 hours at $d = 3$, with 93 GiB; each job of step 2 does 3 such runs. So the time limits in `runme.sh` are about twice that on 1 node, and leave less margin on 8 nodes.
 
