@@ -52,7 +52,7 @@ mpicxx --version
 step "Dataset"
 if ! experiments/data/run.sh -O "511145:Escherichia_coli_K12_MG1655" -s 700 -S 42 -x 511145 -e 05 -v 100
 then
-    echo "FAILED: no dataset. If this node has no internet, run the command above on a login node, then resubmit."
+    echo "FAILED: no dataset. If this node has no internet, run the data/run.sh command of this script on a login node, then resubmit."
     exit 1
 fi
 FASTA=experiments/data/real_instances/511145.sequences.s700.clean.fa
@@ -71,7 +71,7 @@ step "Where the processes and threads run"
 OMP_DISPLAY_AFFINITY=TRUE srun --distribution=block:block --cpu-bind=verbose ./cmm_mpi \
     -s test/instances/readme.fa -i test/instances/readme.int -l 4 -d 2 -f x2 -k 1 -t "${THREADS}"
 
-# The columns of the result lines: experiments/README.md.
+# The columns of the result lines: experiments/mpi/README.md.
 step "One process against ${SLURM_NTASKS} processes, on E. coli"
 solutions=$(mktemp -d -p "${TMPDIR:-/tmp}")
 for d in 0 1 2 3 4

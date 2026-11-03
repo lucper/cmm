@@ -4,7 +4,7 @@
 # ell = 8, in turn. Each run is one file of 010-measure/, skipped if it exists, so a job killed at its
 # time limit can be submitted again. The runs of all the jobs are then in
 # 020-concat/<dataset>.layouts.l<ell>d<d>.k<k>.tsv, each line with the nodes, the layout and the trial; its
-# columns are in experiments/README.md.
+# columns are in experiments/mpi/README.md.
 #
 # From the root of the repository, with the number of nodes as an option of sbatch. On 1 node, expect about
 # 3 hours at d = 3, and 20 minutes at d = 5, which can ask for -t 01:00:00 to run on the nodes for short jobs:
