@@ -26,12 +26,12 @@ AEC_THREADS=128
 # For each number of wildcards, the number of nodes:time limit of its jobs, from the old runs (README.md).
 declare -A JOBS=(
     [5]="1:03:00:00 2:02:00:00 4:01:00:00 8:01:00:00"
-    [3]="1:60:00:00 2:30:00:00 4:15:00:00 8:08:00:00"
+#    [3]="1:60:00:00 2:30:00:00 4:15:00:00 8:08:00:00"
 )
 # For each of them, the time limit of the run without MPI, on 1 node.
 declare -A NO_MPI_TIME=(
     [5]="01:00:00"
-    [3]="24:00:00"
+#    [3]="24:00:00"
 )
 
 cd "$(dirname "$0")/../.."
