@@ -39,15 +39,17 @@ All the parameters are at the top of `runme.sh`, to be edited:
 
 `runme.sh` submits these jobs:
 
-| Job | Runs | Resources | Starts |
-|-----|------|-----------|--------|
-| `build_snellius.sh` | builds the programs, and unpacks the datasets from SLIDER | 16 cores | at once, if `BUILD=1` |
-| `job.sh`, per $d$ and number of nodes | `make -k -C experiments/mpi/010-measure all`: the MPI version, on all the layouts and trials in turn | whole nodes | if the build succeeded |
-| `job.sh`, per $d$ | `make -k -C experiments/mpi/010-measure no-mpi`: `cmm_test` | 1 whole node | if the build succeeded |
-| `job.sh`, per $d$ | `make -C experiments/mpi/020-concat all`: the table of results, and the comparison of the pairs | smallest allocation | when those of its $d$ have ended, whether they finished or not |
-| `job.sh`, once | `make -C experiments/mpi/aec build`: the code of the tag, if `AEC=1` | 16 cores | at once |
-| `job.sh`, per $d$ | `make -k -C experiments/mpi/aec run`: the `cmm_test` of the tag, if `AEC=1` | 1 whole node | if its build succeeded |
-| `job.sh`, per $d$ | `make -C experiments/mpi/aec merge`: the table of results with the tag, if `AEC=1` | smallest allocation | when the table of results and the run of the tag have ended |
+| Job | Runs | How many | Resources | Starts |
+|-----|------|----------|-----------|--------|
+| Build | `build_snellius.sh` | 1 | 16 cores | at once, if `BUILD=1` |
+| MPI runs | `make -k -C experiments/mpi/010-measure all` | one per $d$ and number of nodes | whole nodes | if the build succeeded |
+| Run without MPI | `make -k -C experiments/mpi/010-measure no-mpi` | one per $d$ | 1 whole node | if the build succeeded |
+| Table of results | `make -C experiments/mpi/020-concat all` | one per $d$ | smallest allocation | when the two above have ended, whether they finished or not |
+| Build of the tag | `make -C experiments/mpi/aec build` | 1, if `AEC=1` | 16 cores | at once |
+| Run of the tag | `make -k -C experiments/mpi/aec run` | one per $d$, if `AEC=1` | 1 whole node | if its build succeeded |
+| Merged table | `make -C experiments/mpi/aec merge` | one per $d$, if `AEC=1` | smallest allocation | when the table of results and the run of the tag have ended |
+
+All of them but the build run through `job.sh`, which sets the Slurm options and loads the modules.
 
 The experiment is a sequence of numbered `make` stages, each consuming the previous stage's output, and `aec/` is a separate check that reads the result of the last one:
 
