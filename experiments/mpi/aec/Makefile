@@ -33,11 +33,12 @@ run: $(PERFS)
 merge: $(NAME).tsv
 
 # The code of the tag has its own layout and programs, so it is kept apart. Once built, it stays: to build it
-# again, on another partition, remove source/.
+# again, on another partition, remove source/. One at a time, as with -j the Makefile of the tag starts several
+# makes that compile the same files in the same directory.
 $(CMM_TEST):
 	mkdir -p source
 	git -C ../../.. archive $(TAG) | tar -x -C source
-	$(MAKE) -C source/experiments/src ../bin/cmm_test
+	$(MAKE) -j1 -C source/experiments/src ../bin/cmm_test
 
 # One measurement per file, renamed only once the run has finished, as in ../010-measure.
 $(PERFS): $(FASTA) $(INTS)

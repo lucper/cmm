@@ -52,7 +52,7 @@ aec_build=""
 if [ "${AEC}" = 1 ]
 then
     aec_build=$(submit --ntasks=1 --cpus-per-task=16 -t 00:30:00 experiments/mpi/job.sh \
-                    make -j 16 -C experiments/mpi/aec build)
+                    make -C experiments/mpi/aec build)
     echo "build of ALENEX27_AEC: job ${aec_build}"
 fi
 
