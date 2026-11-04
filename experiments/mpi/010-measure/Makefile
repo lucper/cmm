@@ -48,7 +48,8 @@ $(PERFS): $(PREFIX).%.perf: $(FASTA) $(INTS)
 	mkdir -p $(@D)
 	srun --nodes=$(NODES) --ntasks=$(processes) --ntasks-per-node=$(per_node) --cpus-per-task=$(threads) \
 	     --distribution=block:block --cpu-bind=verbose \
-	     $(CMM_TEST_MPI) $(FASTA) $(INTS) $(L) $(D) $(K) $(threads) $(@:.perf=.out).tmp $(F) > $@.tmp
+	     $(CMM_TEST_MPI) $(FASTA) $(INTS) $(L) $(D) $(K) $(threads) $(@:.perf=.out).tmp $(F) > $@.tmp 2> $(@:.perf=.stderr)
+	grep '^p[0-9]' $(@:.perf=.stderr) > $(@:.perf=.tsv)
 	mv $(@:.perf=.out).tmp $(@:.perf=.out)
 	mv $@.tmp $@
 

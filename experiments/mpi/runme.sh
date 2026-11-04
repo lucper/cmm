@@ -11,7 +11,7 @@
 set -euo pipefail
 
 BUILD=1
-DATASET=human_ii
+DATASET=human_ii_timers
 FASTA=experiments/data/slider_data/human_ii.clean.fa    # from the root of the repository
 INTS=experiments/data/slider_data/human_ii.clean.int
 ELL=8
@@ -20,12 +20,12 @@ K=10000
 LAYOUTS="8x16 2x64 1x128"    # processes per node x threads per process
 THREADS=128                  # of the run without MPI
 TRIALS=1
-AEC=1                        # also run the code of the tag ALENEX27_AEC, and merge it with the results (aec/)
+AEC=0                        # also run the code of the tag ALENEX27_AEC, and merge it with the results (aec/)
 AEC_THREADS=128
 
 # For each number of wildcards, the number of nodes:time limit of its jobs, from the old runs (README.md).
 declare -A JOBS=(
-    [5]="1:03:00:00 2:02:00:00 4:01:00:00 8:01:00:00"
+    [5]="1:03:00:00"
 #    [3]="1:60:00:00 2:30:00:00 4:15:00:00 8:08:00:00"
 )
 # For each of them, the time limit of the run without MPI, on 1 node.

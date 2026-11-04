@@ -2,10 +2,12 @@
 
 #include <algorithm>
 #include <cstdint>
+#include <cstdio>
 #include <limits>
 #include <omp.h>
 #include <random>
 #include <stdexcept>
+#include <string>
 #include <utility>
 #include "esa.hpp"
 #include "motif_pair_searcher.hpp"
@@ -142,6 +144,9 @@ motif_pair_search_result_t main_algo(const std::vector<std::string>& V,
 
     progress_bar_t bar(configurations.size());
 
+    std::vector<double> config_seconds(configurations.size());
+    std::vector<int> config_thread(configurations.size());
+
     #pragma omp parallel
     {
     motif_pair_searcher_t<motif_comparator_t>& searcher = searchers[omp_get_thread_num()];
@@ -149,11 +154,22 @@ motif_pair_search_result_t main_algo(const std::vector<std::string>& V,
     #pragma omp for schedule(dynamic)
     for (size_t c = 0; c < configurations.size(); c++) {
         auto [d_u, d_v] = configurations[c];
+        const double start = omp_get_wtime();
         searcher.search_configuration(all_H[d_u], all_H[d_v]);
+        config_seconds[c] = omp_get_wtime() - start;
+        config_thread[c] = omp_get_thread_num();
 
         bar.advance();
     }
     }
+
+    const size_t first_config = part * (all_H.size() * (all_H.size() + 1) / 2) / num_parts;
+    std::string config_lines;
+    for (size_t c = 0; c < configurations.size(); c++)
+        config_lines += "p" + std::to_string(part) + "t" + std::to_string(config_thread[c]) +
+                        "\tconf" + std::to_string(first_config + c) +
+                        "\t" + std::to_string(config_seconds[c]) + "\n";
+    std::fputs(config_lines.c_str(), stderr);
 
     motif_pair_search_result_t result;
     std::vector<motif_pair_record_t> candidates;
