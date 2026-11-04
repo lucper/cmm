@@ -1,8 +1,4 @@
-# Research questions
-
-- How does the MPI version scale as the number of nodes grows?
-- How does it depend on how the cores of a node are divided among processes and threads?
-- How does it compare with the current code without MPI, and with the code of the tag `ALENEX27_AEC`?
+# MPI Extension
 
 The experiment runs on a cluster with Slurm, here Snellius (partition `rome`).
 All the commands are run from the root directory of the repository.
@@ -65,9 +61,6 @@ The experiment is a sequence of numbered `make` stages, each consuming the previ
 After a job fails or is killed at its time limit, run `runme.sh` again with `BUILD=0`: it skips the runs that have finished, and collects the results again.
 A measurement is not redone when the code changes, so move the old results aside first.
 
-An older run of `human_ii` with 128 threads, on 1 node, took about 28 minutes at $d = 5$, and 11.3 hours at $d = 3$, with 93 GiB.
-A job of the MPI version does one such run per layout, so the time limits in `runme.sh` are about twice that on 1 node, and leave less margin on 8 nodes.
-
 ### Layouts
 
 The same program can divide the cores of a node in several ways, which differ only in how it is launched.
@@ -80,13 +73,9 @@ On the 128 cores of a `rome` node:
 | `1x128` | 1 | 128 | node |
 
 Slurm assigns consecutive cores to each process (`--distribution=block:block`), which in these layouts places each process within its NUMA domain or socket.
-The jobs do not stop by themselves if it does not, so check a new partition with `check_snellius.sh` first, or read the lines of `grep cpu-bind experiments/mpi/job_*.log` as soon as a run has started: in a layout with one process per domain, each process must have one block of consecutive cores of its domain, such as `0xffff` and `0xffff0000` for 16 cores.
-
-### Comparison with ALENEX_AEC
-
-`aec/` compares the running time and memory of the MPI version with the code of the tag `ALENEX27_AEC`, and `010-measure/` and `020-concat/` do not depend on it.
-The solutions of the tag are not compared with the others, as its code breaks ties differently, so check them by hand.
-The difference in time also includes what later branches changed, such as the removal of pruning and the order of the pairs in the ties, and not only the refactoring.
+The jobs do not check this.
+So, on a new partition, run `check_snellius.sh` first, which logs `FAILED` if a process spans several NUMA domains.
+You can also check a running experiment with `grep cpu-bind experiments/mpi/job_*.log`: with one process per domain of 16 cores, each process should show one block of 16 consecutive cores, such as `0xffff` or `0xffff0000`.
 
 ### Checking a machine
 
