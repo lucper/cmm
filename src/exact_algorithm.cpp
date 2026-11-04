@@ -3,8 +3,10 @@
 #include <algorithm>
 #include <cstdint>
 #include <cstdio>
+#include <exception>
 #include <limits>
 #include <omp.h>
+#include <optional>
 #include <random>
 #include <stdexcept>
 #include <string>
@@ -137,10 +139,16 @@ motif_pair_search_result_t main_algo(const std::vector<std::string>& V,
 
     size_t num_threads = std::min(configurations.size(), requested_num_threads);
     omp_set_num_threads(num_threads);
-    std::vector<motif_pair_searcher_t<motif_comparator_t>> searchers;
-    searchers.reserve(num_threads);
-    for (size_t i = 0; i < num_threads; i++)
-        searchers.emplace_back(ESA, G, ell, k);
+
+    // Each thread builds its own searcher, in the parallel region: the searchers are built at the
+    // same time, and as each thread writes the memory of its searcher first, the system places it
+    // near that thread (first touch). Built one after the other by the first thread, the searchers
+    // of 128 threads took about 0.65 s each, and the first configuration of each thread was slower,
+    // probably while its memory was far from it. The runtime may give fewer threads than asked, so a
+    // searcher may stay empty. An exception cannot leave a parallel region, so the first one is
+    // kept, and thrown after it.
+    std::vector<std::optional<motif_pair_searcher_t<motif_comparator_t>>> searchers(num_threads);
+    std::exception_ptr error;
 
     progress_bar_t bar(configurations.size());
 
@@ -149,7 +157,17 @@ motif_pair_search_result_t main_algo(const std::vector<std::string>& V,
 
     #pragma omp parallel
     {
-    motif_pair_searcher_t<motif_comparator_t>& searcher = searchers[omp_get_thread_num()];
+    try {
+        searchers[omp_get_thread_num()].emplace(ESA, G, ell, k);
+    } catch (...) {
+        #pragma omp critical
+        if (!error)
+            error = std::current_exception();
+    }
+    // After the barrier, every thread sees the same error, so all of them or none enter the loop.
+    #pragma omp barrier
+    if (!error) {
+    motif_pair_searcher_t<motif_comparator_t>& searcher = *searchers[omp_get_thread_num()];
 
     #pragma omp for schedule(dynamic)
     for (size_t c = 0; c < configurations.size(); c++) {
@@ -162,6 +180,9 @@ motif_pair_search_result_t main_algo(const std::vector<std::string>& V,
         bar.advance();
     }
     }
+    }
+    if (error)
+        std::rethrow_exception(error);
 
     const size_t first_config = part * (all_H.size() * (all_H.size() + 1) / 2) / num_parts;
     std::string config_lines;
@@ -174,8 +195,10 @@ motif_pair_search_result_t main_algo(const std::vector<std::string>& V,
     motif_pair_search_result_t result;
     std::vector<motif_pair_record_t> candidates;
     for (auto& searcher : searchers) {
-        result.stats.add(searcher.get_stats());
-        for (auto& pair : searcher.take_top_k())
+        if (!searcher)
+            continue;
+        result.stats.add(searcher->get_stats());
+        for (auto& pair : searcher->take_top_k())
             candidates.push_back(std::move(pair));
     }
     result.stats.num_threads = num_threads;
