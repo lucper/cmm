@@ -1,12 +1,165 @@
-# The MPI version
+# Research questions
 
-Here, you will find the job scripts and the experiments of the MPI version, which `cmm_mpi` and `cmm_test_mpi` run on several processes, possibly on several nodes.
-The commands are run from the root directory of the repository.
+- How does the MPI version scale as the number of nodes grows?
+- How does it depend on how the cores of a node are divided among processes and threads?
+- How does it compare with the current code without MPI, and with the code of the tag `ALENEX27_AEC`?
 
-## `cmm_mpi`
+The experiment runs on a cluster with Slurm, here Snellius (partition `rome`).
+All the commands are run from the root directory of the repository.
+
+## Prerequisites
+
+1. An MPI implementation with `mpicxx` (e.g., Open MPI).
+   The scripts load the modules `2025` and `foss/2025a` of Snellius (GCC 14.2.0 and Open MPI 5.0.7); `job.sh`, `build_snellius.sh`, and `check_snellius.sh` each need changing on another machine, or when these are retired.
+2. The datasets: `build_snellius.sh` unpacks the ones from SLIDER, and the ones from STRING must be fetched first with `experiments/data/run.sh` (see `experiments/README.md`), e.g., on a login node.
+3. On a new partition, a first run of `check_snellius.sh` (see [Checking a machine](#checking-a-machine)).
+
+## Usage
+
+On a login node:
+```bash
+experiments/mpi/runme.sh
+```
+
+It only submits jobs, of which Slurm decides the order, so nothing has to stay running.
+All the parameters are at the top of `runme.sh`, to be edited:
+
+| Variable | Meaning |
+|----------|---------|
+| `BUILD` | `1` to submit the build; set it to `0` while jobs of the same clone are running, as a build replaces their programs |
+| `DATASET` | dataset name (used in every output filename) |
+| `FASTA` | FASTA file with protein sequences |
+| `INTS` | interactions file (`u v` per line) |
+| `ELL` | motif length $\ell$ |
+| `SUPPORT` | support function, `E` or `x2` |
+| `K` | number $K$ of top motif pairs |
+| `LAYOUTS` | layouts of the MPI version, as `<processes per node>x<threads per process>` (e.g., `8x16`) |
+| `THREADS` | threads of the run without MPI |
+| `TRIALS` | number of trials per configuration |
+| `AEC` | `1` to also run the code of the tag `ALENEX27_AEC`, which only has the support function `x2` |
+| `AEC_THREADS` | threads of the run of the tag |
+| `JOBS` | for each number $d$ of wildcards, the jobs of the MPI version, as `<nodes>:<time limit>` |
+| `NO_MPI_TIME` | for each number $d$ of wildcards, the time limit of the runs on 1 node, without MPI |
+
+`runme.sh` submits these jobs:
+
+| Job | Runs | Resources | Starts |
+|-----|------|-----------|--------|
+| `build_snellius.sh` | builds the programs, and unpacks the datasets from SLIDER | 16 cores | at once, if `BUILD=1` |
+| `job.sh`, per $d$ and number of nodes | `make -k -C experiments/mpi/010-measure all`: the MPI version, on all the layouts and trials in turn | whole nodes | if the build succeeded |
+| `job.sh`, per $d$ | `make -k -C experiments/mpi/010-measure no-mpi`: `cmm_test` | 1 whole node | if the build succeeded |
+| `job.sh`, per $d$ | `make -C experiments/mpi/020-concat all`: the table of results, and the comparison of the pairs | smallest allocation | when those of its $d$ have ended, whether they finished or not |
+| `job.sh`, once | `make -C experiments/mpi/aec build`: the code of the tag, if `AEC=1` | 16 cores | at once |
+| `job.sh`, per $d$ | `make -k -C experiments/mpi/aec run`: the `cmm_test` of the tag, if `AEC=1` | 1 whole node | if its build succeeded |
+| `job.sh`, per $d$ | `make -C experiments/mpi/aec merge`: the table of results with the tag, if `AEC=1` | smallest allocation | when the table of results and the run of the tag have ended |
+
+The experiment is a sequence of numbered `make` stages, each consuming the previous stage's output, and `aec/` is a separate check that reads the result of the last one:
+
+| Directory | Produces |
+|-----------|----------|
+| `010-measure/` | One measurement per file, for each layout and trial, and for the run without MPI |
+| `020-concat/` | One TSV per dataset, $\ell$, $d$, support function, and $K$, with the measurements of all the jobs, and a check that they found the same pairs |
+| `aec/` | The same TSV, with the measurements of the code of the tag |
+
+`make` runs inside the jobs, as `sbatch` returns before a job has run, and Slurm orders the jobs (`--dependency`).
+After a job fails or is killed at its time limit, run `runme.sh` again with `BUILD=0`: it skips the runs that have finished, and collects the results again.
+A measurement is not redone when the code changes, so move the old results aside first.
+
+An older run of `human_ii` with 128 threads, on 1 node, took about 28 minutes at $d = 5$, and 11.3 hours at $d = 3$, with 93 GiB.
+A job of the MPI version does one such run per layout, so the time limits in `runme.sh` are about twice that on 1 node, and leave less margin on 8 nodes.
+
+### Layouts
+
+The same program can divide the cores of a node in several ways, which differ only in how it is launched.
+On the 128 cores of a `rome` node:
+
+| Layout | Processes per node | Threads per process | One process per |
+|--------|--------------------|---------------------|-----------------|
+| `8x16` | 8 | 16 | NUMA domain |
+| `2x64` | 2 | 64 | socket |
+| `1x128` | 1 | 128 | node |
+
+Slurm assigns consecutive cores to each process (`--distribution=block:block`), which in these layouts places each process within its NUMA domain or socket.
+The jobs do not stop by themselves if it does not, so check a new partition with `check_snellius.sh` first, or read the lines of `grep cpu-bind experiments/mpi/job_*.log` as soon as a run has started: in a layout with one process per domain, each process must have one block of consecutive cores of its domain, such as `0xffff` and `0xffff0000` for 16 cores.
+
+### Comparison with ALENEX_AEC
+
+`aec/` compares the running time and memory of the MPI version with the code of the tag `ALENEX27_AEC`, and `010-measure/` and `020-concat/` do not depend on it.
+The solutions of the tag are not compared with the others, as its code breaks ties differently, so check them by hand.
+The difference in time also includes what later branches changed, such as the removal of pruning and the order of the pairs in the ties, and not only the refactoring.
+
+### Checking a machine
+
+`check_snellius.sh` is a job that checks a machine before any experiment:
+```bash
+sbatch experiments/mpi/check_snellius.sh
+```
+
+On one whole node, in this order:
+
+| Step | Shows |
+|------|-------|
+| The node | sockets, NUMA domains, modules, and the versions of MPI and the compiler |
+| Dataset | the download of the E. coli dataset with `experiments/data/run.sh` |
+| Build | the build of everything |
+| Tests | `make test` and `make test_mpi` |
+| Where the processes and threads run | the core of each thread |
+| One process in each NUMA domain | whether each of the 8 processes stays in one domain |
+| One process against 8 processes | `cmm_test_mpi` against `cmm_test`, at motif length 5 and $d = 0, \dots, 4$ |
+
+The results are in `experiments/mpi/check_<job id>.log`.
+Any `FAILED` there needs a look, and so does a thread that shares its core.
+
+## Files
+
+| File / dir | Role |
+|------------|------|
+| `runme.sh` | Driver: holds the parameters, and submits all the jobs. |
+| `job.sh` | A job: the Slurm settings and modules, around the given command. |
+| `build_snellius.sh` | The job that builds the programs, and unpacks the datasets from SLIDER. |
+| `check_snellius.sh` | The job that checks a machine. |
+| `<NNN>-*/` | The numbered pipeline stages, each with its own `Makefile`. |
+| `aec/` | The check of the code of the tag, with its own `Makefile`. |
+| `aec/source/` | The code of the tag, built by `make build` (generated); remove it to build again on another partition. |
+| `010-measure/<dataset>/`, `aec/<dataset>/` | The measurements and solutions (generated). |
+| `job_<job id>.log`, `build_<job id>.log`, `check_<job id>.log` | The logs of the jobs (generated), with the cores of the processes of each run. |
+
+## Output format
+
+Filenames encode the full parameter set, so outputs from different parameters never collide.
+A representative name, of a measurement in `010-measure/`, with its solution in a `.out` file of the same name:
+
+```
+<dataset>/<dataset>.layouts.l<L>d<D>.<F>.k<K>.n<nodes>.<layout>.trial<i>.perf
+```
+
+where `<layout>` is a layout, `nompi<threads>` for the run without MPI, or `aec<threads>` for the run of the tag.
+The TSVs are `020-concat/<dataset>.layouts.l<L>d<D>.<F>.k<K>.tsv` and, with the same name, in `aec/`.
+
+Each row of the TSVs is one measurement (the one-line output of `cmm_test_mpi` or `cmm_test`) with the number of nodes, the layout, and the trial prepended, tab-separated:
+
+| # | Column | | # | Column | | # | Column |
+|---|--------|-|---|--------|-|---|--------|
+| 1 | `nodes` | | 8 | `ell` | | 15 | `time_ms` |
+| 2 | `layout` | | 9 | `d` | | 16 | `peak_ram_kb` |
+| 3 | `trial` | | 10 | `max_rank` | | 17 | `num_processes` |
+| 4 | `instance` | | 11 | `min_rank` | | 18 | `sum_peak_ram_kb` |
+| 5 | `edge_density` | | 12 | `avg_rank` | | 19 | `min_search_ms` |
+| 6 | `V` | | 13 | `num_threads_requested` | | 20 | `median_search_ms` |
+| 7 | `N` | | 14 | `num_threads_spawned` | | 21 | `max_search_ms` |
+
+Columns 17 to 21 are only in the rows of `cmm_test_mpi`, and in these rows:
+- `num_threads_requested` (13) is per process, and `num_threads_spawned` (14) is over all the processes;
+- `time_ms` (15) is on the first process, after the merge, and does not include reading the input;
+- `peak_ram_kb` (16) is the largest of a process, and `sum_peak_ram_kb` (18) the sum over the processes, so the peak RAM per thread is (18) divided by (14);
+- `min_search_ms`, `median_search_ms`, and `max_search_ms` (19 to 21) are the search times of the processes, which show how evenly the configurations are shared, as the run waits for the slowest process; with an even number of processes, the median is the upper one.
+
+In the rows of the tag, its column of prunings has no match, so it is dropped; it stays in its `.perf` file.
+
+## Programs
 
 `cmm_mpi` runs the search on several processes, possibly on several nodes, each with its own threads.
-It needs an MPI implementation with `mpicxx` (e.g., Open MPI), and is built separately, so `cmm` does not need MPI:
+It is built separately, so `cmm` does not need MPI:
 ```bash
 make cmm_mpi
 ```
@@ -19,80 +172,13 @@ For example, on 2 processes with 4 threads each:
 mpirun -np 2 --bind-to none ./cmm_mpi -s example.fa -i example.int -l 5 -d 2 -f x2 -k 5 -t 4
 ```
 `--bind-to none` matters on one machine: with one or two processes, Open MPI may otherwise bind each process to a single core, which all its threads would share.
-On a cluster, bind each process to its own cores instead, as the job scheduler allows; for Slurm, see the jobs below.
 
 Each process searches its own share of the wildcard configurations, so there is little to gain from more processes than configurations: a motif length of 5 has at most 55, and a length of 8 has up to 2485.
 
-The tests of the MPI version run with `make test_mpi`.
-
-## `cmm_test_mpi`
-
-The suites of [`../README.md`](../README.md) use `cmm_test`, on one process.
-`cmm_test_mpi` is the same program on several processes, built separately so that the suites do not need MPI. From the root directory:
+`cmm_test_mpi` is `cmm_test` on several processes, built separately so that the suites of `experiments/README.md` do not need MPI:
 ```bash
-make -C experiments/src cmm_test_mpi    # builds experiments/bin/cmm_test_mpi; needs mpicxx
+make -C experiments/src cmm_test_mpi    # builds experiments/bin/cmm_test_mpi
 ```
-
 It takes the arguments of `cmm_test`, with `num_threads` per process, and writes the same solution file.
-Its result line has the 13 columns of `cmm_test`, then 5 more:
 
-| Column | Meaning |
-|--------|---------|
-| 11 | threads spawned, by all the processes |
-| 12 | time in ms on the first process, after the merge; it does not include reading the input |
-| 13 | peak RAM in KB, the largest of a process |
-| 14 | number of processes |
-| 15 | peak RAM in KB, the sum over the processes |
-| 16, 17, 18 | fastest, median, and slowest search time of a process, in ms |
-
-The peak RAM per thread is column 15 divided by column 11, as column 13 covers only one process.
-Columns 16 to 18 show how evenly the configurations are shared: the run waits for the slowest process.
-
-## First run on a cluster
-
-`check_snellius.sh` is a Slurm job that checks a machine before any experiment, here Snellius (partition `rome`).
-On one whole node, it prints the sockets, NUMA domains, and modules, downloads the E. coli dataset with `../data/run.sh`, builds everything, runs `make test` and `make test_mpi`, shows the core of each thread, checks that each of the 8 processes stays in one NUMA domain, and compares `cmm_test_mpi` with `cmm_test` at motif length 5 and $d = 0, \dots, 4$.
-After cloning the repository, from its root directory:
-```bash
-sbatch experiments/mpi/check_snellius.sh
-```
-If the node has no internet access, the job stops and prints this: run the `data/run.sh` command of the script on a login node, then submit again.
-The results are in `experiments/mpi/check_<job id>.log`: any `FAILED` there needs a look, and so does a thread that shares its core.
-The module names in the scripts may need adjusting to the machine.
-
-## Layouts of processes and threads
-
-The same program can divide the cores of a node in several ways: for example, on the 128 cores of a `rome` node, 8 processes of 16 threads (one process per NUMA domain, the default), 2 of 64 (one per socket), or 1 of 128 (one per node).
-`runme.sh` compares them on whole nodes, end to end, with all the parameters of the experiment at its top, for now `human_ii` at $\ell = 8$ and $d = 5$, on 1, 2, 4, and 8 nodes; $d = 3$ is commented out, for after a first look at the results.
-Edit them, and on a login node:
-```bash
-experiments/mpi/runme.sh
-```
-It only submits jobs, of which Slurm decides the order, so nothing has to stay running:
-
-1. `build_snellius.sh` builds the programs and unpacks the datasets from SLIDER. It is a job of its own, so that several experiment jobs can run at once from one clone. Set `BUILD=0` while jobs of the same clone are running, as a build replaces their programs; build on the partition the jobs run on, as `-march=native` compiles for the CPU of that node.
-2. One job per number of wildcards and of nodes runs `make` in `010-measure/`, for all the layouts and trials in turn. The jobs do not fetch datasets, so run `../data/run.sh` first for the ones from STRING, e.g., on a login node. One more job per number of wildcards runs the current code without MPI, `cmm_test`, on 1 node, to compare with the MPI version and with older code.
-3. One job per number of wildcards runs `make` in `020-concat/`, when those have ended, whether they finished or not. It writes the table of results, and logs `FAILED` if the runs disagree on the pairs.
-
-`job.sh` is the job of steps 2 and 3: the Slurm settings and modules, around the given command.
-Their logs are in `experiments/mpi/job_<job id>.log`, with the cores of the processes of each run.
-The jobs do not stop by themselves if a process spans several NUMA domains, so check a new partition with `check_snellius.sh` first, or read the lines of `grep cpu-bind` in those logs, as soon as a run has started: in a layout with one process per domain, each process must have one block of consecutive cores of its domain, such as `0xffff` and `0xffff0000` for 16 cores.
-
-An older run of `human_ii` with 128 threads, on 1 node, took about 28 minutes at $d = 5$, and 11.3 hours at $d = 3$, with 93 GiB; each job of step 2 does 3 such runs. So the time limits in `runme.sh` are about twice that on 1 node, and leave less margin on 8 nodes.
-
-As in the suites of `../README.md`, `make` decides what to run, one measurement per file; it runs inside the job, as `sbatch` returns before a job has run, and Slurm orders the jobs (`--dependency`).
-So after a job fails, or is killed at its time limit, run `runme.sh` again with `BUILD=0`: it skips the runs that have finished, and collects the results again.
-Each run is in `010-measure/<dataset>/`, with its solution (`.out`), and all of them are in `020-concat/<dataset>.layouts.l<ell>d<d>.<f>.k<k>.tsv`: each line has the number of nodes, the layout and the trial, then the [result line](#cmm_test_mpi) of `cmm_test_mpi`.
-The runs without MPI are there too, as the layout `nompi<threads>`, with the 13 columns of `cmm_test`.
-A result file is not redone when the code changes, so move the old results aside first.
-
-## Comparison with ALENEX_AEC
-
-`aec/` is a separate check, to compare the running time and memory of the MPI version with the code of the tag `ALENEX27_AEC`, with `AEC=1` in `runme.sh`; `010-measure/` and `020-concat/` do not depend on it.
-`runme.sh` also submits a job that builds the tag in `aec/source/`, one job per number of wildcards that runs its `cmm_test` on 1 node, and one that merges the results, when the collection of step 3 and that run have ended.
-This only works with the support function `x2`, the only one of the tag.
-
-The results are in `aec/<dataset>.layouts.l<ell>d<d>.<f>.k<k>.tsv`: the lines of the same file in `020-concat/`, then those of the tag, as the layout `aec<threads>`, with the 13 columns of `cmm_test`.
-Its column 10, the prunings, has no match, so it is dropped; it stays in `aec/<dataset>/`, with the solutions of the tag.
-These are not compared with the others: the code of the tag breaks ties differently, so check them by hand.
-The difference in time also includes what branch 57 changed, the removal of pruning and of the order of the threads in the ties, and not only the refactoring.
+The tests of the MPI version run with `make test_mpi`.
