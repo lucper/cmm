@@ -5,10 +5,11 @@
 #   experiments/mpi/runme.sh --yes              # submit the preset main as it is, without asking
 #   experiments/mpi/runme.sh --preset timers    # start from another preset
 #   experiments/mpi/runme.sh --dry-run          # print the sbatch commands, and submit nothing
-# It submits the build, one job per number of wildcards and of nodes, and one without MPI per number of
-# wildcards, which wait for it, and for each number of wildcards one job that collects the results, which waits
-# for those: see README.md. Submitting again skips the runs that have finished. Turn the build off while jobs
-# of this clone are running, as a build replaces their programs.
+# It submits the build, and one job per run, so that as many run at once as Slurm has nodes for: one per number
+# of wildcards, of nodes, layout and trial, and one without MPI per number of wildcards and trial, which wait for
+# the build; and for each number of wildcards one job that collects the results, which waits for those: see
+# README.md. A run that has finished gets no job, so submitting again runs only the others. Turn the build off
+# while jobs of this clone are running, as a build replaces their programs.
 #
 # The presets, of which the screen shows the parameters:
 # - main: the layouts on 1, 2, 4 and 8 nodes, with the code of the tag ALENEX27_AEC (aec/);
@@ -38,10 +39,13 @@ preset_main() {
     AEC=1                        # also run the code of the tag ALENEX27_AEC, and merge it with the results (aec/)
     AEC_THREADS=128
     WILDCARDS="5"                # the numbers of wildcards to run, of those of JOBS
-    # For each number of wildcards, the number of nodes:time limit of its jobs, from the old runs (README.md).
-    JOBS=([5]="1:03:00:00 2:02:00:00 4:01:00:00 8:01:00:00"
-          [3]="1:60:00:00 2:30:00:00 4:15:00:00 8:08:00:00")
-    # For each of them, the time limit of the run without MPI, on 1 node.
+    # For each number of wildcards, the numbers of nodes, with the time limit of each run there: about twice what
+    # the slowest layout, 1x128, needs, or more. At d = 5, it took 19, 11.5, 7.5, and 5.7 minutes on 1, 2, 4, and
+    # 8 nodes. At d = 3, it took 11.3 hours on 1 node, 35 times as long; if the others scale as at d = 5, they need
+    # about 7.4, 4.8, and 3.6 hours (a job of the 3 layouts on 8 nodes took 10% longer than such an estimate).
+    JOBS=([5]="1:01:00:00 2:00:40:00 4:00:30:00 8:00:20:00"
+          [3]="1:24:00:00 2:15:00:00 4:10:00:00 8:08:00:00")
+    # For each of them, the time limit of a run without MPI, on 1 node, and of one of ALENEX27_AEC.
     NO_MPI_TIME=([5]="01:00:00" [3]="24:00:00")
     EDITED=0
 }
@@ -53,7 +57,7 @@ preset_timers() {
     DESCRIPTION="the layouts on 1 node, to time each configuration"
     DATASET=human_ii_timers
     AEC=0
-    JOBS=([5]="1:03:00:00" [3]="1:60:00:00")
+    JOBS=([5]="1:01:00:00" [3]="1:24:00:00")
 }
 
 usage() {
@@ -83,77 +87,75 @@ cd "$(dirname "$0")/../.."
 # ------------------------------------------------------------------------------------------------------------------
 # What will run: the jobs, and how many of their runs have finished, whose results are there already.
 
-# The number of finished runs among the .perf files given.
-count_done() {
-    local n=0 f
-    for f in "$@"; do [ -e "$f" ] && n=$((n + 1)); done
-    echo "${n}"
+# The .perf file of a run: of a layout of d on nodes nodes, without MPI, or of ALENEX27_AEC, in a trial.
+mpi_perf() {
+    echo "experiments/mpi/010-measure/${DATASET}/${DATASET}.layouts.l${ELL}d$1.${SUPPORT}.k${K}.n$2.$3.trial$4.perf"
 }
-
-# The .perf files of the runs of the layouts of d on nodes nodes, and of the run without MPI.
-layout_perfs() {
-    local d=$1 nodes=$2 trial layout
-    for trial in $(seq 1 "${TRIALS}"); do
-        for layout in ${LAYOUTS}; do
-            echo "experiments/mpi/010-measure/${DATASET}/${DATASET}.layouts.l${ELL}d${d}.${SUPPORT}.k${K}.n${nodes}.${layout}.trial${trial}.perf"
-        done
-    done
+no_mpi_perf() {
+    echo "experiments/mpi/010-measure/${DATASET}/${DATASET}.layouts.l${ELL}d$1.${SUPPORT}.k${K}.n1.nompi${THREADS}.trial$2.perf"
 }
-no_mpi_perfs() {
-    local d=$1 trial
-    for trial in $(seq 1 "${TRIALS}"); do
-        echo "experiments/mpi/010-measure/${DATASET}/${DATASET}.layouts.l${ELL}d${d}.${SUPPORT}.k${K}.n1.nompi${THREADS}.trial${trial}.perf"
-    done
-}
-aec_perfs() {
-    local d=$1 trial
-    for trial in $(seq 1 "${TRIALS}"); do
-        echo "experiments/mpi/aec/${DATASET}/${DATASET}.layouts.l${ELL}d${d}.${SUPPORT}.k${K}.n1.aec${AEC_THREADS}.trial${trial}.perf"
-    done
-}
-
-# "k of n runs done", for the runs of a job, if any have finished: the job skips them.
-done_note() {
-    local -a perfs
-    mapfile -t perfs < <("$@")
-    local done
-    done=$(count_done "${perfs[@]}")
-    if [ "${done}" = "${#perfs[@]}" ]; then echo "${GREEN}all $(plural "${done}" run) done${RESET}"
-    elif [ "${done}" != 0 ]; then echo "${done} of $(plural "${#perfs[@]}" run) done"
-    fi
+aec_perf() {
+    echo "experiments/mpi/aec/${DATASET}/${DATASET}.layouts.l${ELL}d$1.${SUPPORT}.k${K}.n1.aec${AEC_THREADS}.trial$2.perf"
 }
 
 plural() { [ "$1" = 1 ] && echo "$1 $2" || echo "$1 $2s"; }
 
-# Prints the jobs that would be submitted, one per line, and sets NUM_JOBS.
+# What a line of the plan says of its runs, of which todo of all have no results yet: the jobs it submits, and
+# how many runs are done, which get none.
+jobs_note() {
+    local todo=$1 all=$2
+    if [ "${todo}" = 0 ]; then echo "${GREEN}all $(plural "${all}" run) done${RESET}"
+    elif [ "${todo}" = "${all}" ]; then plural "${todo}" job
+    else echo "$(plural "${todo}" job), $((all - todo)) of $(plural "${all}" run) done"
+    fi
+}
+
+# Prints the jobs that would be submitted, a line per group of runs, and sets NUM_JOBS and NUM_DONE.
 plan() {
-    NUM_JOBS=0
-    local d job nodes time note
+    NUM_JOBS=0 NUM_DONE=0
+    local d job nodes time layout trial todo all
     if [ "${BUILD}" = 1 ]; then
-        printf '  %-40s %s\n' "build" "build_snellius.sh"
+        printf '  %-40s %-12s %s\n' "build" "" "build_snellius.sh"
         NUM_JOBS=$((NUM_JOBS + 1))
     fi
+    local aec_todo=0
     if [ "${AEC}" = 1 ]; then
-        printf '  %-40s %s\n' "build of ALENEX27_AEC" "00:30:00"
-        NUM_JOBS=$((NUM_JOBS + 1))
+        for d in ${WILDCARDS}; do
+            for trial in $(seq 1 "${TRIALS}"); do [ -e "$(aec_perf "${d}" "${trial}")" ] || aec_todo=$((aec_todo + 1)); done
+        done
+        if [ "${aec_todo}" != 0 ]; then
+            printf '  %-40s %-12s %s\n' "build of ALENEX27_AEC" "00:30:00" "1 job"
+            NUM_JOBS=$((NUM_JOBS + 1))
+        fi
     fi
     for d in ${WILDCARDS}; do
-        note=$(done_note no_mpi_perfs "${d}")
-        printf '  %-40s %-12s %s\n' "d = ${d}: without MPI, ${THREADS} threads" "${NO_MPI_TIME[${d}]}" "${note}"
-        NUM_JOBS=$((NUM_JOBS + 1))
+        todo=0 all=0
+        for trial in $(seq 1 "${TRIALS}"); do
+            all=$((all + 1)); [ -e "$(no_mpi_perf "${d}" "${trial}")" ] || todo=$((todo + 1))
+        done
+        printf '  %-40s %-12s %s\n' "d = ${d}: without MPI, ${THREADS} threads" "${NO_MPI_TIME[${d}]}" "$(jobs_note "${todo}" "${all}")"
+        NUM_JOBS=$((NUM_JOBS + todo)) NUM_DONE=$((NUM_DONE + all - todo))
         for job in ${JOBS[${d}]}; do
             nodes=${job%%:*} time=${job#*:}
-            note=$(done_note layout_perfs "${d}" "${nodes}")
-            printf '  %-40s %-12s %s\n' "       $(plural "${nodes}" node), ${LAYOUTS// /, }" "${time}" "${note}"
-            NUM_JOBS=$((NUM_JOBS + 1))
+            todo=0 all=0
+            for trial in $(seq 1 "${TRIALS}"); do
+                for layout in ${LAYOUTS}; do
+                    all=$((all + 1)); [ -e "$(mpi_perf "${d}" "${nodes}" "${layout}" "${trial}")" ] || todo=$((todo + 1))
+                done
+            done
+            printf '  %-40s %-12s %s\n' "       $(plural "${nodes}" node), ${LAYOUTS// /, }" "${time}" "$(jobs_note "${todo}" "${all}")"
+            NUM_JOBS=$((NUM_JOBS + todo)) NUM_DONE=$((NUM_DONE + all - todo))
         done
-        printf '  %-40s %s\n' "       collect the results (020-concat)" "00:10:00"
+        printf '  %-40s %-12s %s\n' "       collect the results (020-concat)" "00:10:00" "1 job, after those"
         NUM_JOBS=$((NUM_JOBS + 1))
         if [ "${AEC}" = 1 ]; then
-            note=$(done_note aec_perfs "${d}")
-            printf '  %-40s %-12s %s\n' "       ALENEX27_AEC, ${AEC_THREADS} threads" "${NO_MPI_TIME[${d}]}" "${note}"
-            printf '  %-40s %s\n' "       merge with ALENEX27_AEC (aec/)" "00:10:00"
-            NUM_JOBS=$((NUM_JOBS + 2))
+            todo=0 all=0
+            for trial in $(seq 1 "${TRIALS}"); do
+                all=$((all + 1)); [ -e "$(aec_perf "${d}" "${trial}")" ] || todo=$((todo + 1))
+            done
+            printf '  %-40s %-12s %s\n' "       ALENEX27_AEC, ${AEC_THREADS} threads" "${NO_MPI_TIME[${d}]}" "$(jobs_note "${todo}" "${all}")"
+            printf '  %-40s %-12s %s\n' "       merge with ALENEX27_AEC (aec/)" "00:10:00" "1 job, after those"
+            NUM_JOBS=$((NUM_JOBS + todo + 1)) NUM_DONE=$((NUM_DONE + all - todo))
         fi
     done
 }
@@ -193,7 +195,7 @@ draw() {
     field 4 "interactions" "${INTS}$(exists_note "${INTS}")"
     field 5 "motif length" "${ELL}"
     field 6 "wildcards" "${WILDCARDS}"
-    field 7 "nodes:time limit" "${jobs%; }"
+    field 7 "nodes:time per run" "${jobs%; }"
     field 8 "support function" "${SUPPORT}"
     field 9 "k" "${K}"
     field a "layouts" "${LAYOUTS}"
@@ -204,10 +206,10 @@ draw() {
     local lines
     lines=$(plan)
     plan > /dev/null
-    echo "${BOLD}$(plural "${NUM_JOBS}" job)${RESET}, of which Slurm decides the order:"
+    echo "${BOLD}$(plural "${NUM_JOBS}" job)${RESET}, one per run, which Slurm runs as soon as it has the nodes:"
     echo "${lines}"
-    if [[ "${lines}" == *" done"* ]]; then
-        echo "${DIM}The jobs skip the runs done; to run them again, change the name of the results (2).${RESET}"
+    if [ "${NUM_DONE}" != 0 ]; then
+        echo "${DIM}A run that is done gets no job; to run it again, change the name of the results (2).${RESET}"
     fi
     local running
     running=$(running_jobs)
@@ -239,7 +241,7 @@ edit_jobs() {
     local d value
     for d in ${WILDCARDS}; do
         value=${JOBS[${d}]:-1:01:00:00}
-        read -r -e -i "${value}" -p "  d = ${d}, nodes:time limit of each job: " value || return 0
+        read -r -e -i "${value}" -p "  d = ${d}, nodes:time limit of each run there: " value || return 0
         value=$(echo "${value}" | xargs)
         if [[ "${value}" =~ ^([0-9]+:[0-9:-]+)( [0-9]+:[0-9:-]+)*$ ]]; then
             [ "${value}" != "${JOBS[${d}]:-}" ] && EDITED=1
@@ -358,8 +360,15 @@ fi
 
 VARIABLES=(DATASET="${DATASET}" L="${ELL}" F="${SUPPORT}" K="${K}")
 
+# The build of ALENEX27_AEC, unless all its runs are done.
+aec_todo=0
+if [ "${AEC}" = 1 ]; then
+    for d in ${WILDCARDS}; do
+        for trial in $(seq 1 "${TRIALS}"); do [ -e "$(aec_perf "${d}" "${trial}")" ] || aec_todo=$((aec_todo + 1)); done
+    done
+fi
 aec_build=""
-if [ "${AEC}" = 1 ]
+if [ "${aec_todo}" != 0 ]
 then
     aec_build=$(submit --ntasks=1 --cpus-per-task=16 -t 00:30:00 experiments/mpi/job.sh \
                     make -C experiments/mpi/aec build)
@@ -369,35 +378,59 @@ fi
 for d in ${WILDCARDS}
 do
     FILES=(FASTA="${PWD}/${FASTA}" INTS="${PWD}/${INTS}")
+    ids=""    # the runs of d, for which the collection waits
+    skipped=0
 
-    id=$(submit "${dependency[@]}" --nodes=1 --exclusive -t "${NO_MPI_TIME[${d}]}" experiments/mpi/job.sh \
-             make -k -C experiments/mpi/010-measure no-mpi "${VARIABLES[@]}" D="${d}" "${FILES[@]}" NODES=1 \
-             THREADS="${THREADS}" TRIALS="${TRIALS}")
-    echo "${DATASET}, ell = ${ELL}, d = ${d}, without MPI, ${THREADS} threads: job ${id}"
-    ids=":${id}"
+    for trial in $(seq 1 "${TRIALS}")
+    do
+        if [ -e "$(no_mpi_perf "${d}" "${trial}")" ]; then skipped=$((skipped + 1)); continue; fi
+        id=$(submit "${dependency[@]}" --nodes=1 --exclusive -t "${NO_MPI_TIME[${d}]}" experiments/mpi/job.sh \
+                 make -k -C experiments/mpi/010-measure no-mpi "${VARIABLES[@]}" D="${d}" "${FILES[@]}" NODES=1 \
+                 THREADS="${THREADS}" TRIALS="${TRIALS}" TRIAL="${trial}")
+        echo "${DATASET}, ell = ${ELL}, d = ${d}, without MPI, ${THREADS} threads, trial ${trial}: job ${id}"
+        ids="${ids}:${id}"
+    done
 
+    # One job per run, so that they all can run at once.
     for job in ${JOBS[${d}]}
     do
         nodes=${job%%:*} time=${job#*:}
-        id=$(submit "${dependency[@]}" --nodes="${nodes}" --exclusive -t "${time}" experiments/mpi/job.sh \
-                 make -k -C experiments/mpi/010-measure all "${VARIABLES[@]}" D="${d}" "${FILES[@]}" \
-                 NODES="${nodes}" LAYOUTS="${LAYOUTS}" TRIALS="${TRIALS}")
-        echo "${DATASET}, ell = ${ELL}, d = ${d}, ${nodes} node(s), ${time}: job ${id}"
-        ids="${ids}:${id}"
+        for trial in $(seq 1 "${TRIALS}")
+        do
+            for layout in ${LAYOUTS}
+            do
+                if [ -e "$(mpi_perf "${d}" "${nodes}" "${layout}" "${trial}")" ]; then skipped=$((skipped + 1)); continue; fi
+                id=$(submit "${dependency[@]}" --nodes="${nodes}" --exclusive -t "${time}" experiments/mpi/job.sh \
+                         make -k -C experiments/mpi/010-measure all "${VARIABLES[@]}" D="${d}" "${FILES[@]}" \
+                         NODES="${nodes}" LAYOUTS="${layout}" TRIALS="${TRIALS}" TRIAL="${trial}")
+                echo "${DATASET}, ell = ${ELL}, d = ${d}, ${nodes} node(s), ${layout}, trial ${trial}, ${time}: job ${id}"
+                ids="${ids}:${id}"
+            done
+        done
     done
-    # afterany: also if a job failed or reached its limit, with the runs that finished.
-    collect=$(submit --dependency="afterany${ids}" -t 00:10:00 experiments/mpi/job.sh \
+    [ "${skipped}" = 0 ] || echo "${DATASET}, ell = ${ELL}, d = ${d}: $(plural "${skipped}" run) done already, without a job"
+
+    # afterany: also if a run failed or reached its limit, with the runs that finished.
+    after=()
+    [ -n "${ids}" ] && after=("--dependency=afterany${ids}")
+    collect=$(submit "${after[@]}" -t 00:10:00 experiments/mpi/job.sh \
                   make -C experiments/mpi/020-concat all "${VARIABLES[@]}" D="${d}")
     echo "${DATASET}, ell = ${ELL}, d = ${d}, results: job ${collect}"
 
     # The code of the tag ALENEX27_AEC, apart from the above; the merge waits for both.
     if [ "${AEC}" = 1 ]
     then
-        aec=$(submit --dependency="afterok:${aec_build}" --nodes=1 --exclusive -t "${NO_MPI_TIME[${d}]}" experiments/mpi/job.sh \
-                  make -k -C experiments/mpi/aec run "${VARIABLES[@]}" D="${d}" "${FILES[@]}" \
-                  THREADS="${AEC_THREADS}" TRIALS="${TRIALS}")
-        echo "${DATASET}, ell = ${ELL}, d = ${d}, ALENEX27_AEC, ${AEC_THREADS} threads: job ${aec}"
-        id=$(submit --dependency="afterany:${collect}:${aec}" -t 00:10:00 experiments/mpi/job.sh \
+        aec_ids=""
+        for trial in $(seq 1 "${TRIALS}")
+        do
+            [ -e "$(aec_perf "${d}" "${trial}")" ] && continue
+            aec=$(submit --dependency="afterok:${aec_build}" --nodes=1 --exclusive -t "${NO_MPI_TIME[${d}]}" experiments/mpi/job.sh \
+                      make -k -C experiments/mpi/aec run "${VARIABLES[@]}" D="${d}" "${FILES[@]}" \
+                      THREADS="${AEC_THREADS}" TRIALS="${TRIALS}" TRIAL="${trial}")
+            echo "${DATASET}, ell = ${ELL}, d = ${d}, ALENEX27_AEC, ${AEC_THREADS} threads, trial ${trial}: job ${aec}"
+            aec_ids="${aec_ids}:${aec}"
+        done
+        id=$(submit --dependency="afterany:${collect}${aec_ids}" -t 00:10:00 experiments/mpi/job.sh \
                  make -C experiments/mpi/aec merge "${VARIABLES[@]}" D="${d}")
         echo "${DATASET}, ell = ${ELL}, d = ${d}, merged with ALENEX27_AEC: job ${id}"
     fi

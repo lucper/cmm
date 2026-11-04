@@ -20,7 +20,7 @@ experiments/mpi/runme.sh
 It shows the parameters of a preset and the jobs they make, lets you change them, and submits the jobs.
 It only submits jobs, of which Slurm decides the order, so nothing has to stay running.
 The keys: `p` the next preset, `1` to `9` and `a` to `d` change a parameter, ⏎ submits (after asking), `n` prints the `sbatch` commands instead, and `q` quits.
-Next to each job, the screen says how many of its runs have finished, which the job skips, and it warns when a build would replace the programs of jobs of the same clone that are queued or running.
+Each run is a job of its own, so that as many run at once as Slurm has nodes for, and a run that has finished gets no job: the screen says how many of each line are done. It also warns when a build would replace the programs of jobs of the same clone that are queued or running.
 
 | Preset | Runs |
 |--------|------|
@@ -51,19 +51,19 @@ The parameters, set by the presets at the top of `runme.sh`:
 | `AEC` | `1` to also run the code of the tag `ALENEX27_AEC`, which only has the support function `x2` |
 | `AEC_THREADS` | threads of the run of the tag |
 | `WILDCARDS` | the numbers $d$ of wildcards to run |
-| `JOBS` | for each number $d$ of wildcards, the jobs of the MPI version, as `<nodes>:<time limit>` |
-| `NO_MPI_TIME` | for each number $d$ of wildcards, the time limit of the runs on 1 node, without MPI |
+| `JOBS` | for each number $d$ of wildcards, the numbers of nodes of the MPI version, with the time limit of each run there, as `<nodes>:<time limit>` |
+| `NO_MPI_TIME` | for each number $d$ of wildcards, the time limit of a run on 1 node without MPI, and of one of the tag |
 
 `runme.sh` submits these jobs:
 
 | Job | Runs | How many | Resources | Starts |
 |-----|------|----------|-----------|--------|
 | Build | `build_snellius.sh` | 1 | 16 cores | at once, if `BUILD=1` |
-| MPI runs | `make -k -C experiments/mpi/010-measure all` | one per $d$ and number of nodes | whole nodes | if the build succeeded |
-| Run without MPI | `make -k -C experiments/mpi/010-measure no-mpi` | one per $d$ | 1 whole node | if the build succeeded |
-| Table of results | `make -C experiments/mpi/020-concat all` | one per $d$ | smallest allocation | when the two above have ended, whether they finished or not |
-| Build of the tag | `make -C experiments/mpi/aec build` | 1, if `AEC=1` | 16 cores | at once |
-| Run of the tag | `make -k -C experiments/mpi/aec run` | one per $d$, if `AEC=1` | 1 whole node | if its build succeeded |
+| MPI runs | `make -k -C experiments/mpi/010-measure all`, with one layout and `TRIAL` | one per $d$, number of nodes, layout, and trial, unless done | whole nodes | if the build succeeded |
+| Run without MPI | `make -k -C experiments/mpi/010-measure no-mpi`, with `TRIAL` | one per $d$ and trial, unless done | 1 whole node | if the build succeeded |
+| Table of results | `make -C experiments/mpi/020-concat all` | one per $d$ | smallest allocation | when the runs of its $d$ have ended, whether they finished or not |
+| Build of the tag | `make -C experiments/mpi/aec build` | 1, if `AEC=1` and a run of the tag is not done | 16 cores | at once |
+| Run of the tag | `make -k -C experiments/mpi/aec run`, with `TRIAL` | one per $d$ and trial, if `AEC=1`, unless done | 1 whole node | if its build succeeded |
 | Merged table | `make -C experiments/mpi/aec merge` | one per $d$, if `AEC=1` | smallest allocation | when the table of results and the run of the tag have ended |
 
 All of them but the build run through `job.sh`, which sets the Slurm options and loads the modules.
@@ -77,7 +77,7 @@ The experiment is a sequence of numbered `make` stages, each consuming the previ
 | `aec/` | The same TSV, with the measurements of the code of the tag |
 
 `make` runs inside the jobs, as `sbatch` returns before a job has run, and Slurm orders the jobs (`--dependency`).
-After a job fails or is killed at its time limit, run `runme.sh` again with the build off: it skips the runs that have finished, and collects the results again.
+After a job fails or is killed at its time limit, run `runme.sh` again with the build off: it submits only the runs that have not finished, and collects the results again.
 A measurement is not redone when the code changes, so move the old results aside first.
 
 ### Layouts

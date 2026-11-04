@@ -19,16 +19,20 @@ usage:
 	@echo "       LAYOUTS=<list of processes per node>x<threads per process>"
 	@echo "       THREADS=<number of threads, for no-mpi>"
 	@echo "       TRIALS=<number of trials>"
+	@echo "       TRIAL=<one trial>, to run only that one, for a job of one run (optional)"
 
 .DELETE_ON_ERROR:
 
 PREFIX := $(DATASET)/$(DATASET).layouts.l$(L)d$(D).$(F).k$(K).n$(NODES)
 
+# The trials: all of them, or only TRIAL, for a job of one run (see runme.sh).
+TRIAL_NUMBERS := $(if $(TRIAL),$(TRIAL),$(shell seq 1 $(TRIALS)))
+
 # One file per layout and trial, in turn. Those that exist are skipped.
-PERFS := $(foreach trial,$(shell seq 1 $(TRIALS)),$(foreach layout,$(LAYOUTS),$(PREFIX).$(layout).trial$(trial).perf))
+PERFS := $(foreach trial,$(TRIAL_NUMBERS),$(foreach layout,$(LAYOUTS),$(PREFIX).$(layout).trial$(trial).perf))
 
 # The current code without MPI, as if it were one more layout, so that 020-concat treats it as the others.
-NO_MPI_PERFS := $(foreach trial,$(shell seq 1 $(TRIALS)),$(PREFIX).nompi$(THREADS).trial$(trial).perf)
+NO_MPI_PERFS := $(foreach trial,$(TRIAL_NUMBERS),$(PREFIX).nompi$(THREADS).trial$(trial).perf)
 
 .PHONY: all no-mpi
 all: $(PERFS)

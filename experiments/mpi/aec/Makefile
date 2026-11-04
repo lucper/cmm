@@ -21,11 +21,13 @@ usage:
 	@echo "       K=<number of top motif pairs>"
 	@echo "       THREADS=<number of threads>, for run"
 	@echo "       TRIALS=<number of trials>, for run"
+	@echo "       TRIAL=<one trial>, to run only that one, for run (optional)"
 
 .DELETE_ON_ERROR:
 
 NAME  := $(DATASET).layouts.l$(L)d$(D).$(F).k$(K)
-PERFS := $(foreach trial,$(shell seq 1 $(TRIALS)),$(DATASET)/$(NAME).n1.aec$(THREADS).trial$(trial).perf)
+TRIAL_NUMBERS := $(if $(TRIAL),$(TRIAL),$(shell seq 1 $(TRIALS)))   # all the trials, or only TRIAL
+PERFS := $(foreach trial,$(TRIAL_NUMBERS),$(DATASET)/$(NAME).n1.aec$(THREADS).trial$(trial).perf)
 
 .PHONY: build run merge
 build: $(CMM_TEST)
