@@ -1,6 +1,7 @@
 #include "exact_algorithm.hpp"
 
 #include <algorithm>
+#include <chrono>
 #include <cstdint>
 #include <cstdio>
 #include <exception>
@@ -11,9 +12,24 @@
 #include <stdexcept>
 #include <string>
 #include <utility>
+#include <unistd.h>
+#ifdef __linux__
+#include <sched.h>
+#endif
 #include "esa.hpp"
 #include "motif_pair_searcher.hpp"
 #include "progress_bar.hpp"
+
+// The core the calling thread runs on, for the temporary timers of main_algo; -1 where the system
+// does not tell (only Linux does).
+static int current_cpu()
+{
+#ifdef __linux__
+    return sched_getcpu();
+#else
+    return -1;
+#endif
+}
 
 /* Returns the wildcard combinations of d of the positions {0,...,ell-1}, in a fixed order.
  *
@@ -152,8 +168,13 @@ motif_pair_search_result_t main_algo(const std::vector<std::string>& V,
 
     progress_bar_t bar(configurations.size());
 
+    // Temporary timers: for each configuration, its thread, the core it started and ended on, its
+    // start in seconds since the epoch (the same clock in all the processes of a node), and its
+    // duration in seconds.
     std::vector<double> config_seconds(configurations.size());
+    std::vector<double> config_start(configurations.size());
     std::vector<int> config_thread(configurations.size());
+    std::vector<int> config_cpu_start(configurations.size()), config_cpu_end(configurations.size());
 
     #pragma omp parallel
     {
@@ -172,9 +193,13 @@ motif_pair_search_result_t main_algo(const std::vector<std::string>& V,
     #pragma omp for schedule(dynamic)
     for (size_t c = 0; c < configurations.size(); c++) {
         auto [d_u, d_v] = configurations[c];
+        config_cpu_start[c] = current_cpu();
+        config_start[c] = std::chrono::duration<double>(
+            std::chrono::system_clock::now().time_since_epoch()).count();
         const double start = omp_get_wtime();
         searcher.search_configuration(all_H[d_u], all_H[d_v]);
         config_seconds[c] = omp_get_wtime() - start;
+        config_cpu_end[c] = current_cpu();
         config_thread[c] = omp_get_thread_num();
 
         bar.advance();
@@ -184,12 +209,24 @@ motif_pair_search_result_t main_algo(const std::vector<std::string>& V,
     if (error)
         std::rethrow_exception(error);
 
+    // One line per configuration, tab-separated, with the duration last:
+    // p<part>t<thread>  conf<place in the order>  <node>  cpu<core>[to<core>]  start<epoch s>  <s>
+    // cpu17to18 says that the thread moved from core 17 to core 18 during the configuration.
+    char host[256] = "unknown";
+    gethostname(host, sizeof(host) - 1);
     const size_t first_config = part * (all_H.size() * (all_H.size() + 1) / 2) / num_parts;
     std::string config_lines;
-    for (size_t c = 0; c < configurations.size(); c++)
+    for (size_t c = 0; c < configurations.size(); c++) {
+        char start[32];
+        std::snprintf(start, sizeof(start), "%.3f", config_start[c]);
+        std::string cpu = "cpu" + std::to_string(config_cpu_start[c]);
+        if (config_cpu_end[c] != config_cpu_start[c])
+            cpu += "to" + std::to_string(config_cpu_end[c]);
         config_lines += "p" + std::to_string(part) + "t" + std::to_string(config_thread[c]) +
                         "\tconf" + std::to_string(first_config + c) +
+                        "\t" + host + "\t" + cpu + "\tstart" + start +
                         "\t" + std::to_string(config_seconds[c]) + "\n";
+    }
     std::fputs(config_lines.c_str(), stderr);
 
     motif_pair_search_result_t result;
