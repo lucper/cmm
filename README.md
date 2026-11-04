@@ -91,6 +91,9 @@ ALRxx AxRxM 0.17
 
 Motif pairs with equal scores are listed in lexicographic order of the first motif, then of the second (byte order, so the wildcard `x` comes after the letters).
 
+### MPI version
+To run the search on several processes, possibly on several nodes, see [`experiments/mpi/README.md`](experiments/mpi/README.md).
+
 ## Reproducing the experiments
 The script `runme.sh` runs all the experiments of Section 5 (**Experimental Results**) and collects the results in `output/full/` (or `output/subset/` with `-s`).
 It has two modes:

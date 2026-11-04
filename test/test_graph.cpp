@@ -4,6 +4,8 @@
 
 #include <algorithm>
 #include <fstream>
+#include <iterator>
+#include <sstream>
 #include <string>
 #include <utility>
 #include <vector>
@@ -78,5 +80,27 @@ TEST_CASE("read_graph_files makes one edge of each line of the interactions file
             }
         }
         CHECK(nonzeros == 2 * lines);
+    }
+}
+
+// The contents of a file, as a string.
+static std::string contents(const std::string& path) {
+    std::ifstream in(path);
+    return std::string(std::istreambuf_iterator<char>(in), std::istreambuf_iterator<char>());
+}
+
+TEST_CASE("read_graph from bytes in memory gives the same input as read_graph_files") {
+    for (const std::string name : {"readme", "random", "complete", "isolated", "same_node"}) {
+        INFO(name);
+        std::string fa_path = "instances/" + name + ".fa", int_path = "instances/" + name + ".int";
+        auto [V, G] = read_graph_files(fa_path, int_path);
+        std::istringstream fasta(contents(fa_path)), edges(contents(int_path));
+        auto [V_mem, G_mem] = read_graph(fasta, fa_path, edges, int_path);
+
+        CHECK(V_mem == V);
+        REQUIRE(G_mem.get_num_nodes() == G.get_num_nodes());
+        CHECK(G_mem.get_num_edges() == G.get_num_edges());
+        for (uint32_t u = 0; u < G.get_num_nodes(); u++)
+            CHECK(neighbours(G_mem, u) == neighbours(G, u));
     }
 }

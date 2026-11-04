@@ -5,6 +5,7 @@
 #include <exception>
 #include <iostream>
 #include <optional>
+#include <stdexcept>
 #include <sys/resource.h>
 #include "data_import.hpp"
 #include "exact_algorithm.hpp"
@@ -12,10 +13,12 @@
 
 #ifdef CMM_MPI
 #include <mpi.h>
+#include "exact_algorithm_mpi.hpp"
 #endif
 
 int main(int argc, char* argv[]) {
     int status = EXIT_SUCCESS;
+    int process = 0;
 
 #ifdef CMM_MPI
     // Only the main thread calls MPI, outside the threads of main_algo.
@@ -25,6 +28,12 @@ int main(int argc, char* argv[]) {
         std::cerr << "MPI does not support threads (MPI_THREAD_FUNNELED)." << std::endl;
         status = EXIT_FAILURE;
     }
+    // Every process parses the same options and input, so only process 0 prints (see the errors below).
+    MPI_Comm_rank(MPI_COMM_WORLD, &process);
+    if (process != 0) {
+        std::cout.setstate(std::ios::failbit);
+        std::cerr.setstate(std::ios::failbit);
+    }
 #endif
 
     std::optional<cmm_options_t> opts;
@@ -32,25 +41,37 @@ int main(int argc, char* argv[]) {
         opts = parse_options(argc, argv, status);
     if (opts) {
         try {
+#ifdef CMM_MPI
+            auto [V, G] = read_graph_mpi(opts->path_to_nodes, opts->path_to_edges, MPI_COMM_WORLD);
+#else
             auto [V, G] = read_graph_files(opts->path_to_nodes, opts->path_to_edges);
+#endif
 
             auto start_time = std::chrono::steady_clock::now();
 
+#ifdef CMM_MPI
+            [[maybe_unused]] auto [solution, stats] = (opts->supp_func == "E")
+                ? main_algo_mpi<sort_by_countE_t>(V, G, opts->ell, opts->d, opts->k, opts->num_threads, MPI_COMM_WORLD)
+                : main_algo_mpi<sort_by_x2_t>(V, G, opts->ell, opts->d, opts->k, opts->num_threads, MPI_COMM_WORLD);
+#else
             [[maybe_unused]] auto [solution, stats] = (opts->supp_func == "E")
                 ? main_algo<sort_by_countE_t>(V, G, opts->ell, opts->d, opts->k, opts->num_threads)
                 : main_algo<sort_by_x2_t>(V, G, opts->ell, opts->d, opts->k, opts->num_threads);
+#endif
 
             auto now = std::chrono::steady_clock::now();
             auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(now - start_time).count();
             int h = elapsed / 3600;
             int m = (elapsed % 3600) / 60;
             int s = elapsed % 60;
-            std::fprintf(stderr, "Total elapsed time: [%dh:%dm:%ds]\n", h, m, s);
+            if (process == 0) {
+                std::fprintf(stderr, "Total elapsed time: [%dh:%dm:%ds]\n", h, m, s);
 
-            struct rusage usage;
-            getrusage(RUSAGE_SELF, &usage);
-            long peak_ram_kb = usage.ru_maxrss;
-            std::fprintf(stderr, "Peak RAM: %ld KB\n", peak_ram_kb);
+                struct rusage usage;
+                getrusage(RUSAGE_SELF, &usage);
+                long peak_ram_kb = usage.ru_maxrss;
+                std::fprintf(stderr, "Peak RAM: %ld KB\n", peak_ram_kb);
+            }
 
             // The progress bar of main_algo leaves the program in the system locale.
             std::setlocale(LC_NUMERIC, "C");
@@ -62,9 +83,20 @@ int main(int argc, char* argv[]) {
                 std::fprintf(stdout, "%s %s %.2f\n",
                              mp.X.c_str(), mp.Y.c_str(), f);
             }
-        } catch (const std::exception& e) {
+        } catch (const std::invalid_argument& e) {
+            // An error of the input, the same on every process.
             std::cerr << e.what() << std::endl;
             status = EXIT_FAILURE;
+        } catch (const std::exception& e) {
+#ifdef CMM_MPI
+            // Maybe on this process only (e.g. out of memory), and the others would wait for it in a
+            // collective, so this stops them all.
+            std::fprintf(stderr, "Process %d: %s\n", process, e.what());
+            MPI_Abort(MPI_COMM_WORLD, EXIT_FAILURE);
+#else
+            std::cerr << e.what() << std::endl;
+            status = EXIT_FAILURE;
+#endif
         }
     }
 

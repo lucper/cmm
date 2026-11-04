@@ -20,15 +20,14 @@ static void flush_fasta_entry(const std::string &current_id,
     result.sequences.push_back(std::move(current_seq));
 }
 
-graph_input_t read_graph_files(const std::string &labels_path,
-                               const std::string &edge_path) {
+graph_input_t read_graph(std::istream &fasta, const std::string &labels_name,
+                         std::istream &edges, const std::string &edge_name) {
     graph_input_t result;
     std::unordered_map<std::string, uint32_t> id_to_index;
 
     {
-        std::ifstream fasta(labels_path);
-        if (!fasta.is_open())
-            throw std::runtime_error("Cannot open FASTA file: " + labels_path);
+        if (!fasta)
+            throw std::runtime_error("Cannot open FASTA file: " + labels_name);
 
         std::string line, current_id, current_seq;
 
@@ -55,12 +54,11 @@ graph_input_t read_graph_files(const std::string &labels_path,
     }
 
     if (result.sequences.empty())
-        throw std::runtime_error("No sequences found in FASTA file: " + labels_path);
+        throw std::runtime_error("No sequences found in FASTA file: " + labels_name);
 
     {
-        std::ifstream edges(edge_path);
-        if (!edges.is_open())
-            throw std::runtime_error("Cannot open interactions file: " + edge_path);
+        if (!edges)
+            throw std::runtime_error("Cannot open interactions file: " + edge_name);
 
         std::vector<std::pair<uint32_t, uint32_t>> edge_list;
         std::string line;
@@ -85,9 +83,16 @@ graph_input_t read_graph_files(const std::string &labels_path,
         }
 
         if (edge_list.empty())
-            throw std::runtime_error("No interactions found in interactions file: " + edge_path);
+            throw std::runtime_error("No interactions found in interactions file: " + edge_name);
         result.graph = graph_t(result.sequences.size(), edge_list);
     }
 
     return result;
+}
+
+graph_input_t read_graph_files(const std::string &labels_path,
+                               const std::string &edge_path) {
+    // A file that cannot be opened leaves its stream failed, which read_graph reports.
+    std::ifstream fasta(labels_path), edges(edge_path);
+    return read_graph(fasta, labels_path, edges, edge_path);
 }

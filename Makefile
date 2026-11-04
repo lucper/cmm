@@ -26,10 +26,14 @@ all: cmm
 cmm: $(OBJS)
 	$(CXX) $(LDFLAGS) -o $@ $^
 
-cmm_mpi: build/main_mpi.o build/options_parsing.o $(CORE_OBJS)
+cmm_mpi: build/main_mpi.o build/options_parsing.o build/exact_algorithm_mpi.o $(CORE_OBJS)
 	$(MPICXX) $(LDFLAGS) -o $@ $^
 
 build/main_mpi.o: src/main.cpp | build
+	$(MPICXX) $(CXXFLAGS) $(INCLUDES) $(DEPFLAGS) $(MPIFLAGS) -fopenmp -c -o $@ $<
+
+# The MPI version of the search, in the MPI builds only.
+build/exact_algorithm_mpi.o: src/exact_algorithm_mpi.cpp | build
 	$(MPICXX) $(CXXFLAGS) $(INCLUDES) $(DEPFLAGS) $(MPIFLAGS) -fopenmp -c -o $@ $<
 
 build/%.o: src/%.cpp | build
@@ -42,12 +46,17 @@ build:
 	mkdir -p $@
 
 # The headers each object depends on, written by the compiler (-MMD) when it is built.
--include $(OBJS:.o=.d) build/main_mpi.d
+-include $(OBJS:.o=.d) build/main_mpi.d build/exact_algorithm_mpi.d
 
 # Runs the tests of cmm and cmm_test (see test/).
 .PHONY: test
 test:
 	$(MAKE) -C test
+
+# Runs the tests of the MPI version (with mpicxx and mpirun; see test/).
+.PHONY: test_mpi
+test_mpi:
+	$(MAKE) -C test check_mpi
 
 clean:
 	rm -rf build cmm cmm_mpi

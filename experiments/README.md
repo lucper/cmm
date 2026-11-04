@@ -85,6 +85,10 @@ The run is resumable: completed measurements are skipped, so an interrupted run 
 Measurements land in `rq3-5_efficiency/010-measure/`, the TSVs of each research question in `rq3-5_efficiency/020-concat/`, and the plots in `rq3-5_efficiency/030-plot/`, all with the parameters in their names.
 See `rq3-5_efficiency/README.md` for the parameters and output format.
 
+## The MPI version
+
+The MPI version of the programs, its job scripts and its experiments are described in [`mpi/README.md`](mpi/README.md).
+
 ## Previewing the plots
 
 The plots of both suites are LaTeX figures (a `.tex` file with the text and a `.pdf` with the graphics, from the `cairolatex` terminal of `gnuplot`), meant to be included in a LaTeX document.
