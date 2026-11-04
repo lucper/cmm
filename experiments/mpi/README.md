@@ -17,13 +17,29 @@ On a login node:
 experiments/mpi/runme.sh
 ```
 
+It shows the parameters of a preset and the jobs they make, lets you change them, and submits the jobs.
 It only submits jobs, of which Slurm decides the order, so nothing has to stay running.
-All the parameters are at the top of `runme.sh`, to be edited:
+The keys: `p` the next preset, `1` to `9` and `a` to `d` change a parameter, ⏎ submits (after asking), `n` prints the `sbatch` commands instead, and `q` quits.
+Next to each job, the screen says how many of its runs have finished, which the job skips, and it warns when a build would replace the programs of jobs of the same clone that are queued or running.
+
+| Preset | Runs |
+|--------|------|
+| `main` (the default) | the layouts on 1, 2, 4, and 8 nodes, the run without MPI, and the code of the tag `ALENEX27_AEC` |
+| `timers` | the layouts on 1 node and the run without MPI, under the name `human_ii_timers`, for the time of each configuration (see `simulate_tasks.jl`) |
+
+Without the screen:
+```bash
+experiments/mpi/runme.sh --yes                       # submit the preset main as it is
+experiments/mpi/runme.sh --preset timers --yes       # or another preset
+experiments/mpi/runme.sh --yes --dry-run             # print the sbatch commands, and submit nothing
+```
+
+The parameters, set by the presets at the top of `runme.sh`:
 
 | Variable | Meaning |
 |----------|---------|
-| `BUILD` | `1` to submit the build; set it to `0` while jobs of the same clone are running, as a build replaces their programs |
-| `DATASET` | dataset name (used in every output filename) |
+| `BUILD` | `1` to submit the build; turn it off while jobs of the same clone are running, as a build replaces their programs |
+| `DATASET` | name of the results (used in every output filename); change it to run again the runs that have finished |
 | `FASTA` | FASTA file with protein sequences |
 | `INTS` | interactions file (`u v` per line) |
 | `ELL` | motif length $\ell$ |
@@ -34,6 +50,7 @@ All the parameters are at the top of `runme.sh`, to be edited:
 | `TRIALS` | number of trials per configuration |
 | `AEC` | `1` to also run the code of the tag `ALENEX27_AEC`, which only has the support function `x2` |
 | `AEC_THREADS` | threads of the run of the tag |
+| `WILDCARDS` | the numbers $d$ of wildcards to run |
 | `JOBS` | for each number $d$ of wildcards, the jobs of the MPI version, as `<nodes>:<time limit>` |
 | `NO_MPI_TIME` | for each number $d$ of wildcards, the time limit of the runs on 1 node, without MPI |
 
@@ -60,7 +77,7 @@ The experiment is a sequence of numbered `make` stages, each consuming the previ
 | `aec/` | The same TSV, with the measurements of the code of the tag |
 
 `make` runs inside the jobs, as `sbatch` returns before a job has run, and Slurm orders the jobs (`--dependency`).
-After a job fails or is killed at its time limit, run `runme.sh` again with `BUILD=0`: it skips the runs that have finished, and collects the results again.
+After a job fails or is killed at its time limit, run `runme.sh` again with the build off: it skips the runs that have finished, and collects the results again.
 A measurement is not redone when the code changes, so move the old results aside first.
 
 ### Layouts
@@ -105,7 +122,7 @@ Any `FAILED` there needs a look, and so does a thread that shares its core.
 
 | File / dir | Role |
 |------------|------|
-| `runme.sh` | Driver: holds the parameters, and submits all the jobs. |
+| `runme.sh` | Driver: holds the presets of the parameters, shows and edits them, and submits all the jobs. |
 | `job.sh` | A job: the Slurm settings and modules, around the given command. |
 | `build_snellius.sh` | The job that builds the programs, and unpacks the datasets from SLIDER. |
 | `check_snellius.sh` | The job that checks a machine. |
