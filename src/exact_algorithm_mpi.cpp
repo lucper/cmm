@@ -196,8 +196,9 @@ motif_pair_search_result_t main_algo_mpi(const std::vector<std::string>& V,
         MPI_Gather(&local_seconds, 1, MPI_DOUBLE, search_seconds->data(), 1, MPI_DOUBLE, 0, comm);
     }
 
+    result.stats.configuration_times = std::move(local.stats.configuration_times);
     if (process != 0)
-        return {};
+        return result;
     result.stats.sum_max_rank_X = sums[0];
     result.stats.num_configurations = sums[1];
     result.stats.num_threads = sums[2];

@@ -1,8 +1,13 @@
 #include "motif_pair_searcher.hpp"
 
+#include <chrono>
 #include <cmath>
+#include <omp.h>
 #include <string_view>
 #include <utility>
+#ifdef __linux__
+#include <sched.h>
+#endif
 
 static std::string apply_mask(std::string_view motif, const std::vector<uint16_t>& H, char wildcard = '*')
 {
@@ -10,6 +15,33 @@ static std::string apply_mask(std::string_view motif, const std::vector<uint16_t
     for (auto pos : H)
         masked_motif[pos] = wildcard;
     return masked_motif;
+}
+
+// The core the calling thread runs on; -1 where the system does not tell (only Linux does).
+static int current_cpu()
+{
+#ifdef __linux__
+    return sched_getcpu();
+#else
+    return -1;
+#endif
+}
+
+template <typename Comparator>
+void motif_pair_searcher_t<Comparator>::time_configuration(const std::vector<uint16_t>& H_u,
+                                                           const std::vector<uint16_t>& H_v,
+                                                           uint64_t configuration)
+{
+    configuration_time_t time;
+    time.configuration = configuration;
+    time.thread = omp_get_thread_num();
+    time.cpu_start = current_cpu();
+    time.start = std::chrono::duration<double>(std::chrono::system_clock::now().time_since_epoch()).count();
+    const double start = omp_get_wtime();
+    search_configuration(H_u, H_v);
+    time.seconds = omp_get_wtime() - start;
+    time.cpu_end = current_cpu();
+    stats.configuration_times.push_back(time);
 }
 
 template <typename Comparator>

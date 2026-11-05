@@ -44,8 +44,10 @@ graph_input_t read_graph_mpi(const std::string& labels_path, const std::string& 
  * Output:
  * On process 0, the best k motif pairs, best first, and the counters of all the processes, as if
  * one search had counted them (num_threads: the threads of all the processes); on the others, an
- * empty result. If given, search_seconds has, on process 0, the seconds of the search of each process,
- * by process number, which show how balanced the blocks are; on the others, it is empty. */
+ * empty result. Only stats.configuration_times differs: on every process, it has the times of the
+ * configurations of that process. If given, search_seconds has, on process 0, the seconds of the
+ * search of each process, by process number, which show how balanced the blocks are; on the others,
+ * it is empty. */
 template <typename Tag>
 motif_pair_search_result_t main_algo_mpi(const std::vector<std::string>& V,
                                          const graph_t& G,

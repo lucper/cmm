@@ -2,6 +2,7 @@
 #include <chrono>
 #include <clocale>
 #include <cstdint>
+#include <cstdio>
 #include <filesystem>
 #include <fstream>
 #include <iomanip>
@@ -9,6 +10,7 @@
 #include <stdexcept>
 #include <string>
 #include <sys/resource.h>
+#include <unistd.h>
 #include <vector>
 
 #include "exact_algorithm.hpp"
@@ -21,6 +23,31 @@
 #endif
 
 namespace fs = std::filesystem;
+
+// Prints to stderr the times of the configurations of this process, by place in the order, one per
+// line, tab-separated:
+// p<process>t<thread>  conf<place in the order>  <node>  cpu<core>[to<core>]  start<epoch s>  <s>
+// cpu17to18 says that the thread moved from core 17 to core 18 during the configuration.
+static void print_configuration_times(std::vector<configuration_time_t> times, int process) {
+    std::sort(times.begin(), times.end(), [](const configuration_time_t& a, const configuration_time_t& b) {
+        return a.configuration < b.configuration;
+    });
+    char host[256] = "unknown";
+    gethostname(host, sizeof(host) - 1);
+    std::string lines;
+    for (const auto& time : times) {
+        char start[32];
+        std::snprintf(start, sizeof(start), "%.3f", time.start);
+        std::string cpu = "cpu" + std::to_string(time.cpu_start);
+        if (time.cpu_end != time.cpu_start)
+            cpu += "to" + std::to_string(time.cpu_end);
+        lines += "p" + std::to_string(process) + "t" + std::to_string(time.thread) +
+                 "\tconf" + std::to_string(time.configuration) +
+                 "\t" + host + "\t" + cpu + "\tstart" + start +
+                 "\t" + std::to_string(time.seconds) + "\n";
+    }
+    std::fputs(lines.c_str(), stderr);
+}
 
 // The program, on process process (0 without MPI). Only process 0 prints and writes.
 static int run(int argc, char* argv[], int process) {
@@ -128,13 +155,15 @@ static int run(int argc, char* argv[], int process) {
         MPI_Reduce(&local_peak_ram_kb, &sum_peak_ram_kb, 1, MPI_LONG, MPI_SUM, 0, MPI_COMM_WORLD);
 #endif
 
+        // The progress bar of main_algo leaves the program in the system locale.
+        std::setlocale(LC_NUMERIC, "C");
+
+        print_configuration_times(stats.configuration_times, process);
+
         if (process != 0)
             return EXIT_SUCCESS;
 
         std::fprintf(stderr, "Done: %ld ms, %ld KB\n", ms, peak_ram_kb);
-
-        // The progress bar of main_algo leaves the program in the system locale.
-        std::setlocale(LC_NUMERIC, "C");
 
         std::printf("%s\t%.4f\t%zu\t%zu\t%d\t%d\t%zu\t%zu\t%.4f\t%d\t%zu\t%ld\t%ld",
             instance_name.c_str(),

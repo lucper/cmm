@@ -74,6 +74,15 @@ public:
      * Wildcard combinations H_u and H_v. */
     void search_configuration(const std::vector<uint16_t>& H_u, const std::vector<uint16_t>& H_v);
 
+    /* Searches one wildcard configuration, as search_configuration, and records its time in the
+     * counters.
+     *
+     * Input:
+     * Wildcard combinations H_u and H_v, and INT place configuration of the configuration in the
+     * order of all of them. */
+    void time_configuration(const std::vector<uint16_t>& H_u, const std::vector<uint16_t>& H_v,
+                            uint64_t configuration);
+
     /* Returns the best k pairs found, worst first, and empties them.
      *
      * Output:
