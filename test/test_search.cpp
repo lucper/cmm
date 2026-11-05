@@ -7,6 +7,7 @@
 #include <cstdio>
 #include <fstream>
 #include <map>
+#include <numeric>
 #include <set>
 
 // A motif pair of an expected output: X, Y, and its scores, x2 to 17 significant digits.
@@ -127,6 +128,28 @@ TEST_CASE("the pairs of the parts of the configurations, merged, are the pairs o
             }
             check_expected(c, merge(c, std::move(pairs)));
             CHECK(stats.num_configurations == search(c, 1).stats.num_configurations);
+        }
+}
+
+TEST_CASE("the search records the time of each of its configurations, by place in the order") {
+    for (const auto& c : all_cases())
+        for (size_t num_parts : {1, 3}) {
+            INFO(c.name(), ", ", num_parts, " parts");
+            const size_t num_configurations = search(c, 1).stats.num_configurations;
+            std::vector<uint64_t> places;
+            for (size_t part = 0; part < num_parts; part++) {
+                auto result = search(c, 2, num_parts, part);
+                CHECK(result.stats.configuration_times.size() == result.stats.num_configurations);
+                for (const auto& time : result.stats.configuration_times) {
+                    CHECK(time.seconds >= 0.0);
+                    CHECK((time.thread == 0 || time.thread == 1));
+                    places.push_back(time.configuration);
+                }
+            }
+            std::sort(places.begin(), places.end());
+            std::vector<uint64_t> expected(num_configurations);
+            std::iota(expected.begin(), expected.end(), 0);
+            CHECK(places == expected);
         }
 }
 

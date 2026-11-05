@@ -6,6 +6,7 @@
 #include <cstdint>
 #include <string>
 #include <type_traits>
+#include <vector>
 
 /* A motif pair (X, Y) found by the search, with its counts and score. */
 struct motif_pair_record_t {
@@ -16,6 +17,15 @@ struct motif_pair_record_t {
     size_t countX, countY;    // nodes where X occurs, and where Y occurs
     size_t countXY;           // nodes where both occur
     double x2;                // (countE - countE_bar)^2 / countE_bar if countE > countE_bar > 0, else 0
+};
+
+/* When and where one wildcard configuration was searched. */
+struct configuration_time_t {
+    uint64_t configuration;  // its place in the shuffled order of all the configurations
+    int thread;              // the thread that searched it
+    int cpu_start, cpu_end;  // the core at its start and at its end; -1 if the system does not tell
+    double start;            // its start, in seconds since the epoch
+    double seconds;          // its duration
 };
 
 /* Counters of a search, reported by the benchmark program cmm_test. For each wildcard
@@ -31,6 +41,7 @@ struct motif_pair_search_stats_t {
     uint64_t sum_max_rank_X = 0;           // sum over the configurations of the maximum rank of X
     uint64_t num_configurations = 0;       // configurations searched
     size_t num_threads = 0;                // threads spawned
+    std::vector<configuration_time_t> configuration_times;  // of the configurations, in no fixed order
 
     /* Records the maximum rank of X of one more configuration.
      *
@@ -53,6 +64,8 @@ struct motif_pair_search_stats_t {
         max_max_rank_X = std::max(max_max_rank_X, other.max_max_rank_X);
         sum_max_rank_X += other.sum_max_rank_X;
         num_configurations += other.num_configurations;
+        configuration_times.insert(configuration_times.end(), other.configuration_times.begin(),
+                                   other.configuration_times.end());
     }
 };
 

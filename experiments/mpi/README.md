@@ -17,67 +17,73 @@ On a login node:
 experiments/mpi/runme.sh
 ```
 
+It shows the parameters of a preset and the jobs they make, lets you change them, and submits the jobs.
 It only submits jobs, of which Slurm decides the order, so nothing has to stay running.
-All the parameters are at the top of `runme.sh`, to be edited:
+The keys: `p` back to the preset, `1` to `9` and `a` to `c` change a parameter, ⏎ submits (after asking), `n` prints the `sbatch` commands instead, and `q` quits.
+Each run is a job of its own, so that as many run at once as Slurm has nodes for, and a run that has finished gets no job: the screen says how many of each line are done. It also warns when a build would replace the programs of jobs of the same clone that are queued or running.
+
+The preset `main`, the only one, runs the layout `1x128` on 1, 2, 4, and 8 nodes, and the code of the tag `ALENEX27_AEC`.
+The other layouts are for testing: add them with the key `a`, e.g., `1x128 8x16 2x64`, and with the same name of the results, only the new runs get jobs, and the table has them all (see [`simulate/`](simulate/README.md) for the layouts).
+
+Without the screen:
+```bash
+experiments/mpi/runme.sh --yes              # submit the preset main as it is
+experiments/mpi/runme.sh --yes --dry-run    # print the sbatch commands, and submit nothing
+```
+
+The parameters, set by the presets at the top of `runme.sh`:
 
 | Variable | Meaning |
 |----------|---------|
-| `BUILD` | `1` to submit the build; set it to `0` while jobs of the same clone are running, as a build replaces their programs |
-| `DATASET` | dataset name (used in every output filename) |
+| `BUILD` | `1` to submit the build; turn it off while jobs of the same clone are running, as a build replaces their programs |
+| `DATASET` | name of the results (used in every output filename); it does not choose the input, and changing it runs again the runs that have finished |
 | `FASTA` | FASTA file with protein sequences |
 | `INTS` | interactions file (`u v` per line) |
 | `ELL` | motif length $\ell$ |
 | `SUPPORT` | support function, `E` or `x2` |
 | `K` | number $K$ of top motif pairs |
-| `LAYOUTS` | layouts of the MPI version, as `<processes per node>x<threads per process>` (e.g., `8x16`) |
-| `THREADS` | threads of the run without MPI |
+| `LAYOUTS` | layouts of the MPI version, as `<processes per node>x<threads per process>` |
 | `TRIALS` | number of trials per configuration |
 | `AEC` | `1` to also run the code of the tag `ALENEX27_AEC`, which only has the support function `x2` |
 | `AEC_THREADS` | threads of the run of the tag |
-| `JOBS` | for each number $d$ of wildcards, the jobs of the MPI version, as `<nodes>:<time limit>` |
-| `NO_MPI_TIME` | for each number $d$ of wildcards, the time limit of the runs on 1 node, without MPI |
+| `WILDCARDS` | the numbers $d$ of wildcards to run |
+| `JOBS` | for each number $d$ of wildcards, the numbers of nodes of the MPI version, with the time limit of each run there, as `<nodes>:<time limit>` |
+| `AEC_TIME` | for each number $d$ of wildcards, the time limit of a run of the tag |
 
 `runme.sh` submits these jobs:
 
 | Job | Runs | How many | Resources | Starts |
 |-----|------|----------|-----------|--------|
 | Build | `build_snellius.sh` | 1 | 16 cores | at once, if `BUILD=1` |
-| MPI runs | `make -k -C experiments/mpi/010-measure all` | one per $d$ and number of nodes | whole nodes | if the build succeeded |
-| Run without MPI | `make -k -C experiments/mpi/010-measure no-mpi` | one per $d$ | 1 whole node | if the build succeeded |
-| Table of results | `make -C experiments/mpi/020-concat all` | one per $d$ | smallest allocation | when the two above have ended, whether they finished or not |
-| Build of the tag | `make -C experiments/mpi/aec build` | 1, if `AEC=1` | 16 cores | at once |
-| Run of the tag | `make -k -C experiments/mpi/aec run` | one per $d$, if `AEC=1` | 1 whole node | if its build succeeded |
-| Merged table | `make -C experiments/mpi/aec merge` | one per $d$, if `AEC=1` | smallest allocation | when the table of results and the run of the tag have ended |
+| MPI runs | `make -k -C experiments/mpi/010-measure all`, with one layout and `TRIAL` | one per $d$, number of nodes, layout, and trial, unless done | whole nodes | if the build succeeded |
+| Table of results | `make -C experiments/mpi/020-concat all` | one per $d$ | smallest allocation | when the runs of its $d$ have ended, whether they finished or not |
+| Build of the tag | `make -C experiments/mpi/025-aec build` | 1, if `AEC=1` and a run of the tag is not done | 16 cores | at once |
+| Run of the tag | `make -k -C experiments/mpi/025-aec run`, with `TRIAL` | one per $d$ and trial, if `AEC=1`, unless done | 1 whole node | if its build succeeded |
+| Merged table | `make -C experiments/mpi/025-aec merge` | one per $d$, if `AEC=1` | smallest allocation | when the table of results and the run of the tag have ended |
 
 All of them but the build run through `job.sh`, which sets the Slurm options and loads the modules.
 
-The experiment is a sequence of numbered `make` stages, each consuming the previous stage's output, and `aec/` is a separate check that reads the result of the last one:
+The experiment is a sequence of numbered `make` stages, each consuming the previous stage's output:
 
 | Directory | Produces |
 |-----------|----------|
-| `010-measure/` | One measurement per file, for each layout and trial, and for the run without MPI |
+| `010-measure/` | One measurement per file, for each number of nodes, layout, and trial |
 | `020-concat/` | One TSV per dataset, $\ell$, $d$, support function, and $K$, with the measurements of all the jobs, and a check that they found the same pairs |
-| `aec/` | The same TSV, with the measurements of the code of the tag |
+| `025-aec/` | The same TSV, with the measurements of the code of the tag `ALENEX27_AEC`, a baseline on one node |
 
 `make` runs inside the jobs, as `sbatch` returns before a job has run, and Slurm orders the jobs (`--dependency`).
-After a job fails or is killed at its time limit, run `runme.sh` again with `BUILD=0`: it skips the runs that have finished, and collects the results again.
+After a job fails or is killed at its time limit, run `runme.sh` again with the build off: it submits only the runs that have not finished, and collects the results again.
 A measurement is not redone when the code changes, so move the old results aside first.
 
-### Layouts
+The simulation of the layouts, for testing and benchmarking, is in [`simulate/`](simulate/README.md); no job runs it, as it runs on your own machine.
 
-The same program can divide the cores of a node in several ways, which differ only in how it is launched.
-On the 128 cores of a `rome` node:
+### Copying the results
 
-| Layout | Processes per node | Threads per process | One process per |
-|--------|--------------------|---------------------|-----------------|
-| `8x16` | 8 | 16 | NUMA domain |
-| `2x64` | 2 | 64 | socket |
-| `1x128` | 1 | 128 | node |
-
-Slurm assigns consecutive cores to each process (`--distribution=block:block`), which in these layouts places each process within its NUMA domain or socket.
-The jobs do not check this.
-So, on a new partition, run `check_snellius.sh` first, which logs `FAILED` if a process spans several NUMA domains.
-You can also check a running experiment with `grep cpu-bind experiments/mpi/job_*.log`: with one process per domain of 16 cores, each process should show one block of 16 consecutive cores, such as `0xffff` or `0xffff0000`.
+If the results are on Snellius, the helper `sync-logs.sh` copies them to the same directories on your machine.
+It copies the logs of the jobs, `010-measure/`, `020-concat/` and `025-aec/`, deletes nothing, and needs `snellius` as a host in your SSH configuration, or `HOST`, and `REMOTE` if your clone is not `cmm`:
+```bash
+experiments/mpi/sync-logs.sh -n    # options go to rsync: -n only lists what it would copy
+```
 
 ### Checking a machine
 
@@ -105,14 +111,15 @@ Any `FAILED` there needs a look, and so does a thread that shares its core.
 
 | File / dir | Role |
 |------------|------|
-| `runme.sh` | Driver: holds the parameters, and submits all the jobs. |
+| `runme.sh` | Driver of the main pipeline: holds its parameters, and submits all the jobs. |
 | `job.sh` | A job: the Slurm settings and modules, around the given command. |
 | `build_snellius.sh` | The job that builds the programs, and unpacks the datasets from SLIDER. |
 | `check_snellius.sh` | The job that checks a machine. |
+| `sync-logs.sh` | A helper that copies the logs and results of Snellius to your machine. |
 | `<NNN>-*/` | The numbered pipeline stages, each with its own `Makefile`. |
-| `aec/` | The check of the code of the tag, with its own `Makefile`. |
-| `aec/source/` | The code of the tag, built by `make build` (generated); remove it to build again on another partition. |
-| `010-measure/<dataset>/`, `aec/<dataset>/` | The measurements and solutions (generated). |
+| `025-aec/source/` | The code of the tag, built by `make build` (generated); remove it to build again on another partition. |
+| `010-measure/<dataset>/`, `025-aec/<dataset>/` | The measurements and solutions (generated). |
+| `simulate/` | The simulation of the layouts, with its own `README.md`. |
 | `job_<job id>.log`, `build_<job id>.log`, `check_<job id>.log` | The logs of the jobs (generated), with the cores of the processes of each run. |
 
 ## Output format
@@ -124,8 +131,9 @@ A representative name, of a measurement in `010-measure/`, with its solution in 
 <dataset>/<dataset>.layouts.l<L>d<D>.<F>.k<K>.n<nodes>.<layout>.trial<i>.perf
 ```
 
-where `<layout>` is a layout, `nompi<threads>` for the run without MPI, or `aec<threads>` for the run of the tag.
-The TSVs are `020-concat/<dataset>.layouts.l<L>d<D>.<F>.k<K>.tsv` and, with the same name, in `aec/`.
+where `<layout>` is a layout, or `aec<threads>` for the run of the tag.
+The MPI runs also write a `.tsv` of the same name, with the time of each configuration: process and thread, place in the order, node, core, start, and seconds, one per line.
+The TSVs are `020-concat/<dataset>.layouts.l<L>d<D>.<F>.k<K>.tsv` and, with the same name, in `025-aec/`.
 
 Each row of the TSVs is one measurement (the one-line output of `cmm_test_mpi` or `cmm_test`) with the number of nodes, the layout, and the trial prepended, tab-separated:
 

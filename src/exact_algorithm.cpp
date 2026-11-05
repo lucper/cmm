@@ -135,33 +135,31 @@ motif_pair_search_result_t main_algo(const std::vector<std::string>& V,
 
     size_t num_threads = std::min(configurations.size(), requested_num_threads);
     omp_set_num_threads(num_threads);
-    std::vector<motif_pair_searcher_t<motif_comparator_t>> searchers;
-    searchers.reserve(num_threads);
-    for (size_t i = 0; i < num_threads; i++)
-        searchers.emplace_back(ESA, G, ell, k);
 
+    motif_pair_search_result_t result;
+    std::vector<motif_pair_record_t> candidates;
     progress_bar_t bar(configurations.size());
+    const size_t first_config = part * (all_H.size() * (all_H.size() + 1) / 2) / num_parts;
 
     #pragma omp parallel
     {
-    motif_pair_searcher_t<motif_comparator_t>& searcher = searchers[omp_get_thread_num()];
+    motif_pair_searcher_t<motif_comparator_t> searcher(ESA, G, ell, k);
 
     #pragma omp for schedule(dynamic)
     for (size_t c = 0; c < configurations.size(); c++) {
         auto [d_u, d_v] = configurations[c];
-        searcher.search_configuration(all_H[d_u], all_H[d_v]);
-
+        searcher.time_configuration(all_H[d_u], all_H[d_v], first_config + c);
         bar.advance();
     }
+
+    #pragma omp critical
+    {
+    result.stats.add(searcher.get_stats());
+    for (auto& pair : searcher.take_top_k())
+        candidates.push_back(std::move(pair));
+    }
     }
 
-    motif_pair_search_result_t result;
-    std::vector<motif_pair_record_t> candidates;
-    for (auto& searcher : searchers) {
-        result.stats.add(searcher.get_stats());
-        for (auto& pair : searcher.take_top_k())
-            candidates.push_back(std::move(pair));
-    }
     result.stats.num_threads = num_threads;
     result.pairs = merge_top_k<Tag>(std::move(candidates), k);
 

@@ -229,6 +229,14 @@ MPI_TEST_CASE("main_algo_mpi gives process 0 the search time of every process, i
         CHECK(s >= 0.0);
 }
 
+MPI_TEST_CASE("main_algo_mpi gives every process the times of its own configurations", 3) {
+    const test_case_t c = all_cases().front();
+    motif_pair_search_result_t result;
+    CHECK_NOTHROW(result = search_mpi(c, 2, test_comm));
+    CHECK(result.stats.configuration_times.size() ==
+          search(c, 2, test_nb_procs, test_rank).stats.num_configurations);
+}
+
 MPI_TEST_CASE("main_algo_mpi rejects, on every process, a k whose pairs would not fit", 2) {
     const std::string name = "readme";
     const auto& [V, G] = instance(name);
