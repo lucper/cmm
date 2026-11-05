@@ -1,8 +1,8 @@
 SHELL       := /usr/bin/bash
 .SHELLFLAGS := -o pipefail -c
 
-# A separate check of the experiment of the layouts: the code of the tag ALENEX27_AEC, on one node, to compare its
-# running time and memory with the MPI version. Nothing else depends on this directory.
+# A baseline on one node: the code of the tag ALENEX27_AEC, to compare its running time and memory with the MPI
+# version, merged with the table of ../020-concat.
 
 TAG      := ALENEX27_AEC
 CMM_TEST := source/experiments/bin/cmm_test

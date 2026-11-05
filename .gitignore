@@ -34,7 +34,7 @@ benchmark/FlameGraph/
 /experiments/mpi/*.log
 /experiments/mpi/010-measure/*/
 /experiments/mpi/simulate/*/
-/experiments/mpi/aec/*/
+/experiments/mpi/025-aec/*/
 experiments/bin/
 output/
 __pycache__/

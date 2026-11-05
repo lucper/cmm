@@ -32,7 +32,7 @@
 # directory, with NAME=human_ii.layouts.l8d5.x2.k10000:
 #   julia --project=. -t auto simulate_tasks.jl ../010-measure/human_ii/$NAME.n1.*x*.trial1.tsv \
 #       --results ../020-concat/$NAME.tsv --plot human_ii/$NAME
-# Several files of times are simulated in turn, each with its own figures (prefix-<layout>).
+# Several files of times are simulated in turn, each with its own figures.
 #
 # The input is the times of a run on 1 node: a file named for other nodes (.n8.) is an error. It has
 # one task per line, with its time in seconds in the last column, or in the column given with
@@ -60,7 +60,7 @@
 # the cores the same speed, so that the time of each task is its size, as measured.
 #
 # --plot prefix writes the figures, with Plots.jl and StatsPlots.jl, without opening a window:
-# prefix-speedup.pdf and .png, the measured against the hypothetical speedup; and prefix.pdf and
+# prefix-<layout>-speedup.pdf and .png, the measured against the hypothetical speedup; and prefix-<layout>.pdf and
 # .png, the same above the times of the tasks, the simulated time against the number of nodes, and
 # its spread over the trials.
 
@@ -113,7 +113,7 @@ function settings(o, file, layout)
     measured = !isempty(o.results) ? read_results(o.results, "$(processes)x$(threads)") :
                Dict(Int(n) => t for (n, t) in o.measured)
     nodes = !isempty(o.nodes) ? o.nodes : !isempty(measured) ? sort(collect(keys(measured))) : [1, 2, 4, 8]
-    plot = isempty(o.plot) || length(o.files) == 1 ? o.plot : "$(o.plot)-$(processes)x$(threads)"
+    plot = isempty(o.plot) ? o.plot : "$(o.plot)-$(processes)x$(threads)"
     return (file = file, processes = processes, threads = threads, nodes = nodes,
             trials = o.trials, seed = o.seed, plot = plot, measured = measured,
             overhead = o.overhead, warmup = o.warmup, cores = o.cores)
