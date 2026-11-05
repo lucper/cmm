@@ -64,13 +64,14 @@ The parameters, set by the presets at the top of `runme.sh`:
 
 All of them but the build run through `job.sh`, which sets the Slurm options and loads the modules.
 
-The experiment is a sequence of numbered `make` stages, each consuming the previous stage's output, and `aec/` is a separate check that reads the result of the last one:
+The experiment is a sequence of numbered `make` stages, each consuming the previous stage's output, and two directories without a number are separate: `aec/` is a check that reads the result of `020-concat/`, and `simulate/` runs on your own machine, for testing and benchmarking, and is never submitted (see [Simulating the layouts](#simulating-the-layouts)):
 
 | Directory | Produces |
 |-----------|----------|
 | `010-measure/` | One measurement per file, for each layout and trial, and for the run without MPI |
 | `020-concat/` | One TSV per dataset, $\ell$, $d$, support function, and $K$, with the measurements of all the jobs, and a check that they found the same pairs |
 | `aec/` | The same TSV, with the measurements of the code of the tag |
+| `simulate/` | The figures of the simulated layouts on more nodes, from the times of each configuration |
 
 `make` runs inside the jobs, as `sbatch` returns before a job has run, and Slurm orders the jobs (`--dependency`).
 After a job fails or is killed at its time limit, run `runme.sh` again with the build off: it submits only the runs that have not finished, and collects the results again.
@@ -91,6 +92,41 @@ Slurm assigns consecutive cores to each process (`--distribution=block:block`), 
 The jobs do not check this.
 So, on a new partition, run `check_snellius.sh` first, which logs `FAILED` if a process spans several NUMA domains.
 You can also check a running experiment with `grep cpu-bind experiments/mpi/job_*.log`: with one process per domain of 16 cores, each process should show one block of 16 consecutive cores, such as `0xffff` or `0xffff0000`.
+
+### Simulating the layouts
+
+`simulate/` simulates the search on more nodes from the time of each configuration on 1 node, to show what limits the speedup.
+It is for testing and benchmarking: it runs on your own machine, and `runme.sh` does not submit it.
+It reads the results of `010-measure/` and `020-concat/` of the preset `main`:
+```bash
+make -C experiments/mpi/simulate setup    # once
+make -C experiments/mpi/simulate all DATASET=human_ii L=8 D=5 F=x2 K=10000
+```
+
+`make setup` installs Julia and the packages of `simulate_tasks.jl` in `simulate/.julia/`, about 2 GB on Linux x86-64, and nothing elsewhere; to remove them, delete that directory.
+On another system, give another Julia with `JULIA=<program>`, and install the packages of `Project.toml` yourself.
+
+If the results are still on Snellius, the helper `sync-logs.sh` copies them to the same directories on your machine.
+It copies the logs of the jobs and the results of `aec/` too, deletes nothing, and needs `snellius` as a host in your SSH configuration, or `HOST`, and `REMOTE` if your clone is not `cmm`:
+```bash
+experiments/mpi/sync-logs.sh -n    # options go to rsync: -n only lists what it would copy
+```
+
+The results are in `simulate/<dataset>/`, named as the TSV of `020-concat/`:
+
+| File | Holds |
+|------|-------|
+| `<name>.txt` | The printed results of all the layouts |
+| `<name>-<layout>-speedup.pdf`, `.png` | The measured against the simulated speedup |
+| `<name>-<layout>.pdf`, `.png` | The same, above the times of the configurations, the simulated time, and its spread over the trials |
+
+The simulation assumes that:
+- each layout has its times on 1 node, or it is skipped without an error, and the table has the numbers of nodes to simulate, so a dataset with only 1 node simulates only that;
+- the times come from one trial (`TRIAL`, by default 1), while the measured values of the table are the mean of all its trials, so they compare best with one trial per run;
+- a configuration takes the same time on any number of nodes, and every node has the speeds of the cores and warm-ups of the measured node;
+- the code still splits the configurations into blocks and schedules them as the script does, by hand, in `simulate_tasks.jl`, and the columns of the `.perf` files and the TSV stay in place.
+
+The script runs on a fixed number of threads, so with the same version of Julia it gives the same results.
 
 ### Checking a machine
 
@@ -122,10 +158,12 @@ Any `FAILED` there needs a look, and so does a thread that shares its core.
 | `job.sh` | A job: the Slurm settings and modules, around the given command. |
 | `build_snellius.sh` | The job that builds the programs, and unpacks the datasets from SLIDER. |
 | `check_snellius.sh` | The job that checks a machine. |
+| `sync-logs.sh` | A helper that copies the logs and results of Snellius to your machine. |
 | `<NNN>-*/` | The numbered pipeline stages, each with its own `Makefile`. |
 | `aec/` | The check of the code of the tag, with its own `Makefile`. |
 | `aec/source/` | The code of the tag, built by `make build` (generated); remove it to build again on another partition. |
 | `010-measure/<dataset>/`, `aec/<dataset>/` | The measurements and solutions (generated). |
+| `simulate/<dataset>/`, `simulate/.julia/` | The figures of the simulation, and Julia with its packages (generated). |
 | `job_<job id>.log`, `build_<job id>.log`, `check_<job id>.log` | The logs of the jobs (generated), with the cores of the processes of each run. |
 
 ## Output format
@@ -138,6 +176,7 @@ A representative name, of a measurement in `010-measure/`, with its solution in 
 ```
 
 where `<layout>` is a layout, `nompi<threads>` for the run without MPI, or `aec<threads>` for the run of the tag.
+The MPI runs also write a `.tsv` of the same name, with the time of each configuration: process and thread, place in the order, node, core, start, and seconds, one per line.
 The TSVs are `020-concat/<dataset>.layouts.l<L>d<D>.<F>.k<K>.tsv` and, with the same name, in `aec/`.
 
 Each row of the TSVs is one measurement (the one-line output of `cmm_test_mpi` or `cmm_test`) with the number of nodes, the layout, and the trial prepended, tab-separated:

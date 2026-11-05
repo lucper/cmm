@@ -33,6 +33,7 @@ benchmark/FlameGraph/
 /test/tests_programs_mpi
 /experiments/mpi/*.log
 /experiments/mpi/010-measure/*/
+/experiments/mpi/simulate/*/
 /experiments/mpi/aec/*/
 experiments/bin/
 output/

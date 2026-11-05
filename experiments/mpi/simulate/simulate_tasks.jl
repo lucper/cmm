@@ -27,13 +27,16 @@
 # node in a random order; the order of the code gives each thread of a process those of the thread
 # that ran the same task on 1 node.
 #
-# From experiments/mpi, with the times of each layout on 1 node and the table of the layouts:
-#   julia -t auto simulate_tasks.jl 010-measure/human_ii_timers/*.n1.*.trial1.tsv \
-#       --results 020-concat/human_ii.layouts.l8d5.x2.k10000.tsv --plot 030-simulate/human_ii.l8d5
+# The Makefile of this directory runs it (make all), with Julia and the packages of make setup, on
+# the times of each layout on 1 node and the table of the layouts of one dataset. By hand, from this
+# directory, with NAME=human_ii.layouts.l8d5.x2.k10000:
+#   julia --project=. -t auto simulate_tasks.jl ../010-measure/human_ii/$NAME.n1.*x*.trial1.tsv \
+#       --results ../020-concat/$NAME.tsv --plot human_ii/$NAME
 # Several files of times are simulated in turn, each with its own figures (prefix-<layout>).
 #
-# The input has one task per line, with its time in seconds in the last column, or in the column
-# given with --column (from 1). As main_algo writes them with the timers, the lines are
+# The input is the times of a run on 1 node: a file named for other nodes (.n8.) is an error. It has
+# one task per line, with its time in seconds in the last column, or in the column given with
+# --column (from 1). As cmm_test writes them to stderr, the lines are
 # p<process>t<thread>, conf<place in the order of the code>, then optionally the node, the core
 # (cpu17, or cpu17to18 if the thread moved) and the start (start<seconds since the epoch)
 # of the task, and its time in seconds; the threads and places are optional, and without the
@@ -134,6 +137,8 @@ end
 # threads, else that of the name of the file, else nothing; the busy time of the busiest thread, if
 # known; and the slowest search of the run in seconds, from the .perf next to the file, if any.
 function read_times(file, column)
+    nodes = match(r"\.n(\d+)\.", basename(file))
+    nodes === nothing || nodes[1] == "1" || error("$file: the times must be of a run on 1 node, not on $(nodes[1])")
     times, places, threads = Float64[], Int[], String[]
     for (n, line) in enumerate(eachline(file))
         line = strip(line)
