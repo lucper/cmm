@@ -3,7 +3,6 @@
 # Runs the experiment of the layouts end to end. On a login node:
 #   experiments/mpi/runme.sh                    # choose and edit what to run, then submit
 #   experiments/mpi/runme.sh --yes              # submit the preset main as it is, without asking
-#   experiments/mpi/runme.sh --preset timers    # start from another preset
 #   experiments/mpi/runme.sh --dry-run          # print the sbatch commands, and submit nothing
 # It submits the build, and one job per run, so that as many run at once as Slurm has nodes for: one per number
 # of wildcards, of nodes, layout and trial, and one without MPI per number of wildcards and trial, which wait for
@@ -13,14 +12,12 @@
 #
 # The presets, of which the screen shows the parameters:
 # - main: the layouts on 1, 2, 4 and 8 nodes, with the code of the tag ALENEX27_AEC (aec/);
-# - timers: the layouts on 1 node only, under their own name, for the time of each configuration that the code
-#   prints with the timers (see 010-measure/Makefile and simulate_tasks.jl).
 
 set -euo pipefail
 
 # The parameters, which a preset sets, and the screen edits.
 declare -A JOBS NO_MPI_TIME
-PRESETS=(main timers)
+PRESETS=(main)
 
 # The layouts on 1, 2, 4 and 8 nodes, with ALENEX27_AEC.
 preset_main() {
@@ -48,16 +45,6 @@ preset_main() {
     # For each of them, the time limit of a run without MPI, on 1 node, and of one of ALENEX27_AEC.
     NO_MPI_TIME=([5]="01:00:00" [3]="24:00:00")
     EDITED=0
-}
-
-# The layouts on 1 node, under their own name, to time each configuration.
-preset_timers() {
-    preset_main
-    PRESET=timers
-    DESCRIPTION="the layouts on 1 node, to time each configuration"
-    DATASET=human_ii_timers
-    AEC=0
-    JOBS=([5]="1:01:00:00" [3]="1:24:00:00")
 }
 
 usage() {

@@ -19,19 +19,15 @@ experiments/mpi/runme.sh
 
 It shows the parameters of a preset and the jobs they make, lets you change them, and submits the jobs.
 It only submits jobs, of which Slurm decides the order, so nothing has to stay running.
-The keys: `p` the next preset, `1` to `9` and `a` to `d` change a parameter, ⏎ submits (after asking), `n` prints the `sbatch` commands instead, and `q` quits.
+The keys: `p` back to the preset, `1` to `9` and `a` to `d` change a parameter, ⏎ submits (after asking), `n` prints the `sbatch` commands instead, and `q` quits.
 Each run is a job of its own, so that as many run at once as Slurm has nodes for, and a run that has finished gets no job: the screen says how many of each line are done. It also warns when a build would replace the programs of jobs of the same clone that are queued or running.
 
-| Preset | Runs |
-|--------|------|
-| `main` (the default) | the layouts on 1, 2, 4, and 8 nodes, the run without MPI, and the code of the tag `ALENEX27_AEC` |
-| `timers` | the layouts on 1 node and the run without MPI, under the name `human_ii_timers`, for the time of each configuration (see `simulate_tasks.jl`) |
+The preset `main`, the only one, runs the layouts on 1, 2, 4, and 8 nodes, the run without MPI, and the code of the tag `ALENEX27_AEC`.
 
 Without the screen:
 ```bash
-experiments/mpi/runme.sh --yes                       # submit the preset main as it is
-experiments/mpi/runme.sh --preset timers --yes       # or another preset
-experiments/mpi/runme.sh --yes --dry-run             # print the sbatch commands, and submit nothing
+experiments/mpi/runme.sh --yes              # submit the preset main as it is
+experiments/mpi/runme.sh --yes --dry-run    # print the sbatch commands, and submit nothing
 ```
 
 The parameters, set by the presets at the top of `runme.sh`:
