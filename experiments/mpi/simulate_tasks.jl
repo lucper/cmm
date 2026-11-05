@@ -9,16 +9,23 @@
 # shuffles the tasks at random; if the input gives the place of each task in the order of the code
 # (confN), that order is simulated too.
 #
-# A run spends its time in three parts, which the output separates (and compares with tasks that
+# A run spends its time in four parts, which the output separates (and compares with tasks that
 # all take their mean, which shows what the number of tasks per thread alone costs):
-# - the tasks, without the warm-up: the time of the first task of each thread is replaced by the
-#   median of the other tasks;
+# - the tasks, as their sizes: the time of each task divided by the speed of the core that ran it,
+#   and the first task of each thread at most the median of the others;
+# - the speed of each core: a few cores of a run are 10-40% slower than the others through the
+#   whole run (on different cores in each run, so the slowness belongs to the core, not to the
+#   task). The speed of a thread is the median of its tasks after the first against the median of
+#   all of those (1 with fewer than 3 of them), and a task on it takes its size times that speed.
+#   Dynamic scheduling gives a slow core fewer tasks, which tasks that were slow in themselves would
+#   not get (see --cores);
 # - the warm-up of each thread: the time its first task took beyond that median, which every thread
-#   pays once, on any number of nodes; each trial gives the measured warm-ups to the threads of each
-#   node in a random order; the order of the code gives each thread of a process that of the thread
-#   that ran the same task on 1 node;
+#   pays once, on any number of nodes;
 # - the overhead of each process, outside its tasks, such as building its index and searchers,
 #   which no number of nodes shortens (see --overhead).
+# Each trial gives the measured speeds and warm-ups, of the same threads, to the threads of each
+# node in a random order; the order of the code gives each thread of a process those of the thread
+# that ran the same task on 1 node.
 #
 # From experiments/mpi, with the times of each layout on 1 node and the table of the layouts:
 #   julia -t auto simulate_tasks.jl 010-measure/human_ii_timers/*.n1.*.trial1.tsv \
@@ -46,7 +53,8 @@
 # --overhead is the overhead in seconds. auto, the default, takes the slowest search of the run of
 # the input (column 18 of the .perf next to it, in ms) minus its busiest thread; without them, the
 # measured time on the first number of nodes minus the simulated one there; without that, 0.
-# --warmup off keeps the first tasks as they are, as tasks like the others.
+# --warmup off keeps the first tasks as they are, as tasks like the others. --cores off gives all
+# the cores the same speed, so that the time of each task is its size, as measured.
 #
 # --plot prefix writes the figures, with Plots.jl and StatsPlots.jl, without opening a window:
 # prefix-speedup.pdf and .png, the measured against the hypothetical speedup; and prefix.pdf and
@@ -60,7 +68,7 @@ using Statistics
 function parse_args(args)
     options = Dict("nodes" => "", "layout" => "", "trials" => "10000", "seed" => "1",
                    "column" => "0", "plot" => "", "measured" => "", "results" => "",
-                   "overhead" => "auto", "warmup" => "auto")
+                   "overhead" => "auto", "warmup" => "auto", "cores" => "auto")
     files = String[]
     i = 1
     while i <= length(args)
@@ -79,8 +87,9 @@ function parse_args(args)
     isempty(files) && error("Usage: simulate_tasks.jl times... [--layout PxT] [--nodes 1,2,4,8] " *
                             "[--trials N] [--seed S] [--column C] [--results table | " *
                             "--measured nodes:seconds,...] [--overhead auto|seconds] " *
-                            "[--warmup auto|off] [--plot prefix]")
+                            "[--warmup auto|off] [--cores auto|off] [--plot prefix]")
     options["warmup"] in ("auto", "off") || error("--warmup is auto or off")
+    options["cores"] in ("auto", "off") || error("--cores is auto or off")
     return (files = files,
             layout = isempty(options["layout"]) ? nothing : Tuple(parse.(Int, split(options["layout"], "x"))),
             nodes = parse.(Int, split(options["nodes"], ",", keepempty = false)),
@@ -91,7 +100,8 @@ function parse_args(args)
             results = options["results"],
             measured = [parse.(Float64, split(m, ":")) for m in split(options["measured"], ",", keepempty=false)],
             overhead = options["overhead"],
-            warmup = options["warmup"] == "auto")
+            warmup = options["warmup"] == "auto",
+            cores = options["cores"] == "auto")
 end
 
 # The settings of one file of times: its layout, numbers of nodes, measurements and figures.
@@ -103,7 +113,7 @@ function settings(o, file, layout)
     plot = isempty(o.plot) || length(o.files) == 1 ? o.plot : "$(o.plot)-$(processes)x$(threads)"
     return (file = file, processes = processes, threads = threads, nodes = nodes,
             trials = o.trials, seed = o.seed, plot = plot, measured = measured,
-            overhead = o.overhead)
+            overhead = o.overhead, warmup = o.warmup, cores = o.cores)
 end
 
 # The measured time in seconds of each number of nodes, from the lines of layout in a table of
@@ -175,16 +185,25 @@ function read_times(file, column)
             layout = layout, busiest = busiest, search = search)
 end
 
-# The tasks without the warm-up, and the warm-up of each thread (see the top of the file): the
-# times with the first task of each thread at most the median of the others; the warm-ups of all the
-# threads, in the order of their first tasks; and for the order of the code, the warm-up of the
-# thread that took each task of the first threads tasks of the block of each process, on 1 node with
-# processes processes (0 for a task that was not the first of its thread), as a threads x processes
-# matrix.
-function split_warmup(input, processes, threads)
+# The sizes of the tasks, the speeds of the cores and the warm-ups of the threads (see the top of the
+# file), from the times as measured:
+# - times: the size of each task, its time divided by the speed of its thread, and for the first
+#   task of each thread at most the median of the others;
+# - speeds and pool: the speed and the warm-up of each thread, in the order of their first tasks
+#   (the warm-up in the units of the sizes: a thread pays it times its speed);
+# - slots and speed_slots: for the order of the code, the warm-up and speed of the thread that took
+#   each of the first threads tasks of the block of each process, on 1 node with processes
+#   processes (0 and 1 for a task that was not the first of its thread), as threads x processes
+#   matrices;
+# - first and factor: whether each task was the first of its thread, and the speed of its thread.
+# Without the threads in the input, the sizes are the times, all the speeds 1, and no warm-up;
+# warmup = false keeps the first tasks as they are; cores = false gives all the threads speed 1.
+function split_times(input, processes, threads, warmup, cores)
     n = length(input.times)
     if input.threads === nothing
-        return (times = input.times, pool = Float64[], slots = zeros(threads, processes))
+        return (times = input.times, pool = Float64[], speeds = Float64[],
+                slots = zeros(threads, processes), speed_slots = ones(threads, processes),
+                first = falses(n), factor = ones(n))
     end
     first_task = Dict{String, Int}()  # thread => its first task, in the order of the code
     for (c, thread) in enumerate(input.threads)
@@ -192,79 +211,104 @@ function split_warmup(input, processes, threads)
     end
     is_first = falses(n)
     is_first[collect(values(first_task))] .= true
-    typical = median(input.times[.!is_first])
-    times = copy(input.times)
-    warm = zeros(n)
-    for c in findall(is_first)
-        warm[c] = max(0.0, times[c] - typical)
-        times[c] -= warm[c]
+
+    # The speed of each thread: the median of its tasks after the first against that of all of them.
+    later = Dict{String, Vector{Float64}}()
+    for c in findall(.!is_first)
+        push!(get!(later, input.threads[c], Float64[]), input.times[c])
     end
-    slots = zeros(threads, processes)
+    typical = median(input.times[.!is_first])
+    speed = Dict(thread => cores && length(get(later, thread, Float64[])) >= 3 ?
+                           median(later[thread]) / typical : 1.0
+                 for thread in keys(first_task))
+    factor = [speed[thread] for thread in input.threads]
+
+    times = input.times ./ factor
+    warm = zeros(n)
+    if warmup
+        typical = median(times[.!is_first])
+        for c in findall(is_first)
+            warm[c] = max(0.0, times[c] - typical)
+            times[c] -= warm[c]
+        end
+    end
+    slots, speed_slots = zeros(threads, processes), ones(threads, processes)
     for p in 0:processes-1, i in 1:threads
         c = div(p * n, processes) + i
-        c <= div((p + 1) * n, processes) && (slots[i, p + 1] = warm[c])
+        if c <= div((p + 1) * n, processes)
+            slots[i, p + 1], speed_slots[i, p + 1] = warm[c], factor[c]
+        end
     end
-    return (times = times, pool = warm[is_first], slots = slots)
+    firsts = findall(is_first)
+    return (times = times, pool = warmup ? warm[firsts] : Float64[],
+            speeds = cores ? factor[firsts] : Float64[], slots = slots, speed_slots = speed_slots,
+            first = is_first, factor = factor)
 end
 
 # Time of one process whose threads take the tasks of block in order: at the start one each, with
-# its warm-up, then each the next one as soon as it is free. free holds the time at which each
-# thread is free.
-function process_time!(free, block, warm)
+# its warm-up, then each the next one as soon as it is free. A task takes its size times the speed
+# of its thread, in speed. free holds the time at which each thread is free.
+function process_time!(free, block, warm, speed)
     fill!(free, 0.0)
     for (i, t) in enumerate(block)
         if i <= length(free)
-            free[i] = warm[i] + t
+            free[i] = (warm[i] + t) * speed[i]
         else
             j = argmin(free)
-            free[j] += t
+            free[j] += t * speed[j]
         end
     end
     return maximum(free)
 end
 
-# Time of the tasks in order: the slowest of the num_parts processes, the warm-ups of process part
-# in column part + 1 of warm.
-function order_time!(order, free, times, num_parts, warm)
+# Time of the tasks in order: the slowest of the num_parts processes, the warm-ups and speeds of the
+# threads of process part in column part + 1 of warm and speed.
+function order_time!(order, free, times, num_parts, warm, speed)
     n = length(order)
     slowest = 0.0
     for part in 0:num_parts-1
         # The block of part, as in shuffled_configurations.
         first, last = div(part * n, num_parts) + 1, div((part + 1) * n, num_parts)
-        slowest = max(slowest, process_time!(free, @view(times[order[first:last]]), @view(warm[:, part + 1])))
+        slowest = max(slowest, process_time!(free, @view(times[order[first:last]]),
+                                             @view(warm[:, part + 1]), @view(speed[:, part + 1])))
     end
     return slowest
 end
 
-# Draws the warm-ups of the threads of num_parts processes, with processes processes per node,
-# into warm: on each node, the measured warm-ups in a random order, if there are as many as threads
-# on a node, else drawn with replacement; none if there are none.
-function draw_warmups!(warm, pool, processes, rng)
-    isempty(pool) && return fill!(warm, 0.0)
+# Draws the warm-ups and speeds of the threads of num_parts processes, with processes processes per
+# node, into warm and speed: on each node, those measured, of the same threads, in a random order, if
+# there are as many as threads on a node, else drawn with replacement; no warm-up and speed 1 if none
+# were measured.
+function draw_threads!(warm, speed, pool, speeds, processes, rng)
     threads, num_parts = size(warm)
+    n = max(length(pool), length(speeds))
+    fill!(warm, 0.0)
+    fill!(speed, 1.0)
+    n == 0 && return
     per_node = threads * processes
     for node in 0:div(num_parts, processes)-1
-        w = length(pool) == per_node ? shuffle(rng, pool) : rand(rng, pool, per_node)
-        warm[:, node * processes + 1:(node + 1) * processes] = reshape(w, threads, processes)
+        pick = n == per_node ? randperm(rng, n) : rand(rng, 1:n, per_node)
+        columns = node * processes + 1:(node + 1) * processes
+        isempty(pool) || (warm[:, columns] = reshape(pool[pick], threads, processes))
+        isempty(speeds) || (speed[:, columns] = reshape(speeds[pick], threads, processes))
     end
-    return warm
 end
 
 # The times of trials random runs on num_parts processes, processes per node. Trial i shuffles the
 # tasks in the same order for any num_parts, with its own random generator, and draws the warm-ups
-# with another.
-function simulate(times, pool, num_parts, processes, threads, trials, seed)
+# and speeds with another.
+function simulate(times, pool, speeds, num_parts, processes, threads, trials, seed)
     results = Vector{Float64}(undef, trials)
     chunks = collect(Iterators.partition(1:trials, cld(trials, Threads.nthreads())))
     Threads.@threads for c in eachindex(chunks)
-        order_rng, warm_rng = Xoshiro(seed + c), Xoshiro(seed + c + 1_000_000)
+        order_rng, thread_rng = Xoshiro(seed + c), Xoshiro(seed + c + 1_000_000)
         order = collect(eachindex(times))
         free = zeros(threads)
-        warm = zeros(threads, num_parts)
+        warm, speed = zeros(threads, num_parts), ones(threads, num_parts)
         for i in chunks[c]
             shuffle!(order_rng, order)
-            draw_warmups!(warm, pool, processes, warm_rng)
-            results[i] = order_time!(order, free, times, num_parts, warm)
+            draw_threads!(warm, speed, pool, speeds, processes, thread_rng)
+            results[i] = order_time!(order, free, times, num_parts, warm, speed)
         end
     end
     return results
@@ -275,7 +319,6 @@ function main(args)
     for (i, file) in enumerate(o.files)
         i > 1 && println("\n", "-"^110, "\n")
         input = read_times(file, o.column)
-        o.warmup || (input = merge(input, (threads = nothing,)))
         o.layout === nothing && input.layout === nothing &&
             error("$file: no layout; give one with --layout")
         run(settings(o, file, input.layout), input)
@@ -284,35 +327,56 @@ end
 
 function run(o, input)
     threads = o.processes * o.threads  # per node
-    split = split_warmup(input, o.processes, o.threads)
+    split = split_times(input, o.processes, o.threads, o.warmup, o.cores)
     times = split.times
     total, longest = sum(times), maximum(times)
     warmup = !isempty(split.pool)
+    cores = !isempty(split.speeds)
 
     println(o.file)
-    @printf("%d tasks: sum %.4g s, mean %.4g, median %.4g, max %.4g, coefficient of variation %.3f\n",
-            length(times), total, mean(times), median(times), longest, std(times) / mean(times))
+    @printf("%d tasks as measured: sum %.4g s, mean %.4g, median %.4g, max %.4g, coefficient of variation %.3f\n",
+            length(times), sum(input.times), mean(input.times), median(input.times),
+            maximum(input.times), std(input.times) / mean(input.times))
+    if cores
+        slow = sort([(s, t) for (s, t) in zip(split.speeds, input.threads[split.first]) if s >= 1.05], rev = true)
+        @printf("speeds of the %d threads, against the median: median %.3f, IQR %.3f–%.3f; %d at least 5%% slower: %s\n",
+                length(split.speeds), median(split.speeds), quantile(split.speeds, 0.25),
+                quantile(split.speeds, 0.75), length(slow),
+                isempty(slow) ? "none" : join([@sprintf("%s %.2f", t, s) for (s, t) in slow], ", "))
+    end
+    @printf("%d tasks as sizes%s: mean %.4g s, median %.4g, max %.4g, coefficient of variation %.3f\n",
+            length(times), cores && warmup ? ", without the speeds of the cores and the warm-up" :
+                           cores ? ", without the speeds of the cores" : warmup ? ", without the warm-up" : "",
+            mean(times), median(times), longest, std(times) / mean(times))
     if warmup
-        @printf("warm-up of the %d threads, beyond the median task: mean %.4g s, median %.4g, max %.4g (the tasks above are without it)\n",
+        @printf("warm-up of the %d threads, beyond the median task: mean %.4g s, median %.4g, max %.4g\n",
                 length(split.pool), mean(split.pool), median(split.pool), maximum(split.pool))
     end
     @printf("layout %dx%d per node, %d trials per number of nodes, %d Julia threads\n",
             o.processes, o.threads, o.trials, Threads.nthreads())
 
-    # The tasks alone, then with the warm-ups, both before the overhead.
-    alone = [simulate(times, Float64[], n * o.processes, o.processes, o.threads, o.trials, o.seed)
-             for n in o.nodes]
-    warmed = warmup ? [simulate(times, split.pool, n * o.processes, o.processes, o.threads, o.trials, o.seed)
-                       for n in o.nodes] : alone
-    # All the tasks of equal length: no order and no trials matter.
+    # The tasks alone, then on the cores as measured, then with the warm-ups, all before the overhead.
+    sim(pool, speeds) = [simulate(times, pool, speeds, n * o.processes, o.processes, o.threads, o.trials, o.seed)
+                         for n in o.nodes]
+    alone = sim(Float64[], Float64[])
+    cored = cores ? sim(Float64[], split.speeds) : alone
+    warmed = warmup ? sim(split.pool, split.speeds) : cored
+    # All the tasks of equal length, on cores of equal speed: no order and no trials matter.
     equal = [order_time!(collect(eachindex(times)), zeros(o.threads), fill(mean(times), length(times)),
-                         n * o.processes, zeros(o.threads, n * o.processes)) for n in o.nodes]
+                         n * o.processes, zeros(o.threads, n * o.processes), ones(o.threads, n * o.processes))
+             for n in o.nodes]
     fixed = input.ordered ?
             [order_time!(collect(eachindex(times)), zeros(o.threads), times, n * o.processes,
-                         repeat(split.slots, 1, n)) for n in o.nodes] : nothing
+                         repeat(split.slots, 1, n), repeat(split.speed_slots, 1, n)) for n in o.nodes] : nothing
     if fixed !== nothing && input.busiest !== nothing && o.nodes[1] == 1
         @printf("check: the order of the code on 1 node takes %.5g s simulated, and its busiest thread %.5g s measured\n",
                 fixed[1], input.busiest)
+        # Two threads that finish within the gap between tasks of the run may take the next task in
+        # the other order than in the run; with threads of different speeds, the tasks after it then
+        # go to threads of other speeds than in the run.
+        cores && abs(fixed[1] - input.busiest) > 1e-3 * input.busiest &&
+            println("       (the speeds of the cores differ, so threads that finished almost together and took " *
+                    "the next tasks in the other order than in the run give other times)")
     end
 
     overhead = o.overhead == "auto" ? nothing : parse(Float64, o.overhead)
@@ -340,36 +404,38 @@ function run(o, input)
         r = warmed[k] .+ overhead
         m = mean(r)
         ci = 1.96 * std(r) / sqrt(length(r))
-        # No schedule does better than an even share of the work, as every thread takes a task, or
-        # than the longest task.
-        share = total / (nodes * threads) + (warmup ? mean(split.pool) : 0.0)
-        ideal = max(share, longest) + overhead
+        # No schedule does better than an even share of the work over the speeds of the cores, as
+        # every thread takes a task, or than the longest task on the fastest core.
+        capacity = cores ? threads * mean(1 ./ split.speeds) : threads
+        share = total / (nodes * capacity) + (warmup ? mean(split.pool) : 0.0)
+        ideal = max(share, longest * (cores ? minimum(split.speeds) : 1.0)) + overhead
         f = fixed === nothing ? NaN : fixed[k] + overhead
         push!(rows, (nodes = nodes, results = r, mean = m, ideal = ideal, fixed = f,
-                     equal = equal[k], alone = mean(alone[k]), warmed = mean(warmed[k])))
+                     equal = equal[k], alone = mean(alone[k]), cored = mean(cored[k]),
+                     warmed = mean(warmed[k])))
         @printf("%5d %9d %9d %10.5g %9.3g %10.5g %10.5g %10.5g %10.5g %9.2f %9.2f\n",
                 nodes, num_parts, nodes * threads, m, ci, median(r), quantile(r, 0.95), f,
                 ideal, rows[1].mean / m, rows[1].ideal / ideal)
     end
-    println("\ntimes in s, of the tasks, warm-up and overhead; code order: in the order of the code; " *
+    println("\ntimes in s, of the tasks, speeds of the cores, warm-up and overhead; code order: in the order of the code; " *
             "speedup: of the mean,\nagainst the first row; ideal: of the lower bound " *
             "max(even share, longest task) + overhead")
 
     comparison = compare_speedups(o, rows)
     if !isempty(comparison)
-        @printf("\n%5s %9s %8s %8s %7s %7s %9s %10s %12s %11s %10s %10s\n", "nodes", "measured",
-                "speedup", "perfect", "equal", "tasks", "+ warm-up", "+ overhead", "5–95%",
+        @printf("\n%5s %9s %8s %8s %7s %7s %8s %9s %10s %12s %11s %10s %10s\n", "nodes", "measured",
+                "speedup", "perfect", "equal", "tasks", "+ cores", "+ warm-up", "+ overhead", "5–95%",
                 "code order", "explained", "code order")
         percent(x) = isnan(x) ? "–" : @sprintf("%.0f%%", 100 * x)
         for c in comparison
-            @printf("%5d %9.5g %8.2f %8.2f %7.2f %7.2f %9.2f %10.2f %5.2f–%-6.2f %11.2f %10s %10s\n",
-                    c.nodes, c.time, c.measured, c.perfect, c.equal, c.alone, c.warmed,
+            @printf("%5d %9.5g %8.2f %8.2f %7.2f %7.2f %8.2f %9.2f %10.2f %5.2f–%-6.2f %11.2f %10s %10s\n",
+                    c.nodes, c.time, c.measured, c.perfect, c.equal, c.alone, c.cored, c.warmed,
                     c.hypothetical, c.low, c.high, c.fixed, percent(c.explained),
                     percent(c.explained_fixed))
         end
         println("\nspeedups against $(rows[1].nodes) node(s), of the mean over random orders unless " *
-                "said; measured: in s, and its speedup;\nequal: of tasks of equal length; tasks: of the tasks alone; + warm-up: and the " *
-                "warm-ups; + overhead: and the overhead, the hypothetical speedup, with\nthe range of " *
+                "said; measured: in s, and its speedup;\nequal: of tasks of equal length; tasks: of the sizes of the tasks alone; " *
+                "+ cores: on cores of the speeds measured; + warm-up: and the\nwarm-ups; + overhead: and the overhead, the hypothetical speedup, with the range of " *
                 "single runs; code order: the same, in the order of the code; explained: (perfect - " *
                 "hypothetical) /\n(perfect - measured), of the mean and of the order of the code")
     end
@@ -403,7 +469,7 @@ function compare_speedups(o, rows)
         explained(x) = lost > 1e-9 && !isnan(x) ? (perfect - x) / lost : NaN
         push!(comparison, (nodes = r.nodes, time = measured[r.nodes], measured = s,
                            equal = base.equal / r.equal, alone = base.alone / r.alone,
-                           warmed = base.warmed / r.warmed,
+                           cored = base.cored / r.cored, warmed = base.warmed / r.warmed,
                            hypothetical = h, low = quantile(ratios, 0.05),
                            high = quantile(ratios, 0.95), fixed = f, perfect = perfect,
                            explained = explained(h), explained_fixed = explained(f)))
@@ -417,6 +483,7 @@ const SIMULATED = "#2a78d6"
 const MEASURED = "#eb6834"
 const FIXED = "#1baf7a"
 const WARMUP = "#6250d6"
+const SLOW = "#e87ba4"
 const REFERENCE = "#52514e"
 const MUTED = "#898781"
 const GRID = "#e1e0d9"
@@ -453,19 +520,23 @@ function plot_results(o, input, split, rows, comparison, overhead)
     measured_times = [o.measured[n] for n in measured_nodes]
     node_ticks = (nodes, string.(nodes))
 
-    # The tasks as measured: in the order of the code, with the first task of each thread apart,
-    # if known; else longest first.
+    # The tasks as measured: in the order of the code, with the first task of each thread and the
+    # tasks on slow cores apart, if known; else longest first.
     if input.ordered && input.threads !== nothing
-        firsts = findall(times .!= input.times)  # those with a warm-up
-        rest = setdiff(eachindex(times), firsts)
+        firsts = findall(split.first)
+        slow = findall(.!split.first .& (split.factor .>= 1.05))
+        rest = findall(.!split.first .& (split.factor .< 1.05))
         tasks = scatter(rest, input.times[rest], color = SIMULATED, markersize = 2.5,
                         markerstrokewidth = 0, label = "task",
                         xlabel = "task, in the order of the code", ylabel = "time (s)",
                         legend = :topright, title = "")
+        isempty(slow) || scatter!(tasks, slow, input.times[slow], color = SLOW, markersize = 3,
+                                  markerstrokewidth = 0, label = "task on a core at least 5% slower")
         scatter!(tasks, firsts, input.times[firsts], color = WARMUP, markersize = 3.5,
                  markerstrokewidth = 0, label = "first task of a thread, with its warm-up")
-        hline!(tasks, [median(times[rest])], color = REFERENCE, linewidth = 1, linestyle = :dash,
-               label = @sprintf("median of the others, %.0f s", median(times[rest])))
+        typical = median(input.times[.!split.first])
+        hline!(tasks, [typical], color = REFERENCE, linewidth = 1, linestyle = :dash,
+               label = @sprintf("median of the others, %.0f s", typical))
         ylims!(tasks, (0, maximum(input.times) * 1.25))
     else
         sorted = sort(times, rev = true)
@@ -592,6 +663,7 @@ function speedup_plot(o, input, split, rows, comparison, overhead, title)
     perfect = nodes ./ base.nodes
     equal = base.equal ./ [r.equal for r in rows]
     alone = base.alone ./ [r.alone for r in rows]
+    cored = base.cored ./ [r.cored for r in rows]
     fixed = base.fixed ./ [r.fixed for r in rows]
     # Each entry of the legend gives its speedup on the last number of nodes.
     at(x) = @sprintf("%.2f×", x[end])
@@ -605,14 +677,20 @@ function speedup_plot(o, input, split, rows, comparison, overhead, title)
              title = title)
     plot!(p, nodes, equal, color = REFERENCE, linewidth = 1, linestyle = :dashdot,
           label = "tasks of equal length: $(at(equal))")
-    if !isempty(split.pool) || overhead > 0
+    cores = !isempty(split.speeds)
+    if cores || !isempty(split.pool) || overhead > 0
         plot!(p, nodes, alone, color = SIMULATED, linewidth = 1.5, linestyle = :dot,
-              label = "tasks as measured, alone: $(at(alone))")
+              label = "tasks alone" * (cores ? ", on cores of equal speed" : "") * ": $(at(alone))")
+    end
+    if cores && (!isempty(split.pool) || overhead > 0)
+        plot!(p, nodes, cored, color = SLOW, linewidth = 1.5, linestyle = :dot,
+              label = "tasks on cores of the speeds measured: $(at(cored))")
     end
     plot!(p, nodes, hypothetical, ribbon = (hypothetical .- low, high .- hypothetical),
           fillalpha = 0.15, color = SIMULATED, linewidth = 2.5, marker = :circle, markersize = 6,
           markerstrokewidth = 0,
-          label = "hypothetical: tasks" * (isempty(split.pool) ? "" : " + warm-up") *
+          label = "hypothetical: tasks" * (cores ? " + cores" : "") *
+                  (isempty(split.pool) ? "" : " + warm-up") *
                   (overhead > 0 ? " + overhead" : "") * ": $(at(hypothetical)) (5–95% of runs)")
     if input.ordered
         scatter!(p, nodes, fixed, color = FIXED, marker = :diamond, markersize = 7,
